@@ -1,0 +1,9 @@
+{
+  "name": "mailflow-pro",
+  "version": "1.0.0",
+  "description": "Automação de e-mail marketing para nichos",
+  "dependencies": {
+    "nodemailer": "^6.9.9",
+    "stripe": "^16.0.0"
+  }
+}
