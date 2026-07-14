@@ -11,6 +11,11 @@
   status = 200
 
 [[redirects]]
+  from = "/enviar-email"
+  to = "/.netlify/functions/enviar-email"
+  status = 200
+
+[[redirects]]
   from = "/webhook"
   to = "/.netlify/functions/webhook-stripe"
   status = 200
