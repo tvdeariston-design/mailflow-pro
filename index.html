@@ -3,228 +3,402 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MailFlow Pro - Automação de E-mail Marketing para Nichos</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://js.stripe.com/v3/"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 4rem 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: bold;
-            color: white;
-            margin-bottom: 1rem;
-            line-height: 1.2;
-        }
-        
-        .hero-subtitle {
-            font-size: 1.25rem;
-            color: rgba(255, 255, 255, 0.9);
-            margin-bottom: 2rem;
-            max-width: 600px;
-        }
-        
-        .hero-benefits {
-            display: flex;
-            gap: 2rem;
-            margin-bottom: 2.5rem;
-            flex-wrap: wrap;
-        }
-        
-        .benefit-item {
-            display: flex;
-            align-items: center;
-            color: white;
-            font-size: 1rem;
-        }
-        
-        .benefit-icon {
-            width: 24px;
-            height: 24px;
-            background: #10b981;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 0.75rem;
-            color: white;
-        }
-        
-        .hero-button {
-            background: white;
-            color: #667eea;
-            padding: 1rem 2rem;
-            border-radius: 10px;
-            font-size: 1.125rem;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: none;
-        }
-        
-        .hero-button:hover {
-            background: #f3f4f6;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-        }
-        
-        .plans-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        .plan-card {
-            transition: all 0.3s ease;
-            transform: translateY(0);
-        }
-        
-        .plan-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-        }
-        
-        @media (max-width: 640px) {
-            .hero-section {
-                padding: 3rem 1rem;
-            }
-            
-            .hero-title {
-                font-size: 2.5rem;
-            }
-            
-            .hero-benefits {
-                flex-direction: column;
-                gap: 1rem;
-            }
-        }
-    </style>
+    
+    <!-- SEO -->
+    <title>MailFlow Pro — Automação de E-mail Marketing para Nichos</title>
+    <meta name="description" content="MailFlow Pro: plataforma completa de automação de e-mail marketing para nichos. Templates profissionais, campanhas segmentadas e relatórios em tempo real.">
+    <meta name="keywords" content="email marketing, automação, nichos, templates, campanhas">
+    <meta name="author" content="MailFlow Pro">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="MailFlow Pro — Automação de E-mail Marketing">
+    <meta property="og:description" content="A plataforma completa de automação de e-mail marketing para nichos. Aumente suas conversões.">
+    <meta property="og:url" content="https://mailflow-pro.netlify.app/">
+    <meta property="og:site_name" content="MailFlow Pro">
+    <meta property="og:locale" content="pt_PT">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="MailFlow Pro — Automação de E-mail Marketing">
+    <meta name="twitter:description" content="A plataforma completa de automação de e-mail marketing para nichos.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Favicon (placeholder) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📧</text></svg>">
 </head>
 <body>
-    <!-- Hero Section -->
-    <div class="hero-section">
-        <div class="max-w-6xl mx-auto text-center">
-            <h1 class="hero-title">MailFlow Pro</h1>
-            <p class="hero-subtitle">A solução completa de automação de e-mail marketing para nichos. Aumente suas conversões e construa relacionamentos duradouros com seus clientes certos.</p>
+    <!-- Skip Link (Acessibilidade) -->
+    <a href="#main-content" class="skip-link">Saltar para o conteúdo principal</a>
+
+    <!-- Navbar -->
+    <nav class="navbar" role="navigation" aria-label="Navegação principal">
+        <div class="container navbar__inner">
+            <a href="/" class="navbar__logo" aria-label="MailFlow Pro — Página inicial">
+                📧 MailFlow Pro
+            </a>
             
-            <div class="hero-benefits">
-                <div class="benefit-item">
-                    <div class="benefit-icon">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    Templates Profissionais
+            <button class="navbar__toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="navbar-menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            
+            <ul id="navbar-menu" class="navbar__nav" role="menubar">
+                <li role="none"><a href="#funcionalidades" class="navbar__link" role="menuitem">Funcionalidades</a></li>
+                <li role="none"><a href="#precos" class="navbar__link" role="menuitem">Preços</a></li>
+                <li role="none"><a href="#faq" class="navbar__link" role="menuitem">FAQ</a></li>
+                <li role="none"><a href="pages/sobre.html" class="navbar__link" role="menuitem">Sobre</a></li>
+                <li role="none"><a href="pages/contacto.html" class="navbar__link" role="menuitem">Contacto</a></li>
+                <li role="none"><a href="#planos" class="navbar__cta" role="menuitem">Começar Agora</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content">
+        <!-- Hero Section -->
+        <section class="hero" aria-labelledby="hero-title">
+            <div class="container">
+                <span class="hero__badge" aria-hidden="true">
+                    ✨ Novo: Automação inteligente
+                </span>
+                
+                <h1 id="hero-title" class="hero__title">
+                    Automação de E-mail Marketing para Nichos
+                </h1>
+                
+                <p class="hero__subtitle">
+                    A solução completa para automação de e-mail marketing. 
+                    Aumente suas conversões e construa relacionamentos duradouros 
+                    com os seus clientes certos.
+                </p>
+                
+                <div class="hero__actions">
+                    <a href="#planos" class="btn btn--secondary btn--lg">
+                        Começar Agora
+                    </a>
+                    <a href="#funcionalidades" class="btn btn--outline btn--lg">
+                        Saber Mais
+                    </a>
                 </div>
-                <div class="benefit-item">
-                    <div class="benefit-icon">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
+                
+                <div class="hero__benefits" aria-label="Benefícios">
+                    <div class="hero__benefit">
+                        <span class="hero__benefit-icon" aria-hidden="true">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </span>
+                        Templates Profissionais
                     </div>
-                    Campanhas Segmentadas
+                    <div class="hero__benefit">
+                        <span class="hero__benefit-icon" aria-hidden="true">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </span>
+                        Campanhas Segmentadas
+                    </div>
+                    <div class="hero__benefit">
+                        <span class="hero__benefit-icon" aria-hidden="true">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </span>
+                        Análise de Resultados
+                    </div>
+                    <div class="hero__benefit">
+                        <span class="hero__benefit-icon" aria-hidden="true">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </span>
+                        Suporte 24/7
+                    </div>
                 </div>
-                <div class="benefit-item">
-                    <div class="benefit-icon">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                        </svg>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="funcionalidades" class="section section--gray" aria-labelledby="features-title">
+            <div class="container">
+                <h2 id="features-title" class="text-center text-3xl font-bold text-gray-800 mb-4">
+                    Tudo o que precisa num só lugar
+                </h2>
+                <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+                    Ferramentas poderosas para automatizar o seu marketing por e-mail 
+                    e alcançar resultados extraordinários.
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="card text-center">
+                        <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-3">Templates Profissionais</h3>
+                        <p class="text-gray-600">
+                            Escolha entre dezenas de templates profissionais ou crie os seus 
+                            próprios com o nosso editor intuitivo.
+                        </p>
                     </div>
-                    Análise de Resultados
+                    
+                    <div class="card text-center">
+                        <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-3">Automação Inteligente</h3>
+                        <p class="text-gray-600">
+                            Configure sequências automáticas que enviam o certo e-mail, 
+                            no momento certo, para o certo cliente.
+                        </p>
+                    </div>
+                    
+                    <div class="card text-center">
+                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-3">Relatórios em Tempo Real</h3>
+                        <p class="text-gray-600">
+                            Acompanhe as suas campanhas com relatórios detalhados 
+                            de aberturas, cliques e conversões.
+                        </p>
+                    </div>
                 </div>
-                <div class="benefit-item">
-                    <div class="benefit-icon">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section id="precos" class="section" aria-labelledby="pricing-title">
+            <div class="container">
+                <h2 id="pricing-title" class="text-center text-3xl font-bold text-gray-800 mb-4">
+                    Simples e transparente
+                </h2>
+                <p class="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
+                    Escolha o plano ideal para o seu negócio. Sem surpresas, sem custos ocultos.
+                </p>
+                
+                <div id="planos" class="pricing">
+                    <div class="card pricing__card">
+                        <span class="pricing__popular">⭐ Mais popular</span>
+                        <h3 class="pricing__name">Plano Pro</h3>
+                        <p class="pricing__price">49,99€ <span>/mês</span></p>
+                        
+                        <ul class="pricing__features" aria-label="Funcionalidades do plano Pro">
+                            <li class="pricing__feature">
+                                <span class="pricing__feature-icon" aria-hidden="true">✓</span>
+                                Envios ilimitados
+                            </li>
+                            <li class="pricing__feature">
+                                <span class="pricing__feature-icon" aria-hidden="true">✓</span>
+                                Agendamento automático
+                            </li>
+                            <li class="pricing__feature">
+                                <span class="pricing__feature-icon" aria-hidden="true">✓</span>
+                                Relatórios em tempo real
+                            </li>
+                            <li class="pricing__feature">
+                                <span class="pricing__feature-icon" aria-hidden="true">✓</span>
+                                Templates profissionais
+                            </li>
+                            <li class="pricing__feature">
+                                <span class="pricing__feature-icon" aria-hidden="true">✓</span>
+                                Suporte prioritário 24/7
+                            </li>
+                        </ul>
+                        
+                        <button 
+                            type="button"
+                            class="btn btn--primary btn--lg" 
+                            style="width: 100%;"
+                            aria-describedby="cta-note"
+                            onclick="alert('Os pagamentos ser\u00e3o ativados quando a conta Stripe for validada. Agradecemos a paci\u00eancia!')"
+                        >
+                            Subscrever Pro
+                        </button>
+                        <p id="cta-note" class="text-sm text-gray-500 mt-4">
+                            Em breve ativo. Conta Stripe a ser validada.
+                        </p>
                     </div>
-                    Suporte 24/7
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section id="faq" class="section section--gray" aria-labelledby="faq-title">
+            <div class="container container--narrow">
+                <h2 id="faq-title" class="text-center text-3xl font-bold text-gray-800 mb-12">
+                    Perguntas Frequentes
+                </h2>
+                
+                <div class="faq" role="list">
+                    <div class="faq__item" role="listitem">
+                        <button class="faq__question" aria-expanded="false">
+                            O que é o MailFlow Pro?
+                            <svg class="faq__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div class="faq__answer" role="region">
+                            <div class="faq__answer-content">
+                                O MailFlow Pro é uma plataforma completa de automação de e-mail marketing 
+                                projetada para negócios de nicho. Oferece templates profissionais, 
+                                campanhas segmentadas, automação inteligente e relatórios em tempo real.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="faq__item" role="listitem">
+                        <button class="faq__question" aria-expanded="false">
+                            Como funciona a automação?
+                            <svg class="faq__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div class="faq__answer" role="region">
+                            <div class="faq__answer-content">
+                                A automação permite criar sequências de e-mails que são enviados 
+                                automaticamente com base em ações dos seus clientes. Por exemplo, 
+                                enviar um e-mail de boas-vindas quando alguém se subscreve, 
+                                ou um lembrete quando um carrinho é abandonado.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="faq__item" role="listitem">
+                        <button class="faq__question" aria-expanded="false">
+                            Posso cancelar a subscrição a qualquer momento?
+                            <svg class="faq__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div class="faq__answer" role="region">
+                            <div class="faq__answer-content">
+                                Sim! Pode cancelar a sua subscrição a qualquer momento, 
+                                sem penalizações. O acesso continua até ao final do período 
+                                pago. Não há contratos de permanência.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="faq__item" role="listitem">
+                        <button class="faq__question" aria-expanded="false">
+                            Que tipo de suporte oferecem?
+                            <svg class="faq__icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div class="faq__answer" role="region">
+                            <div class="faq__answer-content">
+                                Oferecemos suporte prioritário 24/7 para todos os utilizadores do plano Pro. 
+                                Pode contactar-nos por e-mail, chat ao vivo ou telefone. 
+                                A nossa equipa responde em menos de 2 horas em dias úteis.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="section" style="background: var(--gradient-hero); text-align: center;" aria-labelledby="cta-title">
+            <div class="container">
+                <h2 id="cta-title" class="text-3xl font-bold text-white mb-4">
+                    Pronto para automatizar o seu marketing?
+                </h2>
+                <p class="text-lg text-white/90 mb-8 max-w-2xl mx-auto">
+                    Comece hoje mesmo a aumentar as suas conversões com o MailFlow Pro.
+                </p>
+                <a href="#planos" class="btn btn--secondary btn--lg">
+                    Começar Agora — 49,99€/mês
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="footer__grid">
+                <div class="footer__brand">
+                    <a href="/" class="footer__logo" aria-label="MailFlow Pro — Página inicial">
+                        📧 MailFlow Pro
+                    </a>
+                    <p class="footer__description">
+                        A plataforma completa de automação de e-mail marketing para nichos. 
+                        Aumente suas conversões e construa relacionamentos duradouros.
+                    </p>
+                    <div class="footer__social">
+                        <a href="#" class="footer__social-link" aria-label="Twitter">
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84"></path>
+                            </svg>
+                        </a>
+                        <a href="#" class="footer__social-link" aria-label="LinkedIn">
+                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"></path>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="footer__column-title">Produto</h4>
+                    <ul class="footer__links">
+                        <li><a href="#funcionalidades" class="footer__link">Funcionalidades</a></li>
+                        <li><a href="#precos" class="footer__link">Preços</a></li>
+                        <li><a href="#faq" class="footer__link">FAQ</a></li>
+                        <li><a href="#" class="footer__link">Changelog</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="footer__column-title">Empresa</h4>
+                    <ul class="footer__links">
+                        <li><a href="pages/sobre.html" class="footer__link">Sobre Nós</a></li>
+                        <li><a href="pages/contacto.html" class="footer__link">Contacto</a></li>
+                        <li><a href="#" class="footer__link">Carreiras</a></li>
+                        <li><a href="#" class="footer__link">Blog</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="footer__column-title">Legal</h4>
+                    <ul class="footer__links">
+                        <li><a href="pages/privacidade.html" class="footer__link">Privacidade</a></li>
+                        <li><a href="pages/termos.html" class="footer__link">Termos de Uso</a></li>
+                        <li><a href="#" class="footer__link">Cookies</a></li>
+                        <li><a href="#" class="footer__link">RGPD</a></li>
+                    </ul>
                 </div>
             </div>
             
-            <button onclick="scrollToPlans()" class="hero-button">
-                Começar Agora
-            </button>
+            <div class="footer__bottom">
+                <p>© 2026 MailFlow Pro. Todos os direitos reservados.</p>
+                <div class="footer__legal-links">
+                    <a href="pages/privacidade.html" class="footer__link">Privacidade</a>
+                    <a href="pages/termos.html" class="footer__link">Termos</a>
+                    <a href="#" class="footer__link">Cookies</a>
+                </div>
+            </div>
         </div>
-    </div>
-    
-    <!-- Plans Section -->
-    <section id="planos" class="text-center py-10">
-        <h2 class="text-2xl font-bold text-white mb-8">Escolhe o teu plano MailFlow Pro</h2>
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm mx-auto plan-card">
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">Plano Pro</h3>
-            <p class="text-3xl font-bold text-indigo-600 mb-4">49,99€</p>
-            <ul class="text-left text-sm text-gray-600 space-y-2 mb-6">
-                <li>✅ Envios ilimitados</li>
-                <li>✅ Agendamento automático</li>
-                <li>✅ Relatórios em tempo real</li>
-                <li>✅ Suporte prioritário 24/7</li>
-            </ul>
-            <button onclick="handleSubscription()" class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition">
-                Subscrever Pro
-            </button>
-        </div>
-    </section>
-    
-    <script>
-        const stripe = Stripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
-        
-        function scrollToPlans() {
-            const plansSection = document.getElementById('planos');
-            if (plansSection) {
-                plansSection.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-        
-        async function handleSubscription() {
-            const email = prompt('Por favor, insere o teu e-mail:');
-            
-            if (!email) {
-                alert('E-mail é obrigatório para continuar.');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/criar-sessao-pagamento', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ email })
-                });
-                
-                const data = await response.json();
-                
-                if (data.id) {
-                    const { error } = await stripe.redirectToCheckout({
-                        sessionId: data.id
-                    });
-                    
-                    if (error) {
-                        throw new Error(error.message);
-                    }
-                } else {
-                    throw new Error(data.error || 'Erro ao criar sessão de pagamento');
-                }
-            } catch (error) {
-                console.error('Erro:', error);
-                alert(`Erro ao processar pagamento: ${error.message}`);
-            }
-        }
-    </script>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/main.js"></script>
 </body>
 </html>

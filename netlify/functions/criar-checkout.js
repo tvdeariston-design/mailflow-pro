@@ -1,61 +1,64 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { config, validateConfig } = require('./config');
+const logger = require('./logger');
+const {
+    createResponse,
+    createErrorResponse,
+    validateRequiredFields,
+    validateEmail,
+} = require('./utils');
 
 exports.handler = async (event, context) => {
-    const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-    };
-
     if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers,
-            body: ''
-        };
+        return createResponse(200, '');
     }
 
     if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            headers,
-            body: JSON.stringify({ error: 'Method not allowed' })
-        };
+        return createErrorResponse(405, 'Method not allowed');
+    }
+
+    let body;
+    try {
+        body = JSON.parse(event.body);
+    } catch (e) {
+        return createErrorResponse(400, 'JSON inválido');
+    }
+
+    const fields = validateRequiredFields(body, ['email']);
+    if (!fields.valid) {
+        return createErrorResponse(400, 'Campo obrigatório em falta: ' + fields.missing.join(', '));
+    }
+
+    const email = body.email.trim();
+    if (!validateEmail(email)) {
+        return createErrorResponse(400, 'Formato de email inválido');
+    }
+
+    const validation = validateConfig(['stripe.secretKey', 'stripe.priceId']);
+    if (!validation.valid) {
+        logger.error('Variáveis Stripe em falta: ' + validation.missing.join(', '), 'Checkout');
+        return createErrorResponse(500, 'Serviço de pagamento indisponível');
     }
 
     try {
-        const { email } = JSON.parse(event.body);
-
-        if (!email) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: 'Email é obrigatório' })
-            };
-        }
-
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [{
-                price: process.env.STRIPE_PRICE_ID,
+                price: config.stripe.priceId,
                 quantity: 1,
             }],
             mode: 'subscription',
             customer_email: email,
-            success_url: 'https://mailflow-pro.netlify.app/sucesso.html',
-            cancel_url: 'https://mailflow-pro.netlify.app/',
+            success_url: config.netlify.successUrl,
+            cancel_url: config.netlify.cancelUrl,
         });
 
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ id: session.id })
-        };
+        logger.info('Sessão criada - Email: ' + email + ', Session: ' + session.id, 'Checkout');
+
+        return createResponse(200, { id: session.id });
+
     } catch (error) {
-        return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ error: error.message })
-        };
+        logger.error('Falha ao criar sessão para ' + email + ': ' + error.message, 'Checkout');
+        return createErrorResponse(500, 'Erro ao processar pagamento');
     }
 };
