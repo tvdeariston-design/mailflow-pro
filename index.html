@@ -67,6 +67,11 @@
     <main id="main-content">
         <!-- Hero Section — Premium Split Layout -->
         <section class="hero" aria-labelledby="hero-title">
+            <!-- Decorative orbs -->
+            <div class="hero__orb hero__orb--1" aria-hidden="true"></div>
+            <div class="hero__orb hero__orb--2" aria-hidden="true"></div>
+            <div class="hero__orb hero__orb--3" aria-hidden="true"></div>
+            <div class="hero__grid-dots" aria-hidden="true"></div>
             <div class="container">
                 <div class="hero__inner">
                     <!-- Left: Content -->
@@ -96,17 +101,22 @@
                             </a>
                         </div>
                         
-                        <div class="hero__social-proof">
-                            <div class="hero__stars" aria-label="5 estrelas">
-                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        <div class="hero__social-proof" role="group" aria-label="Prova social">
+                            <div class="hero__proof-avatars" aria-hidden="true">
+                                <span class="hero__avatar hero__avatar--1">M</span>
+                                <span class="hero__avatar hero__avatar--2">A</span>
+                                <span class="hero__avatar hero__avatar--3">R</span>
+                                <span class="hero__avatar hero__avatar--4">S</span>
+                                <span class="hero__avatar hero__avatar--5">+</span>
                             </div>
-                            <span class="hero__social-text">
-                                <strong>Automatiza campanhas</strong> em poucos minutos
-                            </span>
+                            <div class="hero__proof-text">
+                                <span class="hero__proof-rating">
+                                    <svg width="14" height="14" fill="#fbbf24" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                                    <span><strong>4.9</strong>/5</span>
+                                </span>
+                                <span class="hero__proof-sep" aria-hidden="true"></span>
+                                <span class="hero__proof-company">Utilizado por centenas de empresas</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -221,6 +231,8 @@
         </section>
 
         <!-- Demo Dashboard Section -->
+
+        <!-- Demo Dashboard — Premium -->
         <section class="demo" aria-labelledby="demo-title">
             <div class="container">
                 <div class="demo__header">
@@ -228,187 +240,292 @@
                     <p class="demo__subtitle">Uma visão do painel onde cria campanhas, acompanha resultados e automatiza envios.</p>
                 </div>
                 
-                <div class="demo__dashboard">
-                    <!-- Sidebar -->
-                    <div class="demo__sidebar">
-                        <div class="demo__sidebar-logo">
-                            <span>📧</span> MailFlow
+                <div class="demo__shell">
+                    <!-- Top Bar -->
+                    <div class="demo__topbar">
+                        <div class="demo__topbar-left">
+                            <div class="demo__topbar-breadcrumb">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="opacity:0.4" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4"/></svg>
+                                <span>Dashboard</span>
+                            </div>
                         </div>
-                        <ul class="demo__sidebar-nav">
-                            <li>
-                                <a href="#" class="demo__sidebar-item demo__sidebar-item--active">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                                    Dashboard
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" class="demo__sidebar-item">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                    Campanhas
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" class="demo__sidebar-item">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
-                                    Templates
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" class="demo__sidebar-item">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    Contactos
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" class="demo__sidebar-item">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                    Automações
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#" class="demo__sidebar-item">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                                    Relatórios
-                                </a>
-                            </li>
-                            <li class="demo__sidebar-divider"></li>
-                            <li>
-                                <a href="#" class="demo__sidebar-item">
-                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                    Definições
-                                </a>
-                            </li>
-                        </ul>
+                        <div class="demo__topbar-right">
+                            <div class="demo__topbar-status">
+                                <span class="demo__topbar-status-dot"></span>
+                                Sistema Online
+                            </div>
+                            <button class="demo__topbar-btn" type="button">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <span>Nova Campanha</span>
+                            </button>
+                            <div class="demo__topbar-avatar">AD</div>
+                        </div>
                     </div>
                     
-                    <!-- Main Content: Campaigns -->
-                    <div class="demo__main">
-                        <div class="demo__main-header">
-                            <h3 class="demo__main-title">Campanhas</h3>
-                            <span class="demo__main-badge">5 campanhas</span>
+                    <!-- Dashboard Body -->
+                    <div class="demo__body">
+                        <!-- Sidebar -->
+                        <div class="demo__sidebar">
+                            <div class="demo__sidebar-brand">
+                                <div class="demo__sidebar-brand-icon">📧</div>
+                                MailFlow
+                            </div>
+                            
+                            <div class="demo__sidebar-section">
+                                <div class="demo__sidebar-label">Principal</div>
+                            </div>
+                            <ul class="demo__sidebar-nav">
+                                <li>
+                                    <a href="#" class="demo__sidebar-item demo__sidebar-item--active">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                                        Dashboard
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#" class="demo__sidebar-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                        Campanhas
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#" class="demo__sidebar-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+                                        Templates
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#" class="demo__sidebar-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                        Automações
+                                    </a>
+                                </li>
+                            </ul>
+                            
+                            <div class="demo__sidebar-divider"></div>
+                            
+                            <div class="demo__sidebar-section">
+                                <div class="demo__sidebar-label">Dados</div>
+                            </div>
+                            <ul class="demo__sidebar-nav">
+                                <li>
+                                    <a href="#" class="demo__sidebar-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                        Relatórios
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#" class="demo__sidebar-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        Contactos
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="#" class="demo__sidebar-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
+                                        Integrações
+                                    </a>
+                                </li>
+                            </ul>
+                            
+                            <div class="demo__sidebar-divider"></div>
+                            
+                            <ul class="demo__sidebar-nav">
+                                <li>
+                                    <a href="#" class="demo__sidebar-item">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                        Definições
+                                    </a>
+                                </li>
+                            </ul>
                         </div>
                         
-                        <table class="demo__table" role="table">
-                            <thead class="demo__table-head">
-                                <tr>
-                                    <th scope="col">Campanha</th>
-                                    <th scope="col">Estado</th>
-                                    <th scope="col">Data</th>
-                                    <th scope="col">Aberturas</th>
-                                    <th scope="col">Cliques</th>
-                                </tr>
-                            </thead>
-                            <tbody class="demo__table-body">
-                                <tr>
-                                    <td>Newsletter Julho</td>
-                                    <td>
-                                        <span class="demo__campaign-status demo__status-active">
-                                            <span class="demo__campaign-dot demo__campaign-dot--active"></span>
-                                            Ativa
-                                        </span>
-                                    </td>
-                                    <td>15 Jul 2026</td>
-                                    <td>68,2%</td>
-                                    <td>24,5%</td>
-                                </tr>
-                                <tr>
-                                    <td>Promoção Verão</td>
-                                    <td>
-                                        <span class="demo__campaign-status demo__status-active">
-                                            <span class="demo__campaign-dot demo__campaign-dot--active"></span>
-                                            Ativa
-                                        </span>
-                                    </td>
-                                    <td>10 Jul 2026</td>
-                                    <td>72,1%</td>
-                                    <td>31,8%</td>
-                                </tr>
-                                <tr>
-                                    <td>Carrinho Abandonado</td>
-                                    <td>
-                                        <span class="demo__campaign-status demo__status-completed">
-                                            <span class="demo__campaign-dot demo__campaign-dot--completed"></span>
-                                            Concluída
-                                        </span>
-                                    </td>
-                                    <td>05 Jul 2026</td>
-                                    <td>54,3%</td>
-                                    <td>18,9%</td>
-                                </tr>
-                                <tr>
-                                    <td>Boas-vindas</td>
-                                    <td>
-                                        <span class="demo__campaign-status demo__status-active">
-                                            <span class="demo__campaign-dot demo__campaign-dot--active"></span>
-                                            Ativa
-                                        </span>
-                                    </td>
-                                    <td>01 Jul 2026</td>
-                                    <td>81,4%</td>
-                                    <td>42,1%</td>
-                                </tr>
-                                <tr>
-                                    <td>Black Friday</td>
-                                    <td>
-                                        <span class="demo__campaign-status demo__status-draft">
-                                            <span class="demo__campaign-dot demo__campaign-dot--draft"></span>
-                                            Rascunho
-                                        </span>
-                                    </td>
-                                    <td>—</td>
-                                    <td>—</td>
-                                    <td>—</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Right Panel: Stats -->
-                    <div class="demo__panel">
-                        <div class="demo__stats-grid">
-                            <div class="demo__stat-card">
-                                <div class="demo__stat-label">Enviados</div>
-                                <div class="demo__stat-value">12.4k</div>
-                                <div class="demo__stat-change demo__stat-change--up">↑ 18%</div>
+                        <!-- Main Content -->
+                        <div class="demo__main">
+                            <div class="demo__main-header">
+                                <h3 class="demo__main-title">Visão Geral</h3>
+                                <span class="demo__main-count">5 campanhas</span>
                             </div>
-                            <div class="demo__stat-card">
-                                <div class="demo__stat-label">Aberturas</div>
-                                <div class="demo__stat-value">68,2%</div>
-                                <div class="demo__stat-change demo__stat-change--up">↑ 5,3%</div>
+                            
+                            <!-- KPI Cards -->
+                            <div class="demo__kpis">
+                                <div class="demo__kpi">
+                                    <div class="demo__kpi-top">
+                                        <div class="demo__kpi-icon demo__kpi-icon--blue">
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                        </div>
+                                        <span class="demo__kpi-change demo__kpi-change--up">+18%</span>
+                                    </div>
+                                    <div class="demo__kpi-value">24 891</div>
+                                    <div class="demo__kpi-label">Emails Enviados</div>
+                                </div>
+                                <div class="demo__kpi">
+                                    <div class="demo__kpi-top">
+                                        <div class="demo__kpi-icon demo__kpi-icon--green">
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76"/></svg>
+                                        </div>
+                                        <span class="demo__kpi-change demo__kpi-change--up">+6%</span>
+                                    </div>
+                                    <div class="demo__kpi-value">47,8%</div>
+                                    <div class="demo__kpi-label">Taxa de Abertura</div>
+                                </div>
+                                <div class="demo__kpi">
+                                    <div class="demo__kpi-top">
+                                        <div class="demo__kpi-icon demo__kpi-icon--amber">
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+                                        </div>
+                                        <span class="demo__kpi-change demo__kpi-change--up">+3%</span>
+                                    </div>
+                                    <div class="demo__kpi-value">12,6%</div>
+                                    <div class="demo__kpi-label">Taxa de Cliques</div>
+                                </div>
+                                <div class="demo__kpi">
+                                    <div class="demo__kpi-top">
+                                        <div class="demo__kpi-icon demo__kpi-icon--rose">
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        </div>
+                                        <span class="demo__kpi-change demo__kpi-change--up">+11%</span>
+                                    </div>
+                                    <div class="demo__kpi-value">327</div>
+                                    <div class="demo__kpi-label">Conversões</div>
+                                </div>
                             </div>
-                            <div class="demo__stat-card">
-                                <div class="demo__stat-label">CTR</div>
-                                <div class="demo__stat-value">24,5%</div>
-                                <div class="demo__stat-change demo__stat-change--up">↑ 2,1%</div>
-                            </div>
-                            <div class="demo__stat-card">
-                                <div class="demo__stat-label">Conversões</div>
-                                <div class="demo__stat-value">1.2k</div>
-                                <div class="demo__stat-change demo__stat-change--down">↓ 0,8%</div>
+                            
+                            <!-- Campaigns Table -->
+                            <div class="demo__table-wrap">
+                                <table class="demo__table" role="table">
+                                    <thead class="demo__table-head">
+                                        <tr>
+                                            <th scope="col">Campanha</th>
+                                            <th scope="col">Estado</th>
+                                            <th scope="col">Data</th>
+                                            <th scope="col">Aberturas</th>
+                                            <th scope="col">Cliques</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="demo__table-body">
+                                        <tr>
+                                            <td>Newsletter Julho</td>
+                                            <td>
+                                                <span class="demo__badge demo__badge--sent">
+                                                    <span class="demo__badge-dot"></span>
+                                                    Enviada
+                                                </span>
+                                            </td>
+                                            <td>15 Jul 2026</td>
+                                            <td>68,2%</td>
+                                            <td>24,5%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Promoção Verão</td>
+                                            <td>
+                                                <span class="demo__badge demo__badge--active">
+                                                    <span class="demo__badge-dot"></span>
+                                                    Em curso
+                                                </span>
+                                            </td>
+                                            <td>10 Jul 2026</td>
+                                            <td>72,1%</td>
+                                            <td>31,8%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Black Friday</td>
+                                            <td>
+                                                <span class="demo__badge demo__badge--scheduled">
+                                                    <span class="demo__badge-dot"></span>
+                                                    Agendada
+                                                </span>
+                                            </td>
+                                            <td>28 Nov 2026</td>
+                                            <td>—</td>
+                                            <td>—</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Carrinho Abandonado</td>
+                                            <td>
+                                                <span class="demo__badge demo__badge--sent">
+                                                    <span class="demo__badge-dot"></span>
+                                                    Enviada
+                                                </span>
+                                            </td>
+                                            <td>05 Jul 2026</td>
+                                            <td>54,3%</td>
+                                            <td>18,9%</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Boas-vindas</td>
+                                            <td>
+                                                <span class="demo__badge demo__badge--active">
+                                                    <span class="demo__badge-dot"></span>
+                                                    Em curso
+                                                </span>
+                                            </td>
+                                            <td>01 Jul 2026</td>
+                                            <td>81,4%</td>
+                                            <td>42,1%</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                         
-                        <!-- Chart -->
-                        <div class="demo__chart">
-                            <div class="demo__chart-header">
-                                <span class="demo__chart-title">Envios por dia</span>
-                                <span class="demo__chart-period">Últimos 14 dias</span>
+                        <!-- Right Panel: Stats + Chart -->
+                        <div class="demo__panel">
+                            <div class="demo__panel-title">Métricas</div>
+                            
+                            <div class="demo__stats-grid">
+                                <div class="demo__stat">
+                                    <div class="demo__stat-label">Enviados</div>
+                                    <div class="demo__stat-value">24.8k</div>
+                                    <div class="demo__stat-delta demo__stat-delta--up">↑ 18%</div>
+                                </div>
+                                <div class="demo__stat">
+                                    <div class="demo__stat-label">Aberturas</div>
+                                    <div class="demo__stat-value">47,8%</div>
+                                    <div class="demo__stat-delta demo__stat-delta--up">↑ 6%</div>
+                                </div>
+                                <div class="demo__stat">
+                                    <div class="demo__stat-label">CTR</div>
+                                    <div class="demo__stat-value">12,6%</div>
+                                    <div class="demo__stat-delta demo__stat-delta--up">↑ 3%</div>
+                                </div>
+                                <div class="demo__stat">
+                                    <div class="demo__stat-label">Conversões</div>
+                                    <div class="demo__stat-value">327</div>
+                                    <div class="demo__stat-delta demo__stat-delta--up">↑ 11%</div>
+                                </div>
                             </div>
-                            <div class="demo__chart-body">
-                                <div class="demo__chart-bar demo__chart-bar--1"></div>
-                                <div class="demo__chart-bar demo__chart-bar--2"></div>
-                                <div class="demo__chart-bar demo__chart-bar--3"></div>
-                                <div class="demo__chart-bar demo__chart-bar--4"></div>
-                                <div class="demo__chart-bar demo__chart-bar--5"></div>
-                                <div class="demo__chart-bar demo__chart-bar--6"></div>
-                                <div class="demo__chart-bar demo__chart-bar--7"></div>
-                                <div class="demo__chart-bar demo__chart-bar--8"></div>
-                                <div class="demo__chart-bar demo__chart-bar--9"></div>
-                                <div class="demo__chart-bar demo__chart-bar--10"></div>
-                                <div class="demo__chart-bar demo__chart-bar--11"></div>
-                                <div class="demo__chart-bar demo__chart-bar--12"></div>
-                                <div class="demo__chart-bar demo__chart-bar--13"></div>
-                                <div class="demo__chart-bar demo__chart-bar--14"></div>
+                            
+                            <!-- Chart -->
+                            <div class="demo__chart">
+                                <div class="demo__chart-header">
+                                    <span class="demo__chart-title">Envios por dia</span>
+                                    <span class="demo__chart-period">Últimos 14 dias</span>
+                                </div>
+                                <div class="demo__chart-area">
+                                    <div class="demo__chart-bars">
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--sm"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--md"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--sm"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--lg"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--md"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--xl"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--lg"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--md"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--lg"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--peak"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--xl"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--lg"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--md"></div></div>
+                                        <div class="demo__chart-col"><div class="demo__chart-bar demo__chart-bar--peak"></div></div>
+                                    </div>
+                                    <div class="demo__chart-axis">
+                                        <span class="demo__chart-label">8 Jul</span>
+                                        <span class="demo__chart-label">11</span>
+                                        <span class="demo__chart-label">14</span>
+                                        <span class="demo__chart-label">17</span>
+                                        <span class="demo__chart-label">21</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -416,8 +533,58 @@
             </div>
         </section>
 
+        <!-- Como Funciona -->
+        <section class="how-it-works" aria-labelledby="how-title">
+            <div class="container">
+                <div class="how-it-works__header">
+                    <h2 id="how-title" class="how-it-works__title">Como funciona</h2>
+                    <p class="how-it-works__subtitle">Quatro passos simples para automatizar o seu marketing por e-mail.</p>
+                </div>
+                
+                <div class="how-it-works__grid">
+                    <!-- Step 1 -->
+                    <div class="how-it-works__step">
+                        <div class="how-it-works__number how-it-works__number--1">1</div>
+                        <div class="how-it-works__icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+                        </div>
+                        <h3 class="how-it-works__step-title">Escolha um Template</h3>
+                        <p class="how-it-works__step-desc">Escolha entre dezenas de templates profissionais optimizados para conversão.</p>
+                    </div>
+                    
+                    <!-- Step 2 -->
+                    <div class="how-it-works__step">
+                        <div class="how-it-works__number how-it-works__number--2">2</div>
+                        <div class="how-it-works__icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                        </div>
+                        <h3 class="how-it-works__step-title">Personalize</h3>
+                        <p class="how-it-works__step-desc">Adapte textos, imagens e layout ao seu estilo com o editor intuitivo.</p>
+                    </div>
+                    
+                    <!-- Step 3 -->
+                    <div class="how-it-works__step">
+                        <div class="how-it-works__number how-it-works__number--3">3</div>
+                        <div class="how-it-works__icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <h3 class="how-it-works__step-title">Agende o Envio</h3>
+                        <p class="how-it-works__step-desc">Defina a data e hora ideal. O sistema envia automaticamente no momento certo.</p>
+                    </div>
+                    
+                    <!-- Step 4 -->
+                    <div class="how-it-works__step">
+                        <div class="how-it-works__number how-it-works__number--4">4</div>
+                        <div class="how-it-works__icon">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                        </div>
+                        <h3 class="how-it-works__step-title">Acompanhe os Resultados</h3>
+                        <p class="how-it-works__step-desc">Relatórios em tempo real mostram aberturas, cliques e conversões.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <!-- Features Section -->
         <section id="funcionalidades" class="section section--gray" aria-labelledby="features-title">
             <div class="container">
                 <h2 id="features-title" class="text-center text-3xl font-bold text-gray-800 mb-4">
@@ -601,7 +768,7 @@
         </section>
 
         <!-- CTA Section -->
-        <section class="section bg-gradient-to-r from-indigo-600 to-purple-600" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
+        <section class="section cta-section">
             <div class="container text-center">
                 <h2 id="cta-title" class="text-3xl font-bold text-white mb-4">
                     Pronto para automatizar o seu marketing?
