@@ -22,6 +22,7 @@
  *
  * Dependências:
  *   - supabase-client.js (deve ser carregado antes)
+ *   - *** NOVO: *** dev-permissions.js para desenvolvimento - bypass de premium
  */
 
 (function() {
@@ -53,12 +54,19 @@
      * @returns {Promise<{success: boolean, error?: string}>}
      */
     async function signUp(email, password, nome) {
+        console.log('\n🔐 === SIGNUP FLOW START ===');
+        console.log('📤 Input parameters:', { email, password: '[HIDDEN]', nome });
+        
         var sb = getClient();
         if (!sb) {
+            console.error('[Auth] ❌ CLIENTE SUPABASE NÃO DISPONÍVEL');
             return { success: false, error: 'Serviço de autenticação indisponível.' };
         }
 
+        console.log('[Auth] ✅ Client Supabase obtido:', !!sb);
+
         try {
+            console.log('[Auth] 📡 Chamando sb.auth.signUp()...');
             var result = await sb.auth.signUp({
                 email: email,
                 password: password,
@@ -67,24 +75,74 @@
                 }
             });
 
+            console.log('\n📥 SIGNUP RESPONSE COMPLETO:');
+            console.log('   result:', result);
+            console.log('   result.error:', result.error);
+            console.log('   result.data:', result.data);
+            console.log('   result.session:', result.session);
+            console.log('   Full result object:', JSON.stringify(result, null, 2));
+
             if (result.error) {
-                var msg = traduzirErro(result.error.message);
-                return { success: false, error: msg };
+                console.error('[Auth] ❌ ERRO DE SIGNUP DETECTADO:');
+                console.error('   Message:', result.error.message);
+                console.error('   Status:', result.error.status);
+                console.error('   Name:', result.error.name);
+                console.error('   Código completo do erro:', result.error);
+                console.error('   📝 Mensagem original SUPABASE NÃO ESCONCHIDA:');
+                console.error('      ', result.error.message);
             }
 
             // Atualizar profile com nome (trigger cria com raw_user_meta_data)
-            if (result.data && result.data.user) {
-                await sb
+            if (!result.error && result.data && result.data.user) {
+                console.log('\n📝 PROCESSANDO USER.PARA PROFILE UPDATE:');
+                console.log('   📋 user.id:', result.data.user.id);
+                console.log('   📋 user.email:', result.data.user.email);
+                console.log('   📋 user.email confirmed:', result.data.user.email_confirmed_at);
+                console.log('   📋 user.metadata:', result.data.user.user_metadata);
+
+                console.log('   🚨 EXECUTANDO UPDATE profiles...');
+                const { data, error } = await sb
                     .from('profiles')
                     .update({ nome: nome, updated_at: new Date().toISOString() })
                     .eq('id', result.data.user.id);
+                    
+                console.log('   📋 RESULTADO UPDATE profiles:');
+                console.log('      data:', data);
+                console.log('      error:', error);
+                console.log('      error.message:', error?.message);
+                console.log('      error.code:', error?.code);
+                console.log('      error.details:', error?.details);
+                console.log('      error.hint:', error?.hint);
+                console.log('      Full error object:', JSON.stringify(error, null, 2));
+                
+                if (error) {
+                    console.error('[Auth] 💥 ERRO UPDATE profiles:');
+                    console.error('   ', error);
+                    console.log('[Auth] ✨ CONCLUSÃO: Profile pode ainda não existir (trigger ainda em progresso)');
+                } else {
+                    console.log('[Auth] ✅ UPDATE profiles bem-sucedido:', data);
+                }
             }
 
-            return { success: true };
+            console.log('\n🎯 RESULTADO SIGNUP:');
+            console.log('   Success:', result.success);
+            console.log('   Tem user.data:', !!(result.data?.user));
+            console.log('   Erro presente:', !!result.error);
+            console.log('   Session presente:', !!result.session);
+
+            return {
+                success: !result.error,
+                error: result.error ? traduzirErro(result.error.message) : undefined
+            };
 
         } catch (err) {
-            console.error('[Auth] Erro no registo:', err);
-            return { success: false, error: 'Erro inesperado. Tente novamente.' };
+            console.error('\n💥 CRASH CATCH SIGNUP:');
+            console.error('   Error:', err);
+            console.error('   Message:', err.message);
+            console.error('   Stack:', err.stack);
+            console.error('   📝 ERRO ORIGINAL SUPABASE COMPLETO:');
+            console.error('      ', err.message);
+            return { success: false, error: traduzirErro(err.message) || 'Ocorreu um erro. Tente novamente.' };
         }
     }
 
@@ -96,27 +154,78 @@
      * @returns {Promise<{success: boolean, error?: string}>}
      */
     async function signIn(email, password) {
+        console.log('\n🔐 === SIGNIN FLOW START ===');
+        console.log('📤 Input parameters:', { email, password: '[HIDDEN]' });
+        
         var sb = getClient();
         if (!sb) {
+            console.error('[Auth] ❌ CLIENTE SUPABASE NÃO DISPONÍVEL');
             return { success: false, error: 'Serviço de autenticação indisponível.' };
         }
 
+        console.log('[Auth] ✅ Client Supabase obtido:', !!sb);
+
         try {
+            console.log('[Auth] 📡 Chamando sb.auth.signInWithPassword()...');
             var result = await sb.auth.signInWithPassword({
                 email: email,
                 password: password
             });
 
+            console.log('\n📥 SIGNIN RESPONSE COMPLETO:');
+            console.log('   result:', result);
+            console.log('   result.error:', result.error);
+            console.log('   result.data:', result.data);
+            console.log('   result.session:', result.session);
+            console.log('   Full result object:', JSON.stringify(result, null, 2));
+
             if (result.error) {
-                var msg = traduzirErro(result.error.message);
-                return { success: false, error: msg };
+                console.error('[Auth] ❌ ERRO DE SIGNIN DETECTADO:');
+                console.error('   Message:', result.error.message);
+                console.error('   Status:', result.error.status);
+                console.error('   Name:', result.error.name);
+                console.error('   Código completo do erro:', result.error);
+                console.error('   📝 Mensagem original SUPABASE NÃO ESCONCHIDA:');
+                console.error('      ', result.error.message);
+                console.error('   🔍 DETALHES COMPLETOS:', {
+                    message: result.error.message,
+                    status: result.error.status,
+                    name: result.error.name,
+                    code: result.error.code,
+                    hint: result.error.hint,
+                    details: result.error.details,
+                    stack: result.error.stack
+                });
             }
 
-            return { success: true };
+            console.log('\n🎯 RESULTADO SIGNIN:');
+            console.log('   Success:', result.success);
+            console.log('   Tem user.data:', !!(result.data?.user));
+            console.log('   Erro presente:', !!result.error);
+            console.log('   Session presente:', !!result.session);
+
+            if (result.data?.user) {
+                console.log('\n👤 USER INFO:');
+                console.log('   user.id:', result.data.user.id);
+                console.log('   user.email:', result.data.user.email);
+                console.log('   user.email_confirmed:', result.data.user.email_confirmed_at);
+                console.log('   user.metadata:', result.data.user.user_metadata);
+                console.log('   user.created_at:', result.data.user.created_at);
+            }
+
+            return {
+                success: !result.error,
+                error: result.error ? traduzirErro(result.error.message) : undefined
+            };
 
         } catch (err) {
-            console.error('[Auth] Erro no login:', err);
-            return { success: false, error: 'Erro inesperado. Tente novamente.' };
+            console.error('\n💥 CRASH CATCH SIGNIN:');
+            console.error('   Error:', err);
+            console.error('   Message:', err.message);
+            console.error('   Stack:', err.stack);
+            console.error('   📝 ERRO ORIGINAL SUPABASE COMPLETO:');
+            console.error('      ', err.message);
+            return { success: false, error: traduzirErro(err.message) || 'Ocorreu um erro. Tente novamente.' };
         }
     }
 
@@ -190,23 +299,57 @@
 
     /**
      * Registar listener para mudanças de estado de auth.
-     *
-     * @param {Function} callback — chamado com (event, session)
      */
     function onAuthStateChange(callback) {
         var sb = getClient();
         if (!sb) return;
 
-        sb.auth.onAuthStateChange(function(event, session) {
-            if (callback) callback(event, session);
+        sb.auth.onAuthStateChange((event, session) => {
+            console.log('[Auth] Estado auth mudou:', { event, session });
+            callback(event, session);
         });
+    }
+
+    /**
+     * Verificar se o utilizador atual tem acesso premium.
+     * Em ambiente de desenvolvimento, concede premium a utilizador específico
+     * e pode incluir todos os utilizadores para fins de teste.
+     *
+     * @param {Object|null} user - objeto do utilizador (passado a partir de getUser())
+     * @returns {boolean} true se tiver acesso premium, false caso contrário
+     */
+    function isPremiumUser(user) {
+        // Permite bypass apenas se MailFlowDevPermissions estiver disponível
+        if (typeof window.MailFlowDevPermissions !== 'undefined' && 
+            typeof window.MailFlowDevPermissions.hasPremiumAccess === 'function') {
+            return window.MailFlowDevPermissions.hasPremiumAccess(user);
+        }
+        
+        // Fallback para verificação de admin simples (implementação futura)
+        // Isso garante que o código é fácil de remover antes do lançamento
+        return false;
+    }
+
+    /**
+     * Verificar se o email atual está em desenvolvimento bypassado.
+     * Útil para logs e depuração.
+     *
+     * @param {Object} user - objeto do utilizador
+     * @returns {boolean}
+     */
+    function isDevBypassEmail(user) {
+        if (typeof window.MailFlowDevPermissions !== 'undefined' && 
+            typeof window.MailFlowDevPermissions.isDevEmail === 'function') {
+            return window.MailFlowDevPermissions.isDevEmail(user);
+        }
+        return false;
     }
 
     /**
      * Traduzir mensagens de erro do Supabase para português.
      *
-     * @param {string} message — mensagem original do Supabase
-     * @returns {string} mensagem traduzida
+     * @param {string} message - mensagem de erro em inglês
+     * @returns {string} mensagem traduzida para português
      */
     function traduzirErro(message) {
         var traducoes = {
@@ -232,7 +375,10 @@
         getSession: getSession,
         getUser: getUser,
         requireAuth: requireAuth,
-        onAuthStateChange: onAuthStateChange
+        onAuthStateChange: onAuthStateChange,
+        // *** NOVO: *** Funções de permissão premium para desenvolvimento
+        isPremiumUser: isPremiumUser,
+        isDevBypassEmail: isDevBypassEmail
     };
 
 })();
