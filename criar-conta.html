@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Conta — MailFlow Pro</title>
+    <meta name="description" content="Crie a sua conta gratuita no MailFlow Pro. CRM de email marketing para nichos.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📧</text></svg>">
+</head>
+<body class="auth-page">
+    <!-- Background decorativo -->
+    <div class="auth-page__bg" aria-hidden="true"></div>
+    <div class="auth-page__orb auth-page__orb--1" aria-hidden="true"></div>
+    <div class="auth-page__orb auth-page__orb--2" aria-hidden="true"></div>
+
+    <main class="auth-page__main">
+        <div class="auth-card">
+            <!-- Logo -->
+            <a href="/" class="auth-card__logo" aria-label="MailFlow Pro — Página inicial">
+                📧 MailFlow Pro
+            </a>
+
+            <!-- Título -->
+            <h1 class="auth-card__title">Criar a sua conta</h1>
+            <p class="auth-card__subtitle">Comece a automatizar o seu email marketing em minutos.</p>
+
+            <!-- Formulário -->
+            <form id="signup-form" class="auth-form" novalidate>
+                <div class="auth-form__group">
+                    <label for="nome" class="auth-form__label">Nome</label>
+                    <input
+                        type="text"
+                        id="nome"
+                        name="nome"
+                        class="auth-form__input"
+                        placeholder="O seu nome"
+                        required
+                        autocomplete="name"
+                    >
+                </div>
+
+                <div class="auth-form__group">
+                    <label for="email" class="auth-form__label">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        class="auth-form__input"
+                        placeholder="exemplo@email.com"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="auth-form__group">
+                    <label for="password" class="auth-form__label">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="auth-form__input"
+                        placeholder="Mínimo 6 caracteres"
+                        required
+                        minlength="6"
+                        autocomplete="new-password"
+                    >
+                </div>
+
+                <!-- Erro (escondido por defeito) -->
+                <div id="error-message" class="auth-form__error" role="alert" hidden></div>
+
+                <button type="submit" id="btn-submit" class="auth-form__btn">
+                    <span class="auth-form__btn-text">Criar Conta</span>
+                    <span class="auth-form__btn-loading" hidden>
+                        <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10" stroke-opacity="0.3"/>
+                            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/>
+                        </svg>
+                        A criar conta...
+                    </span>
+                </button>
+            </form>
+
+            <!-- Link login -->
+            <p class="auth-card__footer">
+                Já tem conta? <a href="/entrar.html" class="auth-card__link">Entrar</a>
+            </p>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/toast.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        var form = document.getElementById('signup-form');
+        var btnSubmit = document.getElementById('btn-submit');
+        var btnText = btnSubmit.querySelector('.auth-form__btn-text');
+        var btnLoading = btnSubmit.querySelector('.auth-form__btn-loading');
+        var errorEl = document.getElementById('error-message');
+
+        // Redirecionar se já autenticado
+        MailFlowAuth.getSession().then(function(session) {
+            if (session) window.location.href = '/dashboard.html';
+        });
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            var nome = document.getElementById('nome').value.trim();
+            var email = document.getElementById('email').value.trim();
+            var password = document.getElementById('password').value;
+
+            // Validação
+            if (!nome || !email || !password) {
+                showError('Preencha todos os campos.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('A password deve ter pelo menos 6 caracteres.');
+                return;
+            }
+
+            // UI: estado de loading
+            setLoading(true);
+            hideError();
+
+            // Registar
+            var result = await MailFlowAuth.signUp(email, password, nome);
+
+            if (result.success) {
+                MailFlowToast.success('Conta criada com sucesso!');
+                window.location.href = '/dashboard.html';
+            } else {
+                showError(result.error);
+                setLoading(false);
+            }
+        });
+
+        function setLoading(loading) {
+            btnSubmit.disabled = loading;
+            btnText.hidden = loading;
+            btnLoading.hidden = !loading;
+        }
+
+        function showError(msg) {
+            errorEl.textContent = msg;
+            errorEl.hidden = false;
+        }
+
+        function hideError() {
+            errorEl.hidden = true;
+            errorEl.textContent = '';
+        }
+    })();
+    </script>
+</body>
+</html>

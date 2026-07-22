@@ -5,6 +5,29 @@
 [functions]
   node_bundler = "esbuild"
 
+# ============================================
+# Redirects — Ordem importa!
+# Específicos antes do catch-all
+# ============================================
+
+# Auth pages
+[[redirects]]
+  from = "/entrar"
+  to = "/entrar.html"
+  status = 200
+
+[[redirects]]
+  from = "/criar-conta"
+  to = "/criar-conta.html"
+  status = 200
+
+# Dashboard
+[[redirects]]
+  from = "/dashboard"
+  to = "/dashboard.html"
+  status = 200
+
+# API Functions
 [[redirects]]
   from = "/criar-sessao-pagamento"
   to = "/.netlify/functions/criar-checkout"
@@ -20,6 +43,34 @@
   to = "/.netlify/functions/webhook-stripe"
   status = 200
 
+# Sucesso
+[[redirects]]
+  from = "/sucesso"
+  to = "/sucesso.html"
+  status = 200
+
+# Security Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co;"
+
+# Cache static assets
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Catch-all (DEVE ser o último)
 [[redirects]]
   from = "/*"
   to = "/index.html"
