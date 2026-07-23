@@ -1,8 +1,8 @@
 # Arquitetura Tecnica — Modulo Campanhas
 
 **MailFlow Pro — Fase 3**
-**Versao:** 2.0
-**Estado:** Aprovado para implementacao
+**Versao:** 3.0
+**Estado:** Definitivamente congelado
 
 ---
 
@@ -55,7 +55,9 @@ Nao existe migration atualmente.
 | is_default | BOOLEAN | DEFAULT false | Template padrao do utilizador |
 | thumbnail | TEXT | DEFAULT '' | URL ou path da miniatura (futura galeria) |
 | usage_count | INTEGER | DEFAULT 0 | Numero de campanhas que usaram este template |
+| preheader | TEXT | DEFAULT '' | Texto de preview nos clientes de email (100 chars max) |
 | last_used_at | TIMESTAMPTZ | NULL | Ultima vez que foi utilizado numa campanha |
+| deleted_at | TIMESTAMPTZ | NULL | Soft delete (NULL = ativo) |
 | created_at | TIMESTAMPTZ | DEFAULT now() | Data de criacao |
 | updated_at | TIMESTAMPTZ | DEFAULT now() | Ultima atualizacao |
 
@@ -94,6 +96,9 @@ Nao existe migration atualmente.
 | total_failed | INTEGER | DEFAULT 0 | Emails que falharam |
 | total_opened | INTEGER | DEFAULT 0 | Emails abertos (rastreamento futuro) |
 | total_clicked | INTEGER | DEFAULT 0 | Links clicados (rastreamento futuro) |
+| total_bounced | INTEGER | DEFAULT 0 | Emails devolvidos (bounce) |
+| total_unsubscribed | INTEGER | DEFAULT 0 | Descadastros |
+| deleted_at | TIMESTAMPTZ | NULL | Soft delete (NULL = ativo) |
 | created_at | TIMESTAMPTZ | DEFAULT now() | Data de criacao |
 | updated_at | TIMESTAMPTZ | DEFAULT now() | Ultima atualizacao |
 
@@ -104,6 +109,25 @@ O frontend NUNCA atualiza estes campos diretamente. Esta separacao garante:
 - Integridade dos dados (nao ha race conditions entre UI e motor)
 - Single source of truth (o motor e o unico que sabe o estado real)
 - Facil debugging (se contadores estiverem errados, o problema e no motor)
+
+**Taxas (rates) — computadas, nao armazenadas:**
+As taxas sao calculadas a partir dos contadores no endpoint de estatisticas.
+Nao e necessario armazenar taxas na tabela porque:
+- Evita redundancia de dados
+- Taxas sempre atualizadas (sem cache stale)
+- Calculo simples: rate = (count / total_sent) * 100
+
+```json
+// GET /api/campaigns/:id/stats — response
+{
+    "rates": {
+        "open_rate": 68.5,      // total_opened / total_sent * 100
+        "click_rate": 12.3,     // total_clicked / total_sent * 100
+        "bounce_rate": 2.1,     // total_bounced / total_sent * 100
+        "unsubscribe_rate": 0.5  // total_unsubscribed / total_sent * 100
+    }
+}
+```
 
 **Estados da campanha (status):**
 
@@ -162,10 +186,12 @@ um envio individual a um contacto especifico, com estado de entrega.
 | opened_at | TIMESTAMPTZ | NULL | Quando foi aberto (futuro) |
 | clicked_at | TIMESTAMPTZ | NULL | Quando clicou link (futuro) |
 | bounced_at | TIMESTAMPTZ | NULL | Quando bounce foi detectado (futuro) |
+| complained_at | TIMESTAMPTZ | NULL | Quando reclamacao/spam report (futuro) |
 | unsubscribed_at | TIMESTAMPTZ | NULL | Quando utilizador cancelou subscricao (futuro) |
 | error_message | TEXT | NULL | Mensagem de erro se falhou |
 | retry_count | INTEGER | DEFAULT 0 | Numero de tentativas |
 | created_at | TIMESTAMPTZ | DEFAULT now() | Data de criacao |
+| updated_at | TIMESTAMPTZ | DEFAULT now() | Ultima atualizacao |
 
 **Estados do recipient (status):**
 
@@ -178,6 +204,7 @@ um envio individual a um contacto especifico, com estado de entrega.
 | opened | Email aberto (futuro) |
 | clicked | Link clicado (futuro) |
 | bounced | Email devolvido (futuro) |
+| complained | Reclamacao/spam report (futuro) |
 | unsubscribed | Utilizador cancelou subscricao (futuro) |
 | failed | Falhou (com error_message) |
 | skipped | Ignorado (email duplicado, descadastro, etc.) |
@@ -277,7 +304,8 @@ LIMIT 100;
 ALTER TABLE templates ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "templates_select_own"
-    ON templates FOR SELECT USING (auth.uid() = user_id);
+    ON templates FOR SELECT
+    USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 CREATE POLICY "templates_insert_own"
     ON templates FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -296,7 +324,8 @@ CREATE POLICY "templates_delete_own"
 ALTER TABLE campaigns ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "campaigns_select_own"
-    ON campaigns FOR SELECT USING (auth.uid() = user_id);
+    ON campaigns FOR SELECT
+    USING (auth.uid() = user_id AND deleted_at IS NULL);
 
 CREATE POLICY "campaigns_insert_own"
     ON campaigns FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -342,6 +371,25 @@ CREATE POLICY "cr_insert_own"
 nos status dos recipients. Os utilizadores autenticados apenas fazem
 SELECT (estatisticas) e INSERT (adicionar recipients).
 
+### Soft Delete — Preservacao de Historico
+
+Campanhas e templates usam soft delete (deleted_at) para preservar historico.
+Campanhas ja enviadas NUNCA devem ser eliminadas fisicamente.
+
+**Regras:**
+- `deleted_at = NULL`: registo ativo
+- `deleted_at = now()`: registo eliminado (visivel apenas via service_role)
+- RLS: policies filtram por `deleted_at IS NULL`
+- Motor de envio: ignora campanhas com `deleted_at IS NOT NULL`
+- Dashboard: nao mostra campanhas eliminadas
+- Recuperacao: endpoint para restaurar (futuro)
+
+**Porque soft delete?**
+- Campanhas ja enviadas contam historico valioso
+- Templates podem ser reutilizados em campanhas futuras
+- Auditoria: necessario saber quem eliminou e quando
+- Compliance: regulamentacao pode exigir retencao de dados
+
 ---
 
 ## 5. Triggers
@@ -357,6 +405,10 @@ CREATE TRIGGER trg_templates_updated_at
 
 CREATE TRIGGER trg_campaigns_updated_at
     BEFORE UPDATE ON campaigns
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_cr_updated_at
+    BEFORE UPDATE ON campaign_recipients
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
@@ -1057,6 +1109,37 @@ A tabela automation_rules e independente e pode ser adicionada numa fase futura.
 - Motor de campanhas reutiliza transporter (nodemailer) ja configurado
 - Padrao de endpoints: /api/{resource} com authMiddleware (consistente)
 
+### 12.4 Integracao com Providers de Email
+
+A arquitetura suporta multiples providers SEM alterar a estrutura da BD:
+
+| Provider | Integracao | Campos Necessarios |
+|----------|-----------|-------------------|
+| Gmail SMTP | Actual (MVP) | EMAIL_USER, EMAIL_PASS (env vars) |
+| Mailgun | API REST | MAILGUN_API_KEY, MAILGUN_DOMAIN (env vars) |
+| Resend | API REST | RESEND_API_KEY (env vars) |
+| Amazon SES | API SES | AWS_ACCESS_KEY, AWS_SECRET, AWS_REGION (env vars) |
+| SendGrid | API REST | SENDGRID_API_KEY (env vars) |
+
+**Porque funciona sem alterar BD:**
+- `message_id` em campaign_recipients e provider-agnostic
+- Todos os campos de tracking (delivered_at, opened_at, etc.) sao genericos
+- O backend abstrai o envio numa funcao `sendEmail(to, subject, html, text)`
+- Cada provider e uma implementacao dessa funcao
+- A tabela `email_providers` (futuro) permite configurar por user:
+  ```sql
+  CREATE TABLE email_providers (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,  -- 'smtp', 'mailgun', 'resend', 'ses', 'sendgrid'
+      config JSONB NOT NULL DEFAULT '{}',
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+  );
+  ```
+- Esta tabela pode ser adicionada SEM alterar as tabelas existentes
+
 ---
 
 ## 13. Decisoes de Design
@@ -1148,5 +1231,5 @@ A tabela automation_rules e independente e pode ser adicionada numa fase futura.
 
 ---
 
-*Documento v2.0 — Revisao final concluida.*
-*Arquitetura aprovada para implementacao.*
+*Documento v3.0 — Revisao de metricas profissionais concluida.*
+*Arquitetura definitivamente congelada para implementacao.*
