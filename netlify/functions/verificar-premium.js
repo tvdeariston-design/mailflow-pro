@@ -6,10 +6,8 @@
  *   Function server-side que impede bypass via JavaScript no frontend.
  *
  * Lógica:
- *   1. Premium vitalício → sempre true (email administrador)
- *   2. Subscrição Stripe ativa → true
- *   3. Trial de 7 dias não expirado → true
- *   4. Caso contrário → false
+ *   Chama a função SQL RPC verificar_status_premium (migration 004)
+ *   que é a fonte authoritative de verdade.
  *
  * Inputs:
  *   - Authorization: Bearer <token> (obrigatório)
@@ -27,9 +25,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const logger = require('./logger');
 const { createResponse, createErrorResponse } = require('./utils');
-
-// Emails com premium vitalício (hardcoded no servidor — não manipulável pelo frontend)
-const PERMANENT_PREMIUM_EMAILS = ['tvdeariston@gmail.com'];
 
 exports.handler = async (event, context) => {
     // CORS preflight
@@ -68,67 +63,28 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // Buscar profile
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-        if (profileError || !profile) {
-            logger.warn('Profile não encontrado para user: ' + user.id, 'VerificarPremium');
-            return createResponse(200, {
-                premium: false,
-                reason: 'none'
-            });
-        }
-
-        const email = (profile.email || '').toLowerCase();
-        const now = new Date();
-
-        // 1. Premium vitalício (email administrador — hardcoded no servidor)
-        if (PERMANENT_PREMIUM_EMAILS.includes(email) || profile.is_permanent_premium) {
-            logger.info('Premium vitalício: ' + email, 'VerificarPremium');
-            return createResponse(200, {
-                premium: true,
-                reason: 'permanent'
-            });
-        }
-
-        // 2. Subscrição Stripe ativa
-        if (profile.subscription_status === 'active' && profile.stripe_subscription_id) {
-            logger.info('Premium por subscrição: ' + email, 'VerificarPremium');
-            return createResponse(200, {
-                premium: true,
-                reason: 'subscription'
-            });
-        }
-
-        // 3. Trial de 7 dias
-        if (profile.premium_trial_end) {
-            const trialEnd = new Date(profile.premium_trial_end);
-            const diffMs = trialEnd.getTime() - now.getTime();
-            const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-            if (trialEnd > now) {
-                logger.info('Premium por trial: ' + email + ' (restam ' + daysRemaining + ' dias)', 'VerificarPremium');
-                return createResponse(200, {
-                    premium: true,
-                    reason: 'trial',
-                    trial_end: profile.premium_trial_end,
-                    days_remaining: daysRemaining
-                });
-            }
-        }
-
-        // 4. Sem acesso premium
-        logger.info('Sem premium: ' + email, 'VerificarPremium');
-        return createResponse(200, {
-            premium: false,
-            reason: 'expired',
-            trial_end: profile.premium_trial_end || null,
-            days_remaining: 0
+        // Chamar função SQL RPC (source of truth - migration 004)
+        const { data, error } = await supabase.rpc('verificar_status_premium', {
+            user_id: user.id
         });
+
+        if (error) {
+            logger.error('Erro RPC verificar_status_premium: ' + error.message, 'VerificarPremium');
+            return createErrorResponse(500, 'Erro ao verificar estado premium');
+        }
+
+        // RPC retorna array com uma linha
+        const result = data && data[0] ? data[0] : {
+            premium: false,
+            reason: 'none',
+            trial_end: null,
+            days_remaining: null
+        };
+
+        // Log para auditoria
+        logger.info('Verificação premium: ' + user.email + ' -> ' + (result.premium ? 'PREMIUM (' + result.reason + ')' : 'GRATUITO'), 'VerificarPremium');
+
+        return createResponse(200, result);
 
     } catch (error) {
         logger.error('Erro ao verificar premium: ' + error.message, 'VerificarPremium');
