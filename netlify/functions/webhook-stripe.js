@@ -34,7 +34,9 @@ exports.handler = async (event, context) => {
 
     logger.info('Evento recebido: ' + stripeEvent.type, 'Webhook');
 
-    // Pagamento concluído (checkout)
+    // ============================================
+    // 1. Pagamento concluído (checkout.session.completed)
+    // ============================================
     if (stripeEvent.type === 'checkout.session.completed') {
         const session = stripeEvent.data.object;
         const email = session.customer_email;
@@ -95,18 +97,15 @@ exports.handler = async (event, context) => {
         }
     }
 
-    // Renovação de subscrição (pagamento recorrente)
+    // ============================================
+    // 2. Pagamento de fatura bem-sucedido (renovação)
+    // ============================================
     if (stripeEvent.type === 'invoice.payment_succeeded') {
         const invoice = stripeEvent.data.object;
         const subscriptionId = invoice.subscription;
         const customerId = invoice.customer;
 
-        if (!subscriptionId) {
-            logger.warn('invoice.payment_succeeded sem subscription. Invoice: ' + invoice.id, 'Webhook');
-            return createResponse(200, { received: true });
-        }
-
-        logger.info('Renovação de subscrição: ' + subscriptionId, 'Webhook');
+        logger.info('Pagamento de fatura bem-sucedido - Subscription: ' + subscriptionId, 'Webhook');
 
         try {
             const supabaseUrl = process.env.SUPABASE_URL;
@@ -116,29 +115,27 @@ exports.handler = async (event, context) => {
                 const { createClient } = require('@supabase/supabase-js');
                 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-                // Buscar email pelo stripe_customer_id
-                const { data: profile, error: findError } = await supabase
+                // Verificar se subscrição já está ativa
+                const { data: profile } = await supabase
                     .from('profiles')
-                    .select('email')
-                    .eq('stripe_customer_id', customerId)
+                    .select('subscription_status')
+                    .eq('stripe_subscription_id', subscriptionId)
                     .single();
 
-                if (findError || !profile) {
-                    logger.warn('Profile não encontrado para customer: ' + customerId, 'Webhook');
-                } else {
+                if (profile && profile.subscription_status !== 'active') {
                     const { error: updateError } = await supabase
                         .from('profiles')
                         .update({
-                            stripe_subscription_id: subscriptionId,
                             subscription_status: 'active',
+                            stripe_customer_id: customerId,
                             updated_at: new Date().toISOString()
                         })
-                        .eq('stripe_customer_id', customerId);
+                        .eq('stripe_subscription_id', subscriptionId);
 
                     if (updateError) {
-                        logger.error('Erro ao atualizar subscription na renovação: ' + updateError.message, 'Webhook');
+                        logger.error('Erro ao ativar subscription: ' + updateError.message, 'Webhook');
                     } else {
-                        logger.info('Subscription renovada no profile: ' + profile.email, 'Webhook');
+                        logger.info('Subscription ativada (renovação): ' + subscriptionId, 'Webhook');
                     }
                 }
             }
@@ -147,7 +144,112 @@ exports.handler = async (event, context) => {
         }
     }
 
-    // Cancelamento de subscrição
+    // ============================================
+    // 3. Fatura falhou (pagamento recusado)
+    // ============================================
+    if (stripeEvent.type === 'invoice.payment_failed') {
+        const invoice = stripeEvent.data.object;
+        const subscriptionId = invoice.subscription;
+        const attemptCount = invoice.attempt_count;
+
+        logger.warn('Pagamento falhou - Subscription: ' + subscriptionId + ', Tentativa: ' + attemptCount, 'Webhook');
+
+        try {
+            const supabaseUrl = process.env.SUPABASE_URL;
+            const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+            if (supabaseUrl && serviceRoleKey) {
+                const { createClient } = require('@supabase/supabase-js');
+                const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+                // Após 3 tentativas falhadas, marcar como past_due
+                if (attemptCount >= 3) {
+                    const { error } = await supabase
+                        .from('profiles')
+                        .update({
+                            subscription_status: 'past_due',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('stripe_subscription_id', subscriptionId);
+
+                    if (error) {
+                        logger.error('Erro ao marcar past_due: ' + error.message, 'Webhook');
+                    } else {
+                        logger.info('Subscription marcada como past_due: ' + subscriptionId, 'Webhook');
+                    }
+                }
+            }
+        } catch (err) {
+            logger.error('Erro ao processar pagamento falhado: ' + err.message, 'Webhook');
+        }
+    }
+
+    // ============================================
+    // 4. Subscrição atualizada (mudança de status)
+    // ============================================
+    if (stripeEvent.type === 'customer.subscription.updated') {
+        const subscription = stripeEvent.data.object;
+        const subscriptionId = subscription.id;
+        const status = subscription.status; // active, trialing, past_due, canceled, unpaid, incomplete, incomplete_expired, paused
+        const customerId = subscription.customer;
+
+        logger.info('Subscrição atualizada - ID: ' + subscriptionId + ', Status: ' + status, 'Webhook');
+
+        // Mapear status do Stripe para nosso sistema
+        let ourStatus;
+        switch (status) {
+            case 'active':
+                ourStatus = 'active';
+                break;
+            case 'trialing':
+                ourStatus = 'trial';
+                break;
+            case 'past_due':
+                ourStatus = 'past_due';
+                break;
+            case 'canceled':
+            case 'unpaid':
+            case 'incomplete_expired':
+                ourStatus = 'canceled';
+                break;
+            case 'paused':
+                ourStatus = 'paused';
+                break;
+            default:
+                ourStatus = status;
+        }
+
+        try {
+            const supabaseUrl = process.env.SUPABASE_URL;
+            const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+            if (supabaseUrl && serviceRoleKey) {
+                const { createClient } = require('@supabase/supabase-js');
+                const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({
+                        subscription_status: ourStatus,
+                        stripe_customer_id: customerId,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('stripe_subscription_id', subscriptionId);
+
+                if (error) {
+                    logger.error('Erro ao atualizar status subscription: ' + error.message, 'Webhook');
+                } else {
+                    logger.info('Status da subscription atualizado para ' + ourStatus + ': ' + subscriptionId, 'Webhook');
+                }
+            }
+        } catch (err) {
+            logger.error('Erro ao processar subscription.updated: ' + err.message, 'Webhook');
+        }
+    }
+
+    // ============================================
+    // 5. Subscrição cancelada (fim do período)
+    // ============================================
     if (stripeEvent.type === 'customer.subscription.deleted') {
         const subscription = stripeEvent.data.object;
         const subscriptionId = subscription.id;
@@ -178,53 +280,6 @@ exports.handler = async (event, context) => {
             }
         } catch (err) {
             logger.error('Erro ao atualizar profile: ' + err.message, 'Webhook');
-        }
-    }
-
-    // Atualização de subscrição (ex: mudança de plano, pause, etc.)
-    if (stripeEvent.type === 'customer.subscription.updated') {
-        const subscription = stripeEvent.data.object;
-        const subscriptionId = subscription.id;
-        const status = subscription.status; // active, trialing, past_due, canceled, unpaid
-        const customerId = subscription.customer;
-
-        logger.info('Subscrição atualizada: ' + subscriptionId + ' - Status: ' + status, 'Webhook');
-
-        try {
-            const supabaseUrl = process.env.SUPABASE_URL;
-            const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-            if (supabaseUrl && serviceRoleKey) {
-                const { createClient } = require('@supabase/supabase-js');
-                const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-                // Mapear status Stripe para nosso status
-                let ourStatus = 'none';
-                if (status === 'active' || status === 'trialing') {
-                    ourStatus = 'active';
-                } else if (status === 'past_due' || status === 'unpaid') {
-                    ourStatus = 'past_due';
-                } else if (status === 'canceled') {
-                    ourStatus = 'canceled';
-                }
-
-                const { error } = await supabase
-                    .from('profiles')
-                    .update({
-                        stripe_subscription_id: subscriptionId,
-                        subscription_status: ourStatus,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('stripe_customer_id', customerId);
-
-                if (error) {
-                    logger.error('Erro ao atualizar subscription: ' + error.message, 'Webhook');
-                } else {
-                    logger.info('Subscription atualizada no profile: ' + subscriptionId + ' -> ' + ourStatus, 'Webhook');
-                }
-            }
-        } catch (err) {
-            logger.error('Erro ao processar atualização de subscription: ' + err.message, 'Webhook');
         }
     }
 
