@@ -113,10 +113,24 @@ exports.handler = async (event, context) => {
             return createErrorResponse(500, 'Erro ao criar conta. Tente novamente.');
         }
 
-        // Profile é criado pelo trigger handle_new_user (migration 003)
-        // O trigger initialize_premium_trial (migration 004) inicializa trial automaticamente
-        // Não fazemos upsert manual - os triggers tratam de tudo
-        // Apenas logamos se houver erro no trigger
+        // O trigger handle_new_user (migration 003) cria o profile automaticamente
+        // O trigger initialize_premium_trial (migration 004) inicializa o trial
+        // Fazemos upsert como fallback caso o trigger falhe ou seja lento
+        // NÃO incluímos colunas premium - o trigger trata delas
+        const now = new Date().toISOString();
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+                id: data.user.id,
+                email: email,
+                nome: nome,
+                updated_at: now
+            }, { onConflict: 'id' });
+
+        if (profileError) {
+            logger.warn('Profile upsert falhou (trigger deve ter criado): ' + profileError.message, 'CriarConta');
+        }
+
         logger.info('Conta criada com sucesso - Email: ' + email + ', ID: ' + data.user.id, 'CriarConta');
 
         return createResponse(201, {

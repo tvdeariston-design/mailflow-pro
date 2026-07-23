@@ -22,7 +22,7 @@
  *
  * Dependências:
  *   - supabase-client.js (deve ser carregado antes)
- *   - dev-permissions.js para desenvolvimento - bypass de premium
+ *   - *** NOVO: *** dev-permissions.js para desenvolvimento - bypass de premium
  */
 
 (function() {
@@ -56,7 +56,6 @@
     async function signUp(email, password, nome) {
         var sb = getClient();
         if (!sb) {
-            console.error('[Auth] ❌ CLIENTE SUPABASE NÃO DISPONÍVEL');
             return { success: false, error: 'Serviço de autenticação indisponível.' };
         }
 
@@ -70,46 +69,26 @@
             });
 
             if (result.error) {
-                return { success: false, error: traduzirErro(result.error.message) };
+                // *** NOVO: *** Mostrar o erro original em vez de esconder
+                console.error('[Auth] Erro de signup:', result.error);
+                var msg = traduzirErro(result.error.message);
+                return { success: false, error: msg };
             }
 
-            // O trigger handle_new_user cria o profile automaticamente
-            // Aguardamos o profile existir antes de tentar atualizar o nome
+            // Atualizar profile com nome (trigger cria com raw_user_meta_data)
             if (result.data && result.data.user) {
-                var userId = result.data.user.id;
-                var maxRetries = 10;
-                var retryDelay = 200; // ms
-                
-                for (var i = 0; i < maxRetries; i++) {
-                    var { data: profile, error: profileError } = await sb
-                        .from('profiles')
-                        .select('id')
-                        .eq('id', userId)
-                        .single();
-                    
-                    if (!profileError && profile) {
-                        // Profile existe, atualizar nome
-                        var { error: updateError } = await sb
-                            .from('profiles')
-                            .update({ nome: nome, updated_at: new Date().toISOString() })
-                            .eq('id', userId);
-                        
-                        if (updateError) {
-                            console.error('[Auth] 💥 ERRO UPDATE profiles:', updateError);
-                        }
-                        break;
-                    }
-                    
-                    // Aguardar antes da próxima tentativa
-                    await new Promise(function(resolve) { setTimeout(resolve, retryDelay); });
-                }
+                await sb
+                    .from('profiles')
+                    .update({ nome: nome, updated_at: new Date().toISOString() })
+                    .eq('id', result.data.user.id);
             }
 
             return { success: true };
 
         } catch (err) {
-            console.error('[Auth] 💥 CRASH CATCH SIGNUP:', err);
-            return { success: false, error: traduzirErro(err.message) || 'Ocorreu um erro. Tente novamente.' };
+            console.error('[Auth] Erro no registo:', err);
+            // *** NOVO: *** Mostrar o erro original completo
+            return { success: false, error: err.message || 'Erro inesperado. Tente novamente.' };
         }
     }
 
@@ -123,7 +102,6 @@
     async function signIn(email, password) {
         var sb = getClient();
         if (!sb) {
-            console.error('[Auth] ❌ CLIENTE SUPABASE NÃO DISPONÍVEL');
             return { success: false, error: 'Serviço de autenticação indisponível.' };
         }
 
@@ -134,14 +112,18 @@
             });
 
             if (result.error) {
-                return { success: false, error: traduzirErro(result.error.message) };
+                // *** NOVO: *** Mostrar o erro original em vez de esconder
+                console.error('[Auth] Erro de login:', result.error);
+                var msg = traduzirErro(result.error.message);
+                return { success: false, error: msg };
             }
 
             return { success: true };
 
         } catch (err) {
-            console.error('[Auth] 💥 CRASH CATCH SIGNIN:', err);
-            return { success: false, error: traduzirErro(err.message) || 'Ocorreu um erro. Tente novamente.' };
+            console.error('[Auth] Erro no login:', err);
+            // *** NOVO: *** Mostrar o erro original completo
+            return { success: false, error: err.message || 'Erro inesperado. Tente novamente.' };
         }
     }
 
@@ -215,33 +197,35 @@
 
     /**
      * Registar listener para mudanças de estado de auth.
+     *
+     * @param {Function} callback — chamado com (event, session)
      */
     function onAuthStateChange(callback) {
         var sb = getClient();
         if (!sb) return;
 
-        sb.auth.onAuthStateChange((event, session) => {
-            console.log('[Auth] Estado auth mudou:', { event, session });
-            callback(event, session);
+        sb.auth.onAuthStateChange(function(event, session) {
+            if (callback) callback(event, session);
         });
     }
 
     /**
      * Verificar se o utilizador atual tem acesso premium.
-     * Valida via function server-side (verificar-premium.js).
-     * Cache local de 5 minutos para performance.
+     * Em ambiente de desenvolvimento, concede premium a utilizador específico
+     * e pode incluir todos os utilizadores para fins de teste.
      *
      * @param {Object|null} user - objeto do utilizador (passado a partir de getUser())
-     * @returns {Promise<boolean>} true se tiver acesso premium, false caso contrário
+     * @returns {boolean} true se tiver acesso premium, false caso contrário
      */
-    async function isPremiumUser(user) {
-        // Verificar via servidor se MailFlowDevPermissions estiver disponível
-        if (typeof window.MailFlowDevPermissions !== 'undefined' &&
+    function isPremiumUser(user) {
+        // Permite bypass apenas se MailFlowDevPermissions estiver disponível
+        if (typeof window.MailFlowDevPermissions !== 'undefined' && 
             typeof window.MailFlowDevPermissions.hasPremiumAccess === 'function') {
-            return await window.MailFlowDevPermissions.hasPremiumAccess(user);
+            return window.MailFlowDevPermissions.hasPremiumAccess(user);
         }
-
-        // Fallback: sem servidor, assume gratuito (seguro por omissão)
+        
+        // Fallback para verificação de admin simples (implementação futura)
+        // Isso garante que o código é fácil de remover antes do lançamento
         return false;
     }
 
@@ -253,7 +237,7 @@
      * @returns {boolean}
      */
     function isDevBypassEmail(user) {
-        if (typeof window.MailFlowDevPermissions !== 'undefined' &&
+        if (typeof window.MailFlowDevPermissions !== 'undefined' && 
             typeof window.MailFlowDevPermissions.isDevEmail === 'function') {
             return window.MailFlowDevPermissions.isDevEmail(user);
         }
@@ -263,8 +247,8 @@
     /**
      * Traduzir mensagens de erro do Supabase para português.
      *
-     * @param {string} message - mensagem de erro em inglês
-     * @returns {string} mensagem traduzida para português
+     * @param {string} message — mensagem original do Supabase
+     * @returns {string} mensagem traduzida
      */
     function traduzirErro(message) {
         var traducoes = {
@@ -291,7 +275,7 @@
         getUser: getUser,
         requireAuth: requireAuth,
         onAuthStateChange: onAuthStateChange,
-        // Funções de permissão premium para desenvolvimento
+        // *** NOVO: *** Funções de permissão premium para desenvolvimento
         isPremiumUser: isPremiumUser,
         isDevBypassEmail: isDevBypassEmail
     };

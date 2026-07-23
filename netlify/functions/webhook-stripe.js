@@ -34,6 +34,7 @@ exports.handler = async (event, context) => {
 
     logger.info('Evento recebido: ' + stripeEvent.type, 'Webhook');
 
+    // Pagamento concluído (checkout)
     if (stripeEvent.type === 'checkout.session.completed') {
         const session = stripeEvent.data.object;
         const email = session.customer_email;
@@ -94,6 +95,58 @@ exports.handler = async (event, context) => {
         }
     }
 
+    // Renovação de subscrição (pagamento recorrente)
+    if (stripeEvent.type === 'invoice.payment_succeeded') {
+        const invoice = stripeEvent.data.object;
+        const subscriptionId = invoice.subscription;
+        const customerId = invoice.customer;
+
+        if (!subscriptionId) {
+            logger.warn('invoice.payment_succeeded sem subscription. Invoice: ' + invoice.id, 'Webhook');
+            return createResponse(200, { received: true });
+        }
+
+        logger.info('Renovação de subscrição: ' + subscriptionId, 'Webhook');
+
+        try {
+            const supabaseUrl = process.env.SUPABASE_URL;
+            const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+            if (supabaseUrl && serviceRoleKey) {
+                const { createClient } = require('@supabase/supabase-js');
+                const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+                // Buscar email pelo stripe_customer_id
+                const { data: profile, error: findError } = await supabase
+                    .from('profiles')
+                    .select('email')
+                    .eq('stripe_customer_id', customerId)
+                    .single();
+
+                if (findError || !profile) {
+                    logger.warn('Profile não encontrado para customer: ' + customerId, 'Webhook');
+                } else {
+                    const { error: updateError } = await supabase
+                        .from('profiles')
+                        .update({
+                            stripe_subscription_id: subscriptionId,
+                            subscription_status: 'active',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('stripe_customer_id', customerId);
+
+                    if (updateError) {
+                        logger.error('Erro ao atualizar subscription na renovação: ' + updateError.message, 'Webhook');
+                    } else {
+                        logger.info('Subscription renovada no profile: ' + profile.email, 'Webhook');
+                    }
+                }
+            }
+        } catch (err) {
+            logger.error('Erro ao processar renovação: ' + err.message, 'Webhook');
+        }
+    }
+
     // Cancelamento de subscrição
     if (stripeEvent.type === 'customer.subscription.deleted') {
         const subscription = stripeEvent.data.object;
@@ -125,6 +178,53 @@ exports.handler = async (event, context) => {
             }
         } catch (err) {
             logger.error('Erro ao atualizar profile: ' + err.message, 'Webhook');
+        }
+    }
+
+    // Atualização de subscrição (ex: mudança de plano, pause, etc.)
+    if (stripeEvent.type === 'customer.subscription.updated') {
+        const subscription = stripeEvent.data.object;
+        const subscriptionId = subscription.id;
+        const status = subscription.status; // active, trialing, past_due, canceled, unpaid
+        const customerId = subscription.customer;
+
+        logger.info('Subscrição atualizada: ' + subscriptionId + ' - Status: ' + status, 'Webhook');
+
+        try {
+            const supabaseUrl = process.env.SUPABASE_URL;
+            const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+            if (supabaseUrl && serviceRoleKey) {
+                const { createClient } = require('@supabase/supabase-js');
+                const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+                // Mapear status Stripe para nosso status
+                let ourStatus = 'none';
+                if (status === 'active' || status === 'trialing') {
+                    ourStatus = 'active';
+                } else if (status === 'past_due' || status === 'unpaid') {
+                    ourStatus = 'past_due';
+                } else if (status === 'canceled') {
+                    ourStatus = 'canceled';
+                }
+
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({
+                        stripe_subscription_id: subscriptionId,
+                        subscription_status: ourStatus,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('stripe_customer_id', customerId);
+
+                if (error) {
+                    logger.error('Erro ao atualizar subscription: ' + error.message, 'Webhook');
+                } else {
+                    logger.info('Subscription atualizada no profile: ' + subscriptionId + ' -> ' + ourStatus, 'Webhook');
+                }
+            }
+        } catch (err) {
+            logger.error('Erro ao processar atualização de subscription: ' + err.message, 'Webhook');
         }
     }
 

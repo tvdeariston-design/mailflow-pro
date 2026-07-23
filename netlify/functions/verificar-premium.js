@@ -126,7 +126,8 @@ exports.handler = async (event, context) => {
         return createResponse(200, {
             premium: false,
             reason: 'expired',
-            trial_end: profile.premium_trial_end || null
+            trial_end: profile.premium_trial_end || null,
+            days_remaining: 0
         });
 
     } catch (error) {
