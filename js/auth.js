@@ -312,21 +312,20 @@
 
     /**
      * Verificar se o utilizador atual tem acesso premium.
-     * Em ambiente de desenvolvimento, concede premium a utilizador específico
-     * e pode incluir todos os utilizadores para fins de teste.
+     * Valida via function server-side (verificar-premium.js).
+     * Cache local de 5 minutos para performance.
      *
      * @param {Object|null} user - objeto do utilizador (passado a partir de getUser())
-     * @returns {boolean} true se tiver acesso premium, false caso contrário
+     * @returns {Promise<boolean>} true se tiver acesso premium, false caso contrário
      */
-    function isPremiumUser(user) {
-        // Permite bypass apenas se MailFlowDevPermissions estiver disponível
+    async function isPremiumUser(user) {
+        // Verificar via servidor se MailFlowDevPermissions estiver disponível
         if (typeof window.MailFlowDevPermissions !== 'undefined' && 
             typeof window.MailFlowDevPermissions.hasPremiumAccess === 'function') {
-            return window.MailFlowDevPermissions.hasPremiumAccess(user);
+            return await window.MailFlowDevPermissions.hasPremiumAccess(user);
         }
         
-        // Fallback para verificação de admin simples (implementação futura)
-        // Isso garante que o código é fácil de remover antes do lançamento
+        // Fallback: sem servidor, assume gratuito (seguro por omissão)
         return false;
     }
 

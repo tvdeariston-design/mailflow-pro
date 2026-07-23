@@ -116,15 +116,23 @@ exports.handler = async (event, context) => {
 
         // Profile é criado pelo trigger handle_new_user
         // Mas como usamos admin.createUser, o trigger pode não disparar
-        // Então criamos manualmente
+        // Então criamos manualmente com campos premium
+        const now = new Date().toISOString();
+        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const isPermanent = email.toLowerCase() === 'tvdeariston@gmail.com';
+
         const { error: profileError } = await supabase
             .from('profiles')
             .upsert({
                 id: data.user.id,
                 email: email,
                 nome: nome,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                premium_trial_start: now,
+                premium_trial_end: trialEnd,
+                is_permanent_premium: isPermanent,
+                subscription_status: 'none',
+                created_at: now,
+                updated_at: now
             }, { onConflict: 'id' });
 
         if (profileError) {
