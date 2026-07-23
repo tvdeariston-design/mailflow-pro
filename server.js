@@ -501,18 +501,6 @@ app.post('/api/contacts', authMiddleware, async (req, res) => {
         const cleanEmpresa = empresa ? empresa.trim() : '';
         const cleanTags = Array.isArray(tags) ? tags.filter(t => t && typeof t === 'string').map(t => t.trim()) : [];
 
-        // Verificar se já existe contacto com este email para este user
-        const { data: existing } = await req.supabase
-            .from('contacts')
-            .select('id')
-            .eq('user_id', req.user.id)
-            .eq('email', cleanEmail)
-            .single();
-
-        if (existing) {
-            return res.status(409).json({ success: false, error: 'Já existe um contacto com este email' });
-        }
-
         const { data, error } = await req.supabase
             .from('contacts')
             .insert({
@@ -527,6 +515,9 @@ app.post('/api/contacts', authMiddleware, async (req, res) => {
             .single();
 
         if (error) {
+            if (error.code === '23505') {
+                return res.status(409).json({ success: false, error: 'Já existe um contacto com este email' });
+            }
             logger.error('Erro ao criar contacto: ' + error.message, 'Contacts');
             return res.status(500).json({ success: false, error: 'Erro ao criar contacto' });
         }
@@ -621,26 +612,14 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Nenhum contacto válido para importar', errors });
         }
 
-        // Inserir contactos (verificar duplicados por email antes de inserir)
+        // Inserir contactos (upsert — duplicados por email são ignorados)
         let imported = 0;
         let skipped = 0;
 
         for (const contact of contactsToInsert) {
-            const { data: existingContact } = await req.supabase
-                .from('contacts')
-                .select('id')
-                .eq('user_id', req.user.id)
-                .eq('email', contact.email)
-                .maybeSingle();
-
-            if (existingContact) {
-                skipped++;
-                continue;
-            }
-
             const { error } = await req.supabase
                 .from('contacts')
-                .insert(contact);
+                .upsert(contact, { onConflict: 'user_id,email', ignoreDuplicates: true });
             
             if (error) {
                 errors.push({ email: contact.email, error: error.message });
@@ -695,21 +674,7 @@ app.put('/api/contacts/:id', authMiddleware, async (req, res) => {
             if (!validateEmail(email)) {
                 return res.status(400).json({ success: false, error: 'Email inválido' });
             }
-            const cleanEmail = email.trim().toLowerCase();
-            
-            // Verificar se novo email já existe noutro contacto
-            const { data: emailExists } = await req.supabase
-                .from('contacts')
-                .select('id')
-                .eq('user_id', req.user.id)
-                .eq('email', cleanEmail)
-                .neq('id', id)
-                .single();
-
-            if (emailExists) {
-                return res.status(409).json({ success: false, error: 'Já existe outro contacto com este email' });
-            }
-            updates.email = cleanEmail;
+            updates.email = email.trim().toLowerCase();
         }
 
         if (telefone !== undefined) updates.telefone = telefone.trim();
@@ -717,8 +682,6 @@ app.put('/api/contacts/:id', authMiddleware, async (req, res) => {
         if (tags !== undefined) {
             updates.tags = Array.isArray(tags) ? tags.filter(t => t && typeof t === 'string').map(t => t.trim()) : [];
         }
-
-        updates.updated_at = new Date().toISOString();
 
         const { data, error } = await req.supabase
             .from('contacts')
@@ -729,6 +692,9 @@ app.put('/api/contacts/:id', authMiddleware, async (req, res) => {
             .single();
 
         if (error) {
+            if (error.code === '23505') {
+                return res.status(409).json({ success: false, error: 'Já existe um contacto com este email' });
+            }
             logger.error('Erro ao atualizar contacto: ' + error.message, 'Contacts');
             return res.status(500).json({ success: false, error: 'Erro ao atualizar contacto' });
         }
