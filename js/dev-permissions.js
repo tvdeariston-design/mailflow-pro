@@ -2,7 +2,7 @@
  * MailFlow Pro — Sistema de Acesso Premium
  *
  * Objetivo:
- *   Verificar acesso premium do utilizador via function server-side.
+ *   Verificar acesso premium do utilizador via API server-side.
  *   Validação dupla: frontend (cache) + backend (authoritative).
  *
  * Regras:
@@ -11,12 +11,13 @@
  *   3. Após trial → Premium apenas se subscrição Stripe ativa
  *
  * Segurança:
- *   - A verificação principal é feita no servidor (verificar-premium.js)
+ *   - A verificação principal é feita no servidor (verificar-premium.js /server.js)
  *   - O frontend cacheia o resultado para performance
  *   - O email do administrador está hardcoded no servidor, não no frontend
  *
  * Dependências:
  *   - supabase-client.js (para obter token)
+ *   - api-config.js (para URLs da API)
  */
 
 (function() {
@@ -28,16 +29,6 @@
     var _cache = null;
     var _cacheTime = 0;
     var CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-
-    // ========================================
-    // API URL
-    // ========================================
-    function getApiUrl() {
-        if (typeof window !== 'undefined' && window.location) {
-            return window.location.origin;
-        }
-        return '';
-    }
 
     // ========================================
     // Helpers
@@ -66,7 +57,7 @@
     }
 
     /**
-     * Chamar a function server-side verificar-premium.
+     * Chamar a API server-side para verificar premium.
      * Esta é a fonte authoritative de premium.
      */
     async function fetchPremiumStatus() {
@@ -76,7 +67,7 @@
         }
 
         try {
-            var response = await fetch(getApiUrl() + '/.netlify/functions/verificar-premium', {
+            var response = await fetch(MailFlowAPI.premium.status, {
                 method: 'GET',
                 headers: {
                     'Authorization': 'Bearer ' + token

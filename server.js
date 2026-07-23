@@ -12,6 +12,7 @@ const nodemailer = require('nodemailer');
 
 const app = express();
 const path = require('path');
+const { config } = require('./config');
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -361,8 +362,8 @@ app.post('/api/checkout/create', async (req, res) => {
             }],
             mode: 'subscription',
             customer_email: cleanEmail,
-            success_url: process.env.SUCCESS_URL || 'https://mailflow-pro.netlify.app/sucesso.html',
-            cancel_url: process.env.CANCEL_URL || 'https://mailflow-pro.netlify.app',
+            success_url: process.env.SUCCESS_URL || config.app.successUrl,
+            cancel_url: process.env.CANCEL_URL || config.app.cancelUrl,
         });
 
         logger.info('Sessão criada - Email: ' + cleanEmail + ', Session: ' + session.id, 'Checkout');

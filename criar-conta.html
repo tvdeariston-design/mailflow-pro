@@ -98,6 +98,7 @@
     <script src="js/supabase-client.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/toast.js"></script>
+    <script src="js/api-config.js"></script>
     <script>
     (function() {
         'use strict';
@@ -136,8 +137,8 @@
             hideError();
 
             try {
-                // 1. Criar conta via Netlify function (service_role, email confirmado)
-                var response = await fetch('/.netlify/functions/criar-conta', {
+                // 1. Criar conta via API (Netlify Function ou Render server)
+                var response = await fetch(window.MailFlowAPI.auth.signup, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email: email, password: password, nome: nome })

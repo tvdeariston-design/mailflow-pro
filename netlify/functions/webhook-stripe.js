@@ -81,10 +81,16 @@ exports.handler = async (event, context) => {
             logger.error('Erro ao atualizar profile: ' + err.message, 'Webhook');
         }
 
-        // Enviar email de boas-vindas
+        // Enviar email de boas-vindas - usa config.app.siteUrl que funciona em ambos
         try {
-            const siteUrl = config.netlify.siteUrl;
-            const response = await fetch(siteUrl + '/.netlify/functions/enviar-email', {
+            const siteUrl = config.app.siteUrl;
+            // Detectar se estamos no Netlify ou Render baseado no URL
+            const isRender = siteUrl.includes('onrender.com');
+            const emailEndpoint = isRender 
+                ? siteUrl + '/api/email/send' 
+                : siteUrl + '/.netlify/functions/enviar-email';
+            
+            const response = await fetch(emailEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, nome })
@@ -120,14 +126,6 @@ exports.handler = async (event, context) => {
                 const { createClient } = require('@supabase/supabase-js');
                 const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-                // Verificar status atual e atualizar se necessário
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('subscription_status')
-                    .eq('stripe_subscription_id', subscriptionId)
-                    .single();
-
-                // Atualizar para active independentemente do status anterior (inclui trial->active)
                 const { error: updateError } = await supabase
                     .from('profiles')
                     .update({
@@ -144,7 +142,7 @@ exports.handler = async (event, context) => {
                 }
             }
         } catch (err) {
-            logger.error('Erro ao processar renovação: ' + err.message, 'Webhook');
+            logger.error('Erro ao processar payment_succeeded: ' + err.message, 'Webhook');
         }
     }
 
@@ -156,43 +154,39 @@ exports.handler = async (event, context) => {
         const subscriptionId = invoice.subscription;
         const attemptCount = invoice.attempt_count || 1;
 
-        if (!subscriptionId) {
-            return createResponse(200, { received: true });
-        }
+        if (subscriptionId) {
+            logger.warn('Pagamento falhou - Subscription: ' + subscriptionId + ', Tentativa: ' + attemptCount, 'Webhook');
 
-        logger.warn('Pagamento falhou - Subscription: ' + subscriptionId + ', Tentativa: ' + attemptCount, 'Webhook');
-
-        try {
-            const supabaseUrl = process.env.SUPABASE_URL;
-            const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-            if (supabaseUrl && serviceRoleKey) {
-                const { createClient } = require('@supabase/supabase-js');
-                const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-                // Após 3 tentativas falhadas, marcar como past_due
-                // Stripe tenta 3x por padrão antes de marcar past_due
-                let ourStatus = 'active';
-                if (attemptCount >= 3) {
-                    ourStatus = 'past_due';
-                }
-
-                const { error } = await supabase
-                    .from('profiles')
-                    .update({
-                        subscription_status: ourStatus,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('stripe_subscription_id', subscriptionId);
-
-                if (error) {
-                    logger.error('Erro ao atualizar status falha: ' + error.message, 'Webhook');
-                } else {
-                    logger.info('Status atualizado para ' + ourStatus + ': ' + subscriptionId, 'Webhook');
-                }
+            let ourStatus = 'active';
+            if (attemptCount >= 3) {
+                ourStatus = 'past_due';
             }
-        } catch (err) {
-            logger.error('Erro ao processar payment_failed: ' + err.message, 'Webhook');
+
+            try {
+                const supabaseUrl = process.env.SUPABASE_URL;
+                const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+                if (supabaseUrl && serviceRoleKey) {
+                    const { createClient } = require('@supabase/supabase-js');
+                    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+                    const { error } = await supabase
+                        .from('profiles')
+                        .update({
+                            subscription_status: ourStatus,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('stripe_subscription_id', subscriptionId);
+
+                    if (error) {
+                        logger.error('Erro ao atualizar status falha: ' + error.message, 'Webhook');
+                    } else {
+                        logger.info('Status atualizado para ' + ourStatus + ': ' + subscriptionId, 'Webhook');
+                    }
+                }
+            } catch (err) {
+                logger.error('Erro ao processar payment_failed: ' + err.message, 'Webhook');
+            }
         }
     }
 
@@ -202,37 +196,21 @@ exports.handler = async (event, context) => {
     if (stripeEvent.type === 'customer.subscription.updated') {
         const subscription = stripeEvent.data.object;
         const subscriptionId = subscription.id;
-        const status = subscription.status; // active, trialing, past_due, canceled, unpaid, paused
+        const status = subscription.status;
         const customerId = subscription.customer;
 
         logger.info('Subscrição atualizada - ID: ' + subscriptionId + ', Status: ' + status, 'Webhook');
 
-        // Mapear status do Stripe para nosso sistema
         let ourStatus;
         switch (status) {
-            case 'active':
-                ourStatus = 'active';
-                break;
-            case 'trialing':
-                ourStatus = 'trial';
-                break;
-            case 'past_due':
-                ourStatus = 'past_due';
-                break;
-            case 'canceled':
-                ourStatus = 'canceled';
-                break;
-            case 'unpaid':
-                ourStatus = 'canceled';
-                break;
-            case 'incomplete_expired':
-                ourStatus = 'canceled';
-                break;
-            case 'paused':
-                ourStatus = 'paused';
-                break;
-            default:
-                ourStatus = status;
+            case 'active': ourStatus = 'active'; break;
+            case 'trialing': ourStatus = 'trial'; break;
+            case 'past_due': ourStatus = 'past_due'; break;
+            case 'canceled': ourStatus = 'canceled'; break;
+            case 'unpaid': ourStatus = 'canceled'; break;
+            case 'incomplete_expired': ourStatus = 'canceled'; break;
+            case 'paused': ourStatus = 'paused'; break;
+            default: ourStatus = status;
         }
 
         try {

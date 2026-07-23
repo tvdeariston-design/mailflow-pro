@@ -53,8 +53,6 @@ const config = {
     },
 };
 
-const SITE_URL_DEFAULT = 'https://mailflow-pro.netlify.app';
-
 /**
  * Valida que variáveis essenciais para uma function específica estão definidas.
  * Só deve ser chamado dentro da function que precisa das variáveis.
