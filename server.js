@@ -11,6 +11,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require('nodemailer');
 
 const app = express();
+const path = require('path');
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -19,7 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS
 // Servir ficheiros estáticos da raiz do projeto
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname)));
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
