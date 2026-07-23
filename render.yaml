@@ -1,0 +1,59 @@
+# MailFlow Pro — Render Blueprint
+# Este ficheiro define os serviços para deploy no Render
+# Compatível com: Web Service (Node.js)
+
+services:
+  # Web Service principal (API + Frontend estático)
+  - type: web
+    name: mailflow-pro
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      # Supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Stripe
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PUBLISHABLE_KEY
+        sync: false
+      # Email (Gmail App Password)
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      # URLs
+      - key: SUCCESS_URL
+        value: https://mailflow-pro.onrender.com/sucesso.html
+      - key: CANCEL_URL
+        value: https://mailflow-pro.onrender.com
+      - key: URL
+        value: https://mailflow-pro.onrender.com
+    # Configuração de saúde
+    healthCheckPath: /health
+    # Auto-deploy
+    autoDeploy: true
+
+  # Static Site para o Frontend (opcional - se quiser separar)
+  # Descomenta se quiseres servir o frontend como Static Site separado
+  # - type: static
+  #   name: mailflow-pro-frontend
+  #   buildCommand: ""
+  #   staticPublishPath: .
+  #   routes:
+  #     - type: rewrite
+  #       source: /*
+  #       destination: /index.html
+
+# Nota: As variáveis com sync: false devem ser configuradas manualmente no dashboard do Render
+# após o primeiro deploy, ou via CLI: render env set KEY=value

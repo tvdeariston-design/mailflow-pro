@@ -83,6 +83,16 @@ exports.handler = async (event, context) => {
         return createErrorResponse(400, 'Nome inválido');
     }
 
+    // ============================================
+    // LOGS DE DEBUG DETALHADOS — DIAGNÓSTICO "fetch failed"
+    // ============================================
+    logger.info('[DEBUG] === INÍCIO CRIAR CONTA ===', 'CriarConta');
+    logger.info('[DEBUG] Node version: ' + process.version, 'CriarConta');
+    logger.info('[DEBUG] SUPABASE_URL existe: ' + Boolean(process.env.SUPABASE_URL), 'CriarConta');
+    logger.info('[DEBUG] SUPABASE_URL (primeiros 30 chars): ' + (process.env.SUPABASE_URL || 'undefined').substring(0, 30), 'CriarConta');
+    logger.info('[DEBUG] SUPABASE_SERVICE_ROLE_KEY existe: ' + Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY), 'CriarConta');
+    logger.info('[DEBUG] SUPABASE_SERVICE_ROLE_KEY length: ' + (process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY.length : 'undefined'), 'CriarConta');
+
     // Verificar variáveis de ambiente
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -92,8 +102,13 @@ exports.handler = async (event, context) => {
         return createErrorResponse(500, 'Serviço de registo indisponível');
     }
 
+    logger.info('[DEBUG] Variáveis OK, a criar cliente Supabase...', 'CriarConta');
+
     // Criar cliente com service_role (bypass RLS)
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    logger.info('[DEBUG] Cliente Supabase criado com sucesso', 'CriarConta');
+    logger.info('[DEBUG] A chamar auth.admin.createUser()...', 'CriarConta');
 
     try {
         // Criar utilizador no Supabase Auth
@@ -104,7 +119,11 @@ exports.handler = async (event, context) => {
             user_metadata: { nome: nome }
         });
 
+        logger.info('[DEBUG] auth.admin.createUser() retornou', 'CriarConta');
+
         if (error) {
+            logger.error('[DEBUG] Erro retornado pelo Supabase:', 'CriarConta');
+            logger.error('[DEBUG] error object completo: ' + JSON.stringify(error, Object.getOwnPropertyNames(error)), 'CriarConta');
             if (error.message.includes('already registered')) {
                 logger.warn('Tentativa de registo com email existente: ' + email, 'CriarConta');
                 return createErrorResponse(409, 'Este email já está registado.');
@@ -144,6 +163,12 @@ exports.handler = async (event, context) => {
         });
 
     } catch (error) {
+        logger.error('[DEBUG] === ERRO NO CATCH ===', 'CriarConta');
+        logger.error('[DEBUG] error.name: ' + error.name, 'CriarConta');
+        logger.error('[DEBUG] error.message: ' + error.message, 'CriarConta');
+        logger.error('[DEBUG] error.stack: ' + error.stack, 'CriarConta');
+        logger.error('[DEBUG] error.cause: ' + JSON.stringify(error.cause, null, 2), 'CriarConta');
+        logger.error('[DEBUG] error (JSON.stringify com todas props): ' + JSON.stringify(error, Object.getOwnPropertyNames(error)), 'CriarConta');
         logger.error('Erro inesperado ao criar conta: ' + error.message, 'CriarConta');
         return createErrorResponse(500, 'Erro ao processar registo');
     }
