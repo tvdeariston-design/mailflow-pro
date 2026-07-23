@@ -100,6 +100,9 @@ var ContactosView = (function() {
         user = await MailFlowAuth.getUser();
         if (!user) return;
 
+        state.page = 1;
+        state.search = '';
+
         var result = await fetchContacts();
         container.innerHTML = buildHTML(result.data, result.count);
         bindEvents();
@@ -328,6 +331,11 @@ var ContactosView = (function() {
                     tags: payload.tags
                 }).eq('id', existingId).eq('user_id', user.id);
             } else {
+                var { data: dupCheck } = await sb.from('contacts').select('id').eq('user_id', user.id).eq('email', payload.email).maybeSingle();
+                if (dupCheck) {
+                    MailFlowToast.error('Já existe um contacto com este email.');
+                    return false;
+                }
                 result = await sb.from('contacts').insert(payload);
             }
             if (result.error) throw result.error;

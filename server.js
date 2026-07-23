@@ -402,6 +402,59 @@ app.get('/api/contacts', authMiddleware, async (req, res) => {
     }
 });
 
+
+// GET /api/contacts/export - Exportar contactos para CSV
+app.get('/api/contacts/export', authMiddleware, async (req, res) => {
+    try {
+        const { search = '', empresa = '', telefone = '' } = req.query;
+
+        let query = req.supabase
+            .from('contacts')
+            .select('nome,email,telefone,empresa,tags,created_at')
+            .eq('user_id', req.user.id)
+            .order('created_at', { ascending: false });
+
+        if (search) {
+            query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%`);
+        }
+        if (empresa) {
+            query = query.ilike('empresa', `%${empresa}%`);
+        }
+        if (telefone) {
+            query = query.ilike('telefone', `%${telefone}%`);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            logger.error('Erro ao exportar contactos: ' + error.message, 'Contacts');
+            return res.status(500).json({ success: false, error: 'Erro ao exportar contactos' });
+        }
+
+        // Gerar CSV
+        const headers = ['Nome', 'Email', 'Telefone', 'Empresa', 'Tags', 'Data de Criação'];
+        const rows = (data || []).map(c => [
+            c.nome || '',
+            c.email || '',
+            c.telefone || '',
+            c.empresa || '',
+            (c.tags || []).join('; '),
+            c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT') : ''
+        ]);
+
+        const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="contactos-' + new Date().toISOString().split('T')[0] + '.csv"');
+        res.send(csv);
+
+    } catch (error) {
+        logger.error('Erro inesperado ao exportar contactos: ' + error.message, 'Contacts');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+
 // GET /api/contacts/:id - Obter um contacto específico
 app.get('/api/contacts/:id', authMiddleware, async (req, res) => {
     try {
@@ -430,6 +483,7 @@ app.get('/api/contacts/:id', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
     }
 });
+
 
 // POST /api/contacts - Criar novo contacto
 app.post('/api/contacts', authMiddleware, async (req, res) => {
@@ -486,188 +540,6 @@ app.post('/api/contacts', authMiddleware, async (req, res) => {
     }
 });
 
-// PUT /api/contacts/:id - Atualizar contacto
-app.put('/api/contacts/:id', authMiddleware, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { nome, email, telefone, empresa, tags } = req.body;
-
-        // Verificar se o contacto pertence ao user
-        const { data: existing, error: checkError } = await req.supabase
-            .from('contacts')
-            .select('id, email')
-            .eq('id', id)
-            .eq('user_id', req.user.id)
-            .single();
-
-        if (checkError || !existing) {
-            return res.status(404).json({ success: false, error: 'Contacto não encontrado' });
-        }
-
-        const updates = {};
-        if (nome !== undefined) {
-            const nomeCheck = validateStringLength(nome, 1, 200);
-            if (!nomeCheck.valid) {
-                return res.status(400).json({ success: false, error: 'Nome inválido' });
-            }
-            updates.nome = nome.trim();
-        }
-
-        if (email !== undefined) {
-            if (!validateEmail(email)) {
-                return res.status(400).json({ success: false, error: 'Email inválido' });
-            }
-            const cleanEmail = email.trim().toLowerCase();
-            
-            // Verificar se novo email já existe noutro contacto
-            const { data: emailExists } = await req.supabase
-                .from('contacts')
-                .select('id')
-                .eq('user_id', req.user.id)
-                .eq('email', cleanEmail)
-                .neq('id', id)
-                .single();
-
-            if (emailExists) {
-                return res.status(409).json({ success: false, error: 'Já existe outro contacto com este email' });
-            }
-            updates.email = cleanEmail;
-        }
-
-        if (telefone !== undefined) updates.telefone = telefone.trim();
-        if (empresa !== undefined) updates.empresa = empresa.trim();
-        if (tags !== undefined) {
-            updates.tags = Array.isArray(tags) ? tags.filter(t => t && typeof t === 'string').map(t => t.trim()) : [];
-        }
-
-        updates.updated_at = new Date().toISOString();
-
-        const { data, error } = await req.supabase
-            .from('contacts')
-            .update(updates)
-            .eq('id', id)
-            .eq('user_id', req.user.id)
-            .select()
-            .single();
-
-        if (error) {
-            logger.error('Erro ao atualizar contacto: ' + error.message, 'Contacts');
-            return res.status(500).json({ success: false, error: 'Erro ao atualizar contacto' });
-        }
-
-        logger.info('Contacto atualizado - ID: ' + id, 'Contacts');
-        res.json({ success: true, contact: data });
-
-    } catch (error) {
-        logger.error('Erro inesperado ao atualizar contacto: ' + error.message, 'Contacts');
-        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
-    }
-});
-
-// DELETE /api/contacts/:id - Eliminar contacto
-app.delete('/api/contacts/:id', authMiddleware, async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const { error } = await req.supabase
-            .from('contacts')
-            .delete()
-            .eq('id', id)
-            .eq('user_id', req.user.id);
-
-        if (error) {
-            logger.error('Erro ao eliminar contacto: ' + error.message, 'Contacts');
-            return res.status(500).json({ success: false, error: 'Erro ao eliminar contacto' });
-        }
-
-        logger.info('Contacto eliminado - ID: ' + id, 'Contacts');
-        res.json({ success: true, message: 'Contacto eliminado com sucesso' });
-
-    } catch (error) {
-        logger.error('Erro inesperado ao eliminar contacto: ' + error.message, 'Contacts');
-        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
-    }
-});
-
-// DELETE /api/contacts/bulk - Eliminar múltiplos contactos
-app.delete('/api/contacts/bulk', authMiddleware, async (req, res) => {
-    try {
-        const { ids } = req.body;
-
-        if (!Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ success: false, error: 'Lista de IDs inválida' });
-        }
-
-        const { error } = await req.supabase
-            .from('contacts')
-            .delete()
-            .eq('user_id', req.user.id)
-            .in('id', ids);
-
-        if (error) {
-            logger.error('Erro ao eliminar contactos em bulk: ' + error.message, 'Contacts');
-            return res.status(500).json({ success: false, error: 'Erro ao eliminar contactos' });
-        }
-
-        logger.info('Contactos eliminados em bulk - Count: ' + ids.length + ', User: ' + req.user.id, 'Contacts');
-        res.json({ success: true, deleted: ids.length });
-
-    } catch (error) {
-        logger.error('Erro inesperado ao eliminar contactos bulk: ' + error.message, 'Contacts');
-        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
-    }
-});
-
-// GET /api/contacts/export - Exportar contactos para CSV
-app.get('/api/contacts/export', authMiddleware, async (req, res) => {
-    try {
-        const { search = '', empresa = '', telefone = '' } = req.query;
-
-        let query = req.supabase
-            .from('contacts')
-            .select('nome,email,telefone,empresa,tags,created_at')
-            .eq('user_id', req.user.id)
-            .order('created_at', { ascending: false });
-
-        if (search) {
-            query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%`);
-        }
-        if (empresa) {
-            query = query.ilike('empresa', `%${empresa}%`);
-        }
-        if (telefone) {
-            query = query.ilike('telefone', `%${telefone}%`);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-            logger.error('Erro ao exportar contactos: ' + error.message, 'Contacts');
-            return res.status(500).json({ success: false, error: 'Erro ao exportar contactos' });
-        }
-
-        // Gerar CSV
-        const headers = ['Nome', 'Email', 'Telefone', 'Empresa', 'Tags', 'Data de Criação'];
-        const rows = (data || []).map(c => [
-            c.nome || '',
-            c.email || '',
-            c.telefone || '',
-            c.empresa || '',
-            (c.tags || []).join('; '),
-            c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT') : ''
-        ]);
-
-        const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\n');
-
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="contactos-' + new Date().toISOString().split('T')[0] + '.csv"');
-        res.send(csv);
-
-    } catch (error) {
-        logger.error('Erro inesperado ao exportar contactos: ' + error.message, 'Contacts');
-        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
-    }
-});
 
 // POST /api/contacts/import - Importar contactos de CSV
 app.post('/api/contacts/import', authMiddleware, async (req, res) => {
@@ -749,21 +621,29 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Nenhum contacto válido para importar', errors });
         }
 
-        // Inserir contactos (upsert para evitar duplicados por email)
+        // Inserir contactos (verificar duplicados por email antes de inserir)
         let imported = 0;
         let skipped = 0;
 
         for (const contact of contactsToInsert) {
+            const { data: existingContact } = await req.supabase
+                .from('contacts')
+                .select('id')
+                .eq('user_id', req.user.id)
+                .eq('email', contact.email)
+                .maybeSingle();
+
+            if (existingContact) {
+                skipped++;
+                continue;
+            }
+
             const { error } = await req.supabase
                 .from('contacts')
-                .upsert(contact, { onConflict: 'user_id,email' });
+                .insert(contact);
             
             if (error) {
-                if (error.code === '23505') { // unique violation
-                    skipped++;
-                } else {
-                    errors.push({ email: contact.email, error: error.message });
-                }
+                errors.push({ email: contact.email, error: error.message });
             } else {
                 imported++;
             }
@@ -782,6 +662,142 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, error: 'Erro ao processar importação' });
     }
 });
+
+
+// PUT /api/contacts/:id - Atualizar contacto
+app.put('/api/contacts/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, email, telefone, empresa, tags } = req.body;
+
+        // Verificar se o contacto pertence ao user
+        const { data: existing, error: checkError } = await req.supabase
+            .from('contacts')
+            .select('id, email')
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .single();
+
+        if (checkError || !existing) {
+            return res.status(404).json({ success: false, error: 'Contacto não encontrado' });
+        }
+
+        const updates = {};
+        if (nome !== undefined) {
+            const nomeCheck = validateStringLength(nome, 1, 200);
+            if (!nomeCheck.valid) {
+                return res.status(400).json({ success: false, error: 'Nome inválido' });
+            }
+            updates.nome = nome.trim();
+        }
+
+        if (email !== undefined) {
+            if (!validateEmail(email)) {
+                return res.status(400).json({ success: false, error: 'Email inválido' });
+            }
+            const cleanEmail = email.trim().toLowerCase();
+            
+            // Verificar se novo email já existe noutro contacto
+            const { data: emailExists } = await req.supabase
+                .from('contacts')
+                .select('id')
+                .eq('user_id', req.user.id)
+                .eq('email', cleanEmail)
+                .neq('id', id)
+                .single();
+
+            if (emailExists) {
+                return res.status(409).json({ success: false, error: 'Já existe outro contacto com este email' });
+            }
+            updates.email = cleanEmail;
+        }
+
+        if (telefone !== undefined) updates.telefone = telefone.trim();
+        if (empresa !== undefined) updates.empresa = empresa.trim();
+        if (tags !== undefined) {
+            updates.tags = Array.isArray(tags) ? tags.filter(t => t && typeof t === 'string').map(t => t.trim()) : [];
+        }
+
+        updates.updated_at = new Date().toISOString();
+
+        const { data, error } = await req.supabase
+            .from('contacts')
+            .update(updates)
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .select()
+            .single();
+
+        if (error) {
+            logger.error('Erro ao atualizar contacto: ' + error.message, 'Contacts');
+            return res.status(500).json({ success: false, error: 'Erro ao atualizar contacto' });
+        }
+
+        logger.info('Contacto atualizado - ID: ' + id, 'Contacts');
+        res.json({ success: true, contact: data });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao atualizar contacto: ' + error.message, 'Contacts');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+
+// DELETE /api/contacts/bulk - Eliminar múltiplos contactos
+app.delete('/api/contacts/bulk', authMiddleware, async (req, res) => {
+    try {
+        const { ids } = req.body;
+
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ success: false, error: 'Lista de IDs inválida' });
+        }
+
+        const { error } = await req.supabase
+            .from('contacts')
+            .delete()
+            .eq('user_id', req.user.id)
+            .in('id', ids);
+
+        if (error) {
+            logger.error('Erro ao eliminar contactos em bulk: ' + error.message, 'Contacts');
+            return res.status(500).json({ success: false, error: 'Erro ao eliminar contactos' });
+        }
+
+        logger.info('Contactos eliminados em bulk - Count: ' + ids.length + ', User: ' + req.user.id, 'Contacts');
+        res.json({ success: true, deleted: ids.length });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao eliminar contactos bulk: ' + error.message, 'Contacts');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+
+// DELETE /api/contacts/:id - Eliminar contacto
+app.delete('/api/contacts/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { error } = await req.supabase
+            .from('contacts')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', req.user.id);
+
+        if (error) {
+            logger.error('Erro ao eliminar contacto: ' + error.message, 'Contacts');
+            return res.status(500).json({ success: false, error: 'Erro ao eliminar contacto' });
+        }
+
+        logger.info('Contacto eliminado - ID: ' + id, 'Contacts');
+        res.json({ success: true, message: 'Contacto eliminado com sucesso' });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao eliminar contacto: ' + error.message, 'Contacts');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
 
 // ============================================
 // 6. CRIAR CHECKOUT STRIPE (equivalente a criar-checkout)
