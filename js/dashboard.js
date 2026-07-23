@@ -28,6 +28,7 @@
  *   - auth.js
  *   - toast.js
  *   - views/overview.js
+ *   - views/contactos.js
  */
 
 (function() {
@@ -43,7 +44,7 @@
     var VIEWS = {
         'overview': { title: 'Visão Geral', module: function() { return window.OverviewView; } },
         'campanhas': { title: 'Campanhas', module: null },
-        'contactos': { title: 'Contactos', module: null },
+        'contactos': { title: 'Contactos', module: function() { return window.ContactosView; } },
         'templates': { title: 'Templates', module: null },
         'analytics': { title: 'Analytics', module: null },
         'config': { title: 'Configurações', module: null }
