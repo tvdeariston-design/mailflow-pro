@@ -2,9 +2,8 @@
  * MailFlow Pro — Function: Criar Conta
  *
  * Objetivo:
- *   Criar novo utilizador no Supabase Auth e regenerar o
- *   profile na tabela profiles. Usado quando o frontend
- *   precisa de service_role para operações que o anon key
+ *   Criar novo utilizador no Supabase Auth e o profile na tabela profiles.
+ *   Usado quando o frontend precisa de service_role para operações que o anon key
  *   não permite.
  *
  * Inputs:
@@ -114,31 +113,10 @@ exports.handler = async (event, context) => {
             return createErrorResponse(500, 'Erro ao criar conta. Tente novamente.');
         }
 
-        // Profile é criado pelo trigger handle_new_user
-        // Mas como usamos admin.createUser, o trigger pode não disparar
-        // Então criamos manualmente com campos premium
-        const now = new Date().toISOString();
-        const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        const isPermanent = email.toLowerCase() === 'tvdeariston@gmail.com';
-
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-                id: data.user.id,
-                email: email,
-                nome: nome,
-                premium_trial_start: now,
-                premium_trial_end: trialEnd,
-                is_permanent_premium: isPermanent,
-                subscription_status: 'none',
-                created_at: now,
-                updated_at: now
-            }, { onConflict: 'id' });
-
-        if (profileError) {
-            logger.warn('Profile possivelmente já existe (trigger): ' + profileError.message, 'CriarConta');
-        }
-
+        // Profile é criado pelo trigger handle_new_user (migration 003)
+        // O trigger initialize_premium_trial (migration 004) inicializa trial automaticamente
+        // Não fazemos upsert manual - os triggers tratam de tudo
+        // Apenas logamos se houver erro no trigger
         logger.info('Conta criada com sucesso - Email: ' + email + ', ID: ' + data.user.id, 'CriarConta');
 
         return createResponse(201, {
