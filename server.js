@@ -976,6 +976,118 @@ app.delete('/api/templates/:id', authMiddleware, async (req, res) => {
 });
 
 
+
+// ============================================
+// TEMPLATES PREVIEW & TEST SEND
+// ============================================
+
+// POST /api/templates/preview - Renderizar template com merge tags
+app.post('/api/templates/preview', authMiddleware, async (req, res) => {
+    try {
+        const { html, text, subject, preheader, sampleContact } = req.body;
+
+        if (!html && !subject) {
+            return res.status(400).json({ success: false, error: 'HTML ou assunto obrigatorio' });
+        }
+
+        const contact = sampleContact || {
+            nome: 'Joao Silva',
+            email: 'joao@exemplo.com',
+            empresa: 'TechCorp',
+            telefone: '+351 912 345 678',
+            data: new Date().toLocaleDateString('pt-PT')
+        };
+
+        function renderMergeTags(templateStr) {
+            if (!templateStr) return '';
+            return templateStr
+                .replace(/\{\{nome\}\}/g, contact.nome || '')
+                .replace(/\{\{email\}\}/g, contact.email || '')
+                .replace(/\{\{empresa\}\}/g, contact.empresa || '')
+                .replace(/\{\{telefone\}\}/g, contact.telefone || '')
+                .replace(/\{\{data\}\}/g, contact.data || new Date().toLocaleDateString('pt-PT'));
+        }
+
+        const htmlRendered = renderMergeTags(html || '');
+        const textRendered = renderMergeTags(text || '');
+        const subjectRendered = renderMergeTags(subject || '');
+        const preheaderRendered = renderMergeTags(preheader || '');
+
+        res.json({
+            html: htmlRendered,
+            text: textRendered,
+            subject: subjectRendered,
+            preheader: preheaderRendered
+        });
+    } catch (error) {
+        logger.error('Erro ao renderizar preview: ' + error.message, 'Templates');
+        res.status(500).json({ success: false, error: 'Erro ao processar preview' });
+    }
+});
+
+// POST /api/templates/test-send - Enviar email de teste para UM endereco
+app.post('/api/templates/test-send', authMiddleware, async (req, res) => {
+    try {
+        const { email, subject, preheader, html, text } = req.body;
+
+        if (!email || !validateEmail(email)) {
+            return res.status(400).json({ success: false, error: 'Email invalido' });
+        }
+        if (!html && !subject) {
+            return res.status(400).json({ success: false, error: 'HTML ou assunto obrigatorio' });
+        }
+
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            return res.status(500).json({ success: false, error: 'Servico de email nao configurado' });
+        }
+
+        const sampleContact = {
+            nome: 'Teste',
+            email: email,
+            empresa: 'Empresa Teste',
+            telefone: '+351 900 000 000',
+            data: new Date().toLocaleDateString('pt-PT')
+        };
+
+        function renderMergeTags(templateStr) {
+            if (!templateStr) return '';
+            return templateStr
+                .replace(/\{\{nome\}\}/g, sampleContact.nome)
+                .replace(/\{\{email\}\}/g, sampleContact.email)
+                .replace(/\{\{empresa\}\}/g, sampleContact.empresa)
+                .replace(/\{\{telefone\}\}/g, sampleContact.telefone)
+                .replace(/\{\{data\}\}/g, sampleContact.data);
+        }
+
+        const renderedHtml = renderMergeTags(html || '');
+        const renderedText = renderMergeTags(text || '');
+        const renderedSubject = renderMergeTags(subject || '');
+
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: '[TESTE] ' + renderedSubject,
+            text: renderedText || undefined,
+            html: renderedHtml || undefined
+        };
+
+        if (preheader) {
+            const preheaderTag = '<span style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">' + renderMergeTags(preheader) + '</span>';
+            if (mailOptions.html) {
+                mailOptions.html = preheaderTag + mailOptions.html;
+            }
+        }
+
+        await transporter.sendMail(mailOptions);
+
+        logger.info('Email de teste enviado para: ' + email, 'Templates');
+        res.json({ success: true, message: 'Email de teste enviado para ' + email });
+    } catch (error) {
+        logger.error('Erro ao enviar email de teste: ' + error.message, 'Templates');
+        res.status(500).json({ success: false, error: 'Erro ao enviar email de teste: ' + error.message });
+    }
+});
+
 // ============================================
 // CAMPAIGNS API
 // ============================================

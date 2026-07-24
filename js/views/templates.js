@@ -2,7 +2,8 @@
  * MailFlow Pro — View: Templates
  *
  * Gestao de templates de email reutilizaveis.
- * CRUD completo com soft delete, duplicar, default, pesquisa e paginacao.
+ * CRUD completo com soft delete, duplicar, default, pesquisa, paginacao,
+ * preview (Desktop/Mobile/Text) e envio de teste.
  */
 
 var TemplatesView = (function() {
@@ -41,6 +42,23 @@ var TemplatesView = (function() {
         if (!dateStr) return '—';
         var d = new Date(dateStr);
         return d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function getAPIBase() {
+        var cfg = window.MailFlowAPI;
+        if (cfg && cfg.email && cfg.email.send !== undefined) {
+            var url = cfg.email.send;
+            return url.replace('/api/email/send', '');
+        }
+        return '';
+    }
+
+    async function getAccessToken() {
+        try {
+            var session = await MailFlowAuth.getSession();
+            if (session && session.access_token) return session.access_token;
+        } catch (e) { /* ignore */ }
+        return null;
     }
 
     async function fetchTemplates() {
@@ -137,6 +155,12 @@ var TemplatesView = (function() {
                             (t.last_used_at ? '<span>Usado: ' + formatDate(t.last_used_at) + '</span>' : '') +
                         '</div>' +
                         '<div class="tl-card__actions">' +
+                            '<button class="tl-action tl-action--preview" data-id="' + t.id + '" title="Pre-visualizar">' +
+                                '<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
+                            '</button>' +
+                            '<button class="tl-action tl-action--testsend" data-id="' + t.id + '" title="Enviar teste">' +
+                                '<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>' +
+                            '</button>' +
                             '<button class="tl-action tl-action--default" data-id="' + t.id + '" title="' + (t.is_default ? 'Ja e predefinido' : 'Definir como predefinido') + '" ' + (t.is_default ? 'disabled' : '') + '>' +
                                 '<svg width="15" height="15" fill="' + (t.is_default ? 'currentColor' : 'none') + '" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>' +
                             '</button>' +
@@ -215,6 +239,22 @@ var TemplatesView = (function() {
 
         var nextBtn = document.getElementById('tl-page-next');
         if (nextBtn) nextBtn.addEventListener('click', function() { state.page++; refresh(); });
+
+        document.querySelectorAll('.tl-action--preview').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                var template = state.templates.find(function(t) { return t.id === id; });
+                if (template) showPreviewModal(template);
+            });
+        });
+
+        document.querySelectorAll('.tl-action--testsend').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var id = this.getAttribute('data-id');
+                var template = state.templates.find(function(t) { return t.id === id; });
+                if (template) showTestSendModal(template);
+            });
+        });
 
         document.querySelectorAll('.tl-action--default').forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -416,6 +456,259 @@ var TemplatesView = (function() {
                 this.disabled = false;
                 this.textContent = isEdit ? 'Guardar Alteracoes' : 'Criar Template';
             }
+        });
+    }
+
+    // ========================================
+    // Modal: Preview
+    // ========================================
+    function showPreviewModal(template) {
+        var html = '' +
+            '<div class="tl-modal-overlay" id="tl-preview-overlay">' +
+                '<div class="tl-modal tl-modal--xl">' +
+                    '<div class="tl-modal__header">' +
+                        '<h3 class="tl-modal__title">Pre-visualizar: ' + esc(template.nome) + '</h3>' +
+                        '<button class="tl-modal__close" id="tl-preview-close">' +
+                            '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="tl-modal__body">' +
+                        '<div class="tl-preview-meta">' +
+                            '<div class="tl-preview-meta__row">' +
+                                '<span class="tl-preview-meta__label">Assunto:</span>' +
+                                '<span class="tl-preview-meta__value" id="tl-preview-subject">' + esc(template.subject || 'Sem assunto') + '</span>' +
+                            '</div>' +
+                            (template.preheader ? '<div class="tl-preview-meta__row"><span class="tl-preview-meta__label">Preheader:</span><span class="tl-preview-meta__value">' + esc(template.preheader) + '</span></div>' : '') +
+                        '</div>' +
+                        '<div class="tl-preview-tabs">' +
+                            '<button class="tl-preview-tab tl-preview-tab--active" data-view="desktop">Desktop</button>' +
+                            '<button class="tl-preview-tab" data-view="mobile">Mobile</button>' +
+                            '<button class="tl-preview-tab" data-view="text">Texto</button>' +
+                        '</div>' +
+                        '<div class="tl-preview-container" id="tl-preview-container">' +
+                            '<div class="tl-preview-loading">A carregar preview...</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="tl-modal__footer">' +
+                        '<button class="tl-btn tl-btn--ghost" id="tl-preview-cancel">Fechar</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+
+        var overlay = document.getElementById('tl-preview-overlay');
+        var closeBtn = document.getElementById('tl-preview-close');
+        var cancelBtn = document.getElementById('tl-preview-cancel');
+
+        function closeModal() { overlay.remove(); }
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+
+        var currentView = 'desktop';
+
+        function renderPreviewView(view, data) {
+            var container = document.getElementById('tl-preview-container');
+            if (!container) return;
+            currentView = view;
+
+            document.querySelectorAll('.tl-preview-tab').forEach(function(tab) {
+                tab.classList.toggle('tl-preview-tab--active', tab.getAttribute('data-view') === view);
+            });
+
+            if (view === 'desktop') {
+                container.innerHTML = '<div class="tl-preview-frame tl-preview-frame--desktop">' +
+                    '<div class="tl-preview-subject-bar">' +
+                        '<div class="tl-preview-subject-from">De: ' + esc(template.from_name || 'MailFlow Pro') + ' &lt;' + esc(template.from_email || 'noreply@mailflowpro.com') + '&gt;</div>' +
+                        '<div class="tl-preview-subject-line"><strong>' + esc(data.subject) + '</strong></div>' +
+                        (data.preheader ? '<div class="tl-preview-subject-preheader">' + esc(data.preheader) + '</div>' : '') +
+                    '</div>' +
+                    '<iframe class="tl-preview-iframe" srcdoc="' + esc(data.html).replace(/"/g, '&quot;') + '" sandbox="allow-same-origin"></iframe>' +
+                '</div>';
+            } else if (view === 'mobile') {
+                container.innerHTML = '<div class="tl-preview-frame tl-preview-frame--mobile">' +
+                    '<div class="tl-preview-mobile-notch"></div>' +
+                    '<div class="tl-preview-subject-bar">' +
+                        '<div class="tl-preview-subject-from">De: ' + esc(template.from_name || 'MailFlow Pro') + '</div>' +
+                        '<div class="tl-preview-subject-line"><strong>' + esc(data.subject) + '</strong></div>' +
+                        (data.preheader ? '<div class="tl-preview-subject-preheader">' + esc(data.preheader) + '</div>' : '') +
+                    '</div>' +
+                    '<iframe class="tl-preview-iframe" srcdoc="' + esc(data.html).replace(/"/g, '&quot;') + '" sandbox="allow-same-origin"></iframe>' +
+                '</div>';
+            } else if (view === 'text') {
+                var textContent = data.text || data.html || '';
+                textContent = textContent.replace(/<[^>]*>/g, '');
+                textContent = textContent.replace(/&nbsp;/g, ' ');
+                textContent = textContent.replace(/&amp;/g, '&');
+                textContent = textContent.replace(/&lt;/g, '<');
+                textContent = textContent.replace(/&gt;/g, '>');
+                container.innerHTML = '<div class="tl-preview-text">' +
+                    '<pre>' + esc(textContent) + '</pre>' +
+                '</div>';
+            }
+        }
+
+        async function loadPreview() {
+            var container = document.getElementById('tl-preview-container');
+            if (!container) return;
+
+            var token = await getAccessToken();
+            if (!token) {
+                container.innerHTML = '<div class="tl-preview-error">Sessao expirada. Faca login novamente.</div>';
+                return;
+            }
+
+            var apiBase = getAPIBase();
+            try {
+                var response = await fetch(apiBase + '/api/templates/preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        html: template.html || '',
+                        text: template.text_version || '',
+                        subject: template.subject || '',
+                        preheader: template.preheader || ''
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar preview');
+                }
+
+                var data = await response.json();
+                renderPreviewView('desktop', data);
+
+                document.querySelectorAll('.tl-preview-tab').forEach(function(tab) {
+                    tab.addEventListener('click', function() {
+                        var view = this.getAttribute('data-view');
+                        renderPreviewView(view, data);
+                    });
+                });
+            } catch (err) {
+                console.error('[Templates] Erro preview:', err);
+                container.innerHTML = '<div class="tl-preview-error">Erro ao carregar preview: ' + esc(err.message) + '</div>';
+            }
+        }
+
+        loadPreview();
+    }
+
+    // ========================================
+    // Modal: Test Send
+    // ========================================
+    function showTestSendModal(template) {
+        var html = '' +
+            '<div class="tl-modal-overlay" id="tl-testsend-overlay">' +
+                '<div class="tl-modal">' +
+                    '<div class="tl-modal__header">' +
+                        '<h3 class="tl-modal__title">Enviar Teste</h3>' +
+                        '<button class="tl-modal__close" id="tl-testsend-close">' +
+                            '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="tl-modal__body">' +
+                        '<p style="color:#6b7280;font-size:0.8125rem;margin-bottom:16px;">Envie um email de teste com o template <strong>' + esc(template.nome) + '</strong> para verificar como aparece.</p>' +
+                        '<div class="tl-field">' +
+                            '<label class="tl-label">Email de destino *</label>' +
+                            '<input type="email" class="tl-input" id="tl-testsend-email" placeholder="exemplo@email.com">' +
+                            '<span class="tl-field__hint">Sera enviado um unico email de teste para este endereco</span>' +
+                        '</div>' +
+                        '<div id="tl-testsend-status" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:0.8125rem;"></div>' +
+                    '</div>' +
+                    '<div class="tl-modal__footer">' +
+                        '<button class="tl-btn tl-btn--ghost" id="tl-testsend-cancel">Cancelar</button>' +
+                        '<button class="tl-btn tl-btn--primary" id="tl-testsend-send">' +
+                            '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>' +
+                            ' Enviar Teste' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+
+        var overlay = document.getElementById('tl-testsend-overlay');
+        var closeBtn = document.getElementById('tl-testsend-close');
+        var cancelBtn = document.getElementById('tl-testsend-cancel');
+        var sendBtn = document.getElementById('tl-testsend-send');
+
+        function closeModal() { overlay.remove(); }
+        closeBtn.addEventListener('click', closeModal);
+        cancelBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+
+        sendBtn.addEventListener('click', async function() {
+            var emailInput = document.getElementById('tl-testsend-email');
+            var statusEl = document.getElementById('tl-testsend-status');
+            var email = (emailInput.value || '').trim();
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                emailInput.style.borderColor = '#ef4444';
+                emailInput.focus();
+                return;
+            }
+
+            emailInput.style.borderColor = '';
+            this.disabled = true;
+            this.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="tl-spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> A enviar...';
+
+            var token = await getAccessToken();
+            if (!token) {
+                statusEl.style.display = 'block';
+                statusEl.style.background = '#fef2f2';
+                statusEl.style.color = '#991b1b';
+                statusEl.textContent = 'Sessao expirada. Faca login novamente.';
+                this.disabled = false;
+                this.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Enviar Teste';
+                return;
+            }
+
+            var apiBase = getAPIBase();
+            try {
+                var response = await fetch(apiBase + '/api/templates/test-send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        subject: template.subject || '',
+                        preheader: template.preheader || '',
+                        html: template.html || '',
+                        text: template.text_version || ''
+                    })
+                });
+
+                var result = await response.json();
+
+                if (response.ok && result.success) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#f0fdf4';
+                    statusEl.style.color = '#166534';
+                    statusEl.textContent = 'Email de teste enviado para ' + email + '. Verifique a caixa de entrada.';
+                    MailFlowToast.success('Email de teste enviado!');
+                    emailInput.value = '';
+                } else {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#fef2f2';
+                    statusEl.style.color = '#991b1b';
+                    statusEl.textContent = 'Erro: ' + (result.error || 'Falha ao enviar email de teste.');
+                }
+            } catch (err) {
+                console.error('[Templates] Erro test-send:', err);
+                statusEl.style.display = 'block';
+                statusEl.style.background = '#fef2f2';
+                statusEl.style.color = '#991b1b';
+                statusEl.textContent = 'Erro de ligacao. Tente novamente.';
+            }
+
+            this.disabled = false;
+            this.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Enviar Teste';
         });
     }
 
