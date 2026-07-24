@@ -576,10 +576,10 @@ app.get('/api/contacts', authMiddleware, async (req, res) => {
 });
 
 
-// GET /api/contacts/export - Exportar contactos para CSV
+// GET /api/contacts/export - Exportar contactos para CSV ou XLSX
 app.get('/api/contacts/export', authMiddleware, async (req, res) => {
     try {
-        const { search = '', empresa = '', telefone = '' } = req.query;
+        const { search = '', empresa = '', telefone = '', format = 'csv' } = req.query;
 
         let query = req.supabase
             .from('contacts')
@@ -604,7 +604,6 @@ app.get('/api/contacts/export', authMiddleware, async (req, res) => {
             return res.status(500).json({ success: false, error: 'Erro ao exportar contactos' });
         }
 
-        // Gerar CSV
         const headers = ['Nome', 'Email', 'Telefone', 'Empresa', 'Tags', 'Data de Criação'];
         const rows = (data || []).map(c => [
             c.nome || '',
@@ -615,11 +614,49 @@ app.get('/api/contacts/export', authMiddleware, async (req, res) => {
             c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT') : ''
         ]);
 
-        const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\n');
+        const filename = 'contactos-' + new Date().toISOString().split('T')[0];
 
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="contactos-' + new Date().toISOString().split('T')[0] + '.csv"');
-        res.send(csv);
+        if (format === 'xlsx') {
+            // XLSX export using SheetJS
+            const XLSX = require('xlsx');
+            const wb = XLSX.utils.book_new();
+            const wsData = [headers, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Make first row bold
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+                if (!ws[cellAddress]) ws[cellAddress] = { v: headers[C] };
+                ws[cellAddress].s = { font: { bold: true } };
+            }
+
+            // Auto column width
+            const colWidths = headers.map((h, i) => {
+                const maxLen = Math.max(
+                    h.length,
+                    ...rows.map(r => String(r[i] || '').length)
+                );
+                return { wch: Math.min(maxLen + 2, 50) };
+            });
+            ws['!cols'] = colWidths;
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Contactos');
+
+            const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '.xlsx"');
+            res.send(buf);
+        } else {
+            // CSV export with UTF-8 BOM
+            const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\n');
+            const bom = '\uFEFF'; // UTF-8 BOM
+
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '.csv"');
+            res.send(bom + csv);
+        }
 
     } catch (error) {
         logger.error('Erro inesperado ao exportar contactos: ' + error.message, 'Contacts');

@@ -126,10 +126,17 @@ var ContactosView = (function() {
                         '<svg class="ct-search__icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
                         '<input type="text" class="ct-search__input" id="ct-search" placeholder="Pesquisar contacto..." value="' + esc(state.search) + '">' +
                     '</div>' +
-                    '<button class="ct-btn ct-btn--secondary" id="ct-btn-export">' +
-                        '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>' +
-                        'Exportar CSV' +
-                    '</button>' +
+                    '<div class="ct-dropdown" id="ct-export-dropdown">' +
+                        '<button class="ct-btn ct-btn--secondary ct-dropdown__trigger" id="ct-btn-export" type="button">' +
+                            '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>' +
+                            'Exportar' +
+                            '<svg class="ct-dropdown__arrow" width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>' +
+                        '</button>' +
+                        '<div class="ct-dropdown__menu" id="ct-export-menu" role="menu">' +
+                            '<button class="ct-dropdown__item" id="ct-btn-export-csv" role="menuitem" data-format="csv">CSV</button>' +
+                            '<button class="ct-dropdown__item" id="ct-btn-export-xlsx" role="menuitem" data-format="xlsx">Excel (.xlsx)</button>' +
+                        '</div>' +
+                    '</div>' +
                     '<button class="ct-btn ct-btn--secondary" id="ct-btn-import">' +
                         '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>' +
                         'Importar CSV' +
@@ -246,7 +253,28 @@ var ContactosView = (function() {
         if (importEmptyBtn) importEmptyBtn.addEventListener('click', showImportModal);
 
         var exportBtn = document.getElementById('ct-btn-export');
-        if (exportBtn) exportBtn.addEventListener('click', exportCSV);
+        var exportCsvBtn = document.getElementById('ct-btn-export-csv');
+        var exportXlsxBtn = document.getElementById('ct-btn-export-xlsx');
+        if (exportCsvBtn) exportCsvBtn.addEventListener('click', function() { exportContacts('csv'); });
+        if (exportXlsxBtn) exportXlsxBtn.addEventListener('click', function() { exportContacts('xlsx'); });
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            var dropdown = document.getElementById('ct-export-dropdown');
+            var menu = document.getElementById('ct-export-menu');
+            if (dropdown && menu && !dropdown.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        });
+        // Toggle dropdown on trigger click
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function(e) {
+                var menu = document.getElementById('ct-export-menu');
+                if (menu) {
+                    e.stopPropagation();
+                    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+                }
+            });
+        }
 
         var searchInput = document.getElementById('ct-search');
         if (searchInput) {
@@ -812,12 +840,17 @@ var ContactosView = (function() {
     }
 
     // ========================================
-    // Export CSV
+    // Export CSV/XLSX
     // ========================================
-    async function exportCSV() {
+    async function exportContacts(format) {
+        var exportBtn = document.getElementById('ct-btn-export');
+        if (exportBtn) {
+            exportBtn.disabled = true;
+            exportBtn.innerHTML = '<svg class="tl-spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m9.24-2.83l2.83 2.83M2 12h4m16 0h4"/></svg> A exportar...';
+        }
         try {
             var token = (await sb.auth.getSession()).data.session.access_token;
-            var resp = await fetch('/api/contacts/export', {
+            var resp = await fetch('/api/contacts/export?format=' + format, {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
 
@@ -827,15 +860,21 @@ var ContactosView = (function() {
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url;
-            a.download = 'contactos-' + new Date().toISOString().split('T')[0] + '.csv';
+            var ext = format === 'xlsx' ? 'xlsx' : 'csv';
+            a.download = 'contactos-' + new Date().toISOString().split('T')[0] + '.' + ext;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            MailFlowToast.success('CSV exportado com sucesso.');
+            MailFlowToast.success('Exportação ' + ext.toUpperCase() + ' concluída com sucesso.');
         } catch (err) {
             console.error('[Contactos] Erro export:', err);
             MailFlowToast.error('Erro ao exportar contactos.');
+        } finally {
+            if (exportBtn) {
+                exportBtn.disabled = false;
+                exportBtn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg> Exportar';
+            }
         }
     }
 
