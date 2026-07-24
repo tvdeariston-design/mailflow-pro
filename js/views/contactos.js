@@ -461,7 +461,6 @@ var ContactosView = (function() {
                             '<div class="ct-file-info" id="ct-file-info" style="display:none"></div>' +
                         '</div>' +
                         
-                        // Step 2: Preview & Mapping
                         '<div id="ct-import-step2" style="display:none">' +
                             '<div class="ct-field">' +
                                 '<label class="ct-label">Pr\u00e9-visualiza\u00e7\u00e3o (primeiras 10 linhas)</label>' +
@@ -476,13 +475,11 @@ var ContactosView = (function() {
                             '</div>' +
                             '<div class="ct-field" id="ct-preview-stats" style="display:none"></div>' +
                             
-                            // Column Mapping
                             '<div class="ct-field" id="ct-mapping-wrap" style="display:none">' +
                                 '<label class="ct-label">Mapeamento de colunas</label>' +
                                 '<div class="ct-grid ct-grid--2" id="ct-mapping-fields"></div>' +
                             '</div>' +
                             
-                            // Duplicate Mode
                             '<div class="ct-field" id="ct-duplicate-mode-wrap" style="display:none">' +
                                 '<label class="ct-label">Modo para contactos existentes na base de dados</label>' +
                                 '<div class="ct-radio-group" id="ct-duplicate-mode">' +
@@ -521,9 +518,13 @@ var ContactosView = (function() {
         var selectedFile = null;
         var fileBase64 = null;
         var previewData = null;
+        var headers = [];
+        var finalHeaders = {};
         var currentMapping = {};
 
-        function closeModal() { overlay.remove(); }
+        function closeModal() { 
+            if (overlay && overlay.parentNode) overlay.remove(); 
+        }
 
         closeBtn.addEventListener('click', closeModal);
         cancelBtn.addEventListener('click', closeModal);
@@ -543,18 +544,18 @@ var ContactosView = (function() {
             var validExt = ['.csv', '.xlsx', '.xls'];
             var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
             if (!validExt.includes(ext)) {
-                MailFlowToast.error('Formato n\u00e3o suportado. Use CSV ou XLSX.');
+                MailFlowToast.error('Formato não suportado. Use CSV ou XLSX.');
                 return;
             }
             selectedFile = file;
             var reader = new FileReader();
             reader.onload = function(e) {
-                fileBase64 = e.target.result.split(',')[1]; // remove data:... prefix
+                fileBase64 = e.target.result.split(',')[1];
                 fileInfo.style.display = 'block';
                 fileInfo.innerHTML = '<strong>' + esc(file.name) + '</strong> — ' + formatBytes(file.size);
                 previewBtn.style.display = 'inline-block';
                 previewBtn.disabled = false;
-                previewBtn.textContent = 'Pr\u00e9-visualizar';
+                previewBtn.textContent = 'Pré-visualizar';
                 step2.style.display = 'none';
                 importBtn.style.display = 'none';
             };
@@ -570,11 +571,20 @@ var ContactosView = (function() {
         // Step 1: Preview
         previewBtn.addEventListener('click', async function() {
             if (!fileBase64 || !selectedFile) return;
+            if (!sb) { MailFlowToast.error('Cliente indisponível.'); return; }
+            
             this.disabled = true;
             this.textContent = 'A processar...';
 
             try {
-                var token = (await sb.auth.getSession()).data.session.access_token;
+                var sessionResult = await sb.auth.getSession();
+                if (!sessionResult.data.session) { 
+                    MailFlowToast.error('Sessão expirada. Faça login novamente.'); 
+                    closeModal(); 
+                    window.location.href = '/entrar.html'; 
+                    return; 
+                }
+                var token = sessionResult.data.session.access_token;
                 var resp = await fetch('/api/contacts/import/preview', {
                     method: 'POST',
                     headers: {
@@ -588,17 +598,26 @@ var ContactosView = (function() {
                     })
                 });
 
+                if (resp.status === 401) { 
+                    MailFlowToast.error('Sessão expirada. Faça login novamente.'); 
+                    closeModal(); 
+                    window.location.href = '/entrar.html'; 
+                    return; 
+                }
+
                 var result = await resp.json();
                 if (!result.success) {
                     MailFlowToast.error(result.error || 'Erro ao processar ficheiro');
                     this.disabled = false;
-                    this.textContent = 'Pr\u00e9-visualizar';
+                    this.textContent = 'Pré-visualizar';
                     return;
                 }
 
                 previewData = result;
+                headers = result.headers || [];
+                finalHeaders = result.finalHeaders || {};
                 renderPreview(result);
-                buildMappingUI(result.headers, result.finalHeaders);
+                buildMappingUI(headers, finalHeaders);
                 
                 step2.style.display = 'block';
                 mappingWrap.style.display = 'block';
@@ -612,7 +631,7 @@ var ContactosView = (function() {
                 MailFlowToast.error('Erro ao comunicar com o servidor.');
             }
             this.disabled = false;
-            this.textContent = 'Pr\u00e9-visualizar';
+            this.textContent = 'Pré-visualizar';
         });
 
         function renderPreview(data) {
@@ -638,12 +657,11 @@ var ContactosView = (function() {
                 previewBody.appendChild(tr);
             });
 
-            // Stats
             previewStats.style.display = 'block';
             previewStats.innerHTML = '' +
                 '<div class="ct-grid ct-grid--4" style="margin-top:8px">' +
-                    '<div class="ct-stat"><span class="ct-stat__value ct-stat--success">' + data.validCount + '</span><span class="ct-stat__label">V\u00e1lidas</span></div>' +
-                    '<div class="ct-stat"><span class="ct-stat__value ct-stat--danger">' + data.invalidCount + '</span><span class="ct-stat__label">Email inv\u00e1lido</span></div>' +
+                    '<div class="ct-stat"><span class="ct-stat__value ct-stat--success">' + data.validCount + '</span><span class="ct-stat__label">Válidas</span></div>' +
+                    '<div class="ct-stat"><span class="ct-stat__value ct-stat--danger">' + data.invalidCount + '</span><span class="ct-stat__label">Email inválido</span></div>' +
                     '<div class="ct-stat"><span class="ct-stat__value ct-stat--warning">' + data.emptyEmailCount + '</span><span class="ct-stat__label">Email vazio</span></div>' +
                     '<div class="ct-stat"><span class="ct-stat__value ct-stat--info">' + data.duplicateCount + '</span><span class="ct-stat__label">Duplicados</span></div>' +
                     '<div class="ct-stat"><span class="ct-stat__value">' + data.totalRows + '</span><span class="ct-stat__label">Total linhas</span></div>' +
@@ -652,17 +670,17 @@ var ContactosView = (function() {
 
         function buildMappingUI(headers, finalHeaders) {
             var fields = [
-                { key: 'email', label: 'Email *', required: true },
-                { key: 'nome', label: 'Nome', required: false },
-                { key: 'telefone', label: 'Telefone', required: false },
-                { key: 'empresa', label: 'Empresa', required: false },
-                { key: 'tags', label: 'Tags', required: false }
+                { key: 'email', label: 'Email *' },
+                { key: 'nome', label: 'Nome' },
+                { key: 'telefone', label: 'Telefone' },
+                { key: 'empresa', label: 'Empresa' },
+                { key: 'tags', label: 'Tags' }
             ];
             
             mappingFields.innerHTML = '';
             fields.forEach(function(field) {
                 var mappedIdx = finalHeaders[field.key];
-                var options = '<option value="-1">— N\u00e3o mapear —</option>';
+                var options = '<option value="-1">— Não mapear —</option>';
                 headers.forEach(function(h, i) {
                     var selected = (i === mappedIdx) ? 'selected' : '';
                     options += '<option value="' + i + '" ' + selected + '>' + esc(h) + '</option>';
@@ -680,16 +698,23 @@ var ContactosView = (function() {
                     refreshPreviewWithMapping();
                 });
                 
-                // Initialize mapping
                 currentMapping[field.key] = mappedIdx >= 0 ? mappedIdx : -1;
             });
         }
 
         async function refreshPreviewWithMapping() {
             if (!fileBase64 || !selectedFile) return;
+            if (!sb) { MailFlowToast.error('Cliente indisponível.'); return; }
             
             try {
-                var token = (await sb.auth.getSession()).data.session.access_token;
+                var sessionResult = await sb.auth.getSession();
+                if (!sessionResult.data.session) { 
+                    MailFlowToast.error('Sessão expirada.'); 
+                    closeModal(); 
+                    window.location.href = '/entrar.html'; 
+                    return; 
+                }
+                var token = sessionResult.data.session.access_token;
                 var resp = await fetch('/api/contacts/import/preview', {
                     method: 'POST',
                     headers: {
@@ -702,6 +727,13 @@ var ContactosView = (function() {
                         mapping: currentMapping
                     })
                 });
+
+                if (resp.status === 401) { 
+                    MailFlowToast.error('Sessão expirada.'); 
+                    closeModal(); 
+                    window.location.href = '/entrar.html'; 
+                    return; 
+                }
 
                 var result = await resp.json();
                 if (result.success) {
@@ -717,6 +749,7 @@ var ContactosView = (function() {
         // Step 2: Import
         importBtn.addEventListener('click', async function() {
             if (!fileBase64 || !selectedFile || !previewData) return;
+            if (!sb) { MailFlowToast.error('Cliente indisponível.'); return; }
             
             var duplicateMode = document.querySelector('input[name="duplicateMode"]:checked').value;
             
@@ -724,7 +757,14 @@ var ContactosView = (function() {
             this.textContent = 'A importar...';
 
             try {
-                var token = (await sb.auth.getSession()).data.session.access_token;
+                var sessionResult = await sb.auth.getSession();
+                if (!sessionResult.data.session) { 
+                    MailFlowToast.error('Sessão expirada.'); 
+                    closeModal(); 
+                    window.location.href = '/entrar.html'; 
+                    return; 
+                }
+                var token = sessionResult.data.session.access_token;
                 var resp = await fetch('/api/contacts/import', {
                     method: 'POST',
                     headers: {
@@ -738,6 +778,13 @@ var ContactosView = (function() {
                         duplicateMode: duplicateMode
                     })
                 });
+
+                if (resp.status === 401) { 
+                    MailFlowToast.error('Sessão expirada.'); 
+                    closeModal(); 
+                    window.location.href = '/entrar.html'; 
+                    return; 
+                }
 
                 var result = await resp.json();
                 if (result.success) {
@@ -763,6 +810,7 @@ var ContactosView = (function() {
             }
         });
     }
+
     // ========================================
     // Export CSV
     // ========================================
