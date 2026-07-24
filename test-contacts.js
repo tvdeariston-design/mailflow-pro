@@ -153,7 +153,7 @@ function testDeadCode() {
     const server = readFile('server.js');
 
     // No unused upsert with onConflict in import (now uses ignoreDuplicates)
-    ok(js.includes('ignoreDuplicates: true') || server.includes('ignoreDuplicates: true'),
+    ok(server.includes('duplicateMode') && (server.includes('create-only') || server.includes("mode === 'update'") || server.includes("mode === 'skip'")),
         'Import uses upsert with ignoreDuplicates');
 
     // No manual duplicate check in frontend saveContact

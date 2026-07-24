@@ -533,75 +533,294 @@ app.post('/api/contacts', authMiddleware, async (req, res) => {
 });
 
 
-// POST /api/contacts/import - Importar contactos de CSV
-app.post('/api/contacts/import', authMiddleware, async (req, res) => {
+// POST /api/contacts/import/preview - Preview CSV/XLSX file
+app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
     try {
-        const { csv } = req.body;
+        const { content, filename, mapping } = req.body;
 
-        if (!csv || typeof csv !== 'string') {
-            return res.status(400).json({ success: false, error: 'CSV em falta ou inválido' });
+        if (!content || !filename) {
+            return res.status(400).json({ success: false, error: 'Ficheiro em falta' });
         }
 
-        // Parse CSV simples (suporta vírgula como separador, aspas para escape)
-        const lines = csv.trim().split('\n');
-        if (lines.length < 2) {
-            return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
-        }
+        const ext = filename.split('.').pop().toLowerCase();
+        let headers = [];
+        let rows = [];
 
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
-        const emailIdx = headers.indexOf('email');
-        const nomeIdx = headers.indexOf('nome');
-        const telefoneIdx = headers.indexOf('telefone');
-        const empresaIdx = headers.indexOf('empresa');
-        const tagsIdx = headers.indexOf('tags');
+        if (ext === 'csv') {
+            const lines = content.trim().split('\n');
+            if (lines.length < 2) {
+                return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
+            }
 
-        if (emailIdx === -1) {
-            return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória no CSV' });
-        }
-
-        const contactsToInsert = [];
-        const errors = [];
-
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-
-            // Parse CSV line com suporte a aspas
-            const cells = [];
-            let current = '';
-            let inQuotes = false;
-            for (let j = 0; j < line.length; j++) {
-                const char = line[j];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    cells.push(current.trim().replace(/""/g, '"'));
-                    current = '';
-                } else {
-                    current += char;
+            // Auto-detect separator
+            const separators = [',', ';', '\t'];
+            let bestSep = ',';
+            let maxCols = 0;
+            for (const sep of separators) {
+                const cols = lines[0].split(sep).length;
+                if (cols > maxCols) {
+                    maxCols = cols;
+                    bestSep = sep;
                 }
             }
-            cells.push(current.trim().replace(/""/g, '"'));
 
-            if (cells.length <= emailIdx) {
-                errors.push({ line: i + 1, error: 'Linha incompleta' });
+            headers = lines[0].split(bestSep).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+            rows = lines.slice(1).map(line => {
+                const cells = [];
+                let current = '';
+                let inQuotes = false;
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"') inQuotes = !inQuotes;
+                    else if (char === bestSep && !inQuotes) {
+                        cells.push(current.trim().replace(/""/g, '"'));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                cells.push(current.trim().replace(/""/g, '"'));
+                return cells;
+            });
+        } else if (ext === 'xlsx' || ext === 'xls') {
+            const XLSX = require('xlsx');
+            const buffer = Buffer.from(content, 'base64');
+            const workbook = XLSX.read(buffer, { type: 'buffer' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            if (json.length < 2) {
+                return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
+            }
+
+            headers = json[0].map(h => String(h).trim().toLowerCase());
+            rows = json.slice(1);
+        } else {
+            return res.status(400).json({ success: false, error: 'Formato não suportado. Use CSV ou XLSX' });
+        }
+
+        // Apply column mapping if provided
+        const requiredFields = ['nome', 'email', 'telefone', 'empresa', 'tags'];
+        const finalHeaders = {};
+        for (const field of requiredFields) {
+            const mappedIdx = mapping && mapping[field] !== undefined ? mapping[field] : headers.indexOf(field);
+            finalHeaders[field] = mappedIdx >= 0 ? mappedIdx : -1;
+        }
+
+        if (finalHeaders.email === -1) {
+            return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória (mapeie uma coluna do ficheiro)' });
+        }
+
+        // Preview first 10 rows with validation
+        const preview = [];
+        let validCount = 0;
+        let invalidCount = 0;
+        let emptyEmailCount = 0;
+        const seenEmails = new Set();
+        let duplicateCount = 0;
+
+        for (let i = 0; i < Math.min(rows.length, 10); i++) {
+            const row = rows[i];
+            const email = finalHeaders.email >= 0 ? row[finalHeaders.email] : '';
+            const nome = finalHeaders.nome >= 0 ? row[finalHeaders.nome] : '';
+            const telefone = finalHeaders.telefone >= 0 ? row[finalHeaders.telefone] : '';
+            const empresa = finalHeaders.empresa >= 0 ? row[finalHeaders.empresa] : '';
+            const tags = finalHeaders.tags >= 0 && row[finalHeaders.tags] ? 
+                String(row[finalHeaders.tags]).split(';').map(t => t.trim()).filter(t => t) : [];
+
+            const emailStr = String(email).toLowerCase().trim();
+            const isEmpty = !emailStr;
+            const emailValid = emailStr && validateEmail(emailStr);
+            const isDuplicate = emailStr && seenEmails.has(emailStr);
+            
+            let status = 'valid';
+            if (isEmpty) { status = 'empty'; emptyEmailCount++; }
+            else if (!emailValid) { status = 'invalid_email'; invalidCount++; }
+            else if (isDuplicate) { status = 'duplicate'; duplicateCount++; }
+            else { status = 'valid'; validCount++; seenEmails.add(emailStr); }
+
+            preview.push({
+                rowIndex: i + 1,
+                email: emailStr,
+                nome: String(nome).trim(),
+                telefone: String(telefone).trim(),
+                empresa: String(empresa).trim(),
+                tags: tags,
+                status,
+                statusLabel: status === 'valid' ? 'Válido' : 
+                            status === 'empty' ? 'Email vazio' : 
+                            status === 'invalid_email' ? 'Email inválido' : 'Duplicado no ficheiro'
+            });
+        }
+
+        // Count total stats for all rows
+        for (let i = 10; i < rows.length; i++) {
+            const row = rows[i];
+            const emailStr = String(finalHeaders.email >= 0 ? row[finalHeaders.email] : '').toLowerCase().trim();
+            const isEmpty = !emailStr;
+            const emailValid = emailStr && validateEmail(emailStr);
+            const isDuplicate = emailStr && seenEmails.has(emailStr);
+            
+            if (isEmpty) emptyEmailCount++;
+            else if (!emailValid) invalidCount++;
+            else if (isDuplicate) duplicateCount++;
+            else { validCount++; seenEmails.add(emailStr); }
+        }
+
+        // Check DB duplicates for preview rows
+        if (validCount > 0) {
+            const previewEmails = preview.filter(p => p.status === 'valid').map(p => p.email);
+            if (previewEmails.length > 0) {
+                const { data: existing } = await req.supabase
+                    .from('contacts')
+                    .select('email')
+                    .eq('user_id', req.user.id)
+                    .in('email', previewEmails);
+                
+                if (existing && existing.length > 0) {
+                    const existingSet = new Set(existing.map(e => e.email));
+                    preview.forEach(p => {
+                        if (p.status === 'valid' && existingSet.has(p.email)) {
+                            p.status = 'db_duplicate';
+                            p.statusLabel = 'Já existe na base de dados';
+                            duplicateCount++;
+                            validCount--;
+                        }
+                    });
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            preview,
+            totalRows: rows.length,
+            headers,
+            validCount,
+            invalidCount,
+            emptyEmailCount,
+            duplicateCount,
+            finalHeaders
+        });
+
+    } catch (error) {
+        logger.error('Erro ao pré-visualizar importação: ' + error.message, 'Contacts');
+        res.status(500).json({ success: false, error: 'Erro ao processar ficheiro' });
+    }
+});
+
+
+// POST /api/contacts/import - Importar contactos de CSV/XLSX
+app.post('/api/contacts/import', authMiddleware, async (req, res) => {
+    try {
+        const { content, filename, mapping, duplicateMode } = req.body;
+
+        if (!content || !filename) {
+            return res.status(400).json({ success: false, error: 'Ficheiro em falta' });
+        }
+
+        const ext = filename.split('.').pop().toLowerCase();
+        let headers = [];
+        let rows = [];
+
+        if (ext === 'csv') {
+            const lines = content.trim().split('\n');
+            if (lines.length < 2) {
+                return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
+            }
+
+            // Auto-detect separator
+            const separators = [',', ';', '\t'];
+            let bestSep = ',';
+            let maxCols = 0;
+            for (const sep of separators) {
+                const cols = lines[0].split(sep).length;
+                if (cols > maxCols) {
+                    maxCols = cols;
+                    bestSep = sep;
+                }
+            }
+
+            headers = lines[0].split(bestSep).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+            rows = lines.slice(1).map(line => {
+                const cells = [];
+                let current = '';
+                let inQuotes = false;
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"') inQuotes = !inQuotes;
+                    else if (char === bestSep && !inQuotes) {
+                        cells.push(current.trim().replace(/""/g, '"'));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                cells.push(current.trim().replace(/""/g, '"'));
+                return cells;
+            });
+        } else if (ext === 'xlsx' || ext === 'xls') {
+            const XLSX = require('xlsx');
+            const buffer = Buffer.from(content, 'base64');
+            const workbook = XLSX.read(buffer, { type: 'buffer' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            
+            if (json.length < 2) {
+                return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
+            }
+            
+            headers = json[0].map(h => String(h).trim().toLowerCase());
+            rows = json.slice(1);
+        } else {
+            return res.status(400).json({ success: false, error: 'Formato não suportado. Use CSV ou XLSX' });
+        }
+
+        // Apply column mapping
+        const requiredFields = ['nome', 'email', 'telefone', 'empresa', 'tags'];
+        const finalHeaders = {};
+        for (const field of requiredFields) {
+            const mappedIdx = mapping && mapping[field] !== undefined ? mapping[field] : headers.indexOf(field);
+            finalHeaders[field] = mappedIdx >= 0 ? mappedIdx : -1;
+        }
+
+        if (finalHeaders.email === -1) {
+            return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória' });
+        }
+
+        // Parse and validate all rows
+        const contactsToInsert = [];
+        const errors = [];
+        const existingEmails = new Set();
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const email = finalHeaders.email >= 0 ? String(row[finalHeaders.email] || '').toLowerCase().trim() : '';
+            const nome = finalHeaders.nome >= 0 ? String(row[finalHeaders.nome] || '').trim() : '';
+            const telefone = finalHeaders.telefone >= 0 ? String(row[finalHeaders.telefone] || '').trim() : '';
+            const empresa = finalHeaders.empresa >= 0 ? String(row[finalHeaders.empresa] || '').trim() : '';
+            const tags = finalHeaders.tags >= 0 && row[finalHeaders.tags] ? 
+                String(row[finalHeaders.tags]).split(';').map(t => t.trim()).filter(t => t) : [];
+
+            if (!email) {
+                errors.push({ line: i + 2, error: 'Email vazio', type: 'empty' });
                 continue;
             }
 
-            const email = cells[emailIdx].toLowerCase().trim();
             if (!validateEmail(email)) {
-                errors.push({ line: i + 1, error: 'Email inválido: ' + email });
+                errors.push({ line: i + 2, error: 'Email inválido: ' + email, type: 'invalid_email' });
                 continue;
             }
 
-            const nome = nomeIdx >= 0 && cells[nomeIdx] ? cells[nomeIdx].trim() : email.split('@')[0];
-            const telefone = telefoneIdx >= 0 ? cells[telefoneIdx].trim() : '';
-            const empresa = empresaIdx >= 0 ? cells[empresaIdx].trim() : '';
-            const tags = tagsIdx >= 0 && cells[tagsIdx] ? cells[tagsIdx].split(';').map(t => t.trim()).filter(t => t) : [];
+            if (existingEmails.has(email)) {
+                errors.push({ line: i + 2, error: 'Email duplicado no ficheiro: ' + email, type: 'duplicate_in_file' });
+                continue;
+            }
 
+            existingEmails.add(email);
             contactsToInsert.push({
                 user_id: req.user.id,
-                nome,
+                nome: nome || email.split('@')[0],
                 email,
                 telefone,
                 empresa,
@@ -613,27 +832,58 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Nenhum contacto válido para importar', errors });
         }
 
-        // Inserir contactos (upsert — duplicados por email são ignorados)
-        let imported = 0;
-        let skipped = 0;
+        // Check for existing contacts in DB
+        const emailsToCheck = contactsToInsert.map(c => c.email);
+        const { data: existingContacts, error: checkError } = await req.supabase
+            .from('contacts')
+            .select('email')
+            .eq('user_id', req.user.id)
+            .in('email', emailsToCheck);
 
-        for (const contact of contactsToInsert) {
-            const { error } = await req.supabase
-                .from('contacts')
-                .upsert(contact, { onConflict: 'user_id,email', ignoreDuplicates: true });
+        const existingInDb = new Set((existingContacts || []).map(c => c.email));
+
+        // Handle duplicates based on mode
+        let imported = 0;
+        let updated = 0;
+        let skipped = 0;
+        const batchSize = 100;
+
+        for (let i = 0; i < contactsToInsert.length; i += batchSize) {
+            const batch = contactsToInsert.slice(i, i + batchSize);
             
-            if (error) {
-                errors.push({ email: contact.email, error: error.message });
-            } else {
-                imported++;
+            for (const contact of batch) {
+                const isDuplicate = existingInDb.has(contact.email);
+                
+                if (isDuplicate) {
+                    if (duplicateMode === 'update') {
+                        const { error } = await req.supabase
+                            .from('contacts')
+                            .update({ nome: contact.nome, telefone: contact.telefone, empresa: contact.empresa, tags: contact.tags, updated_at: new Date().toISOString() })
+                            .eq('user_id', req.user.id)
+                            .eq('email', contact.email);
+                        if (!error) updated++;
+                        else errors.push({ email: contact.email, error: error.message });
+                    } else if (duplicateMode === 'skip') {
+                        skipped++;
+                    }
+                    // For 'create-only' (default), we just don't insert
+                } else {
+                    const { error } = await req.supabase
+                        .from('contacts')
+                        .insert(contact);
+                    if (!error) imported++;
+                    else errors.push({ email: contact.email, error: error.message });
+                }
             }
         }
 
-        logger.info('Importação CSV - User: ' + req.user.id + ', Importados: ' + imported + ', Ignorados: ' + skipped, 'Contacts');
+        logger.info(`Importação ${ext.toUpperCase()} - User: ${req.user.id}, Importados: ${imported}, Atualizados: ${updated}, Ignorados: ${skipped}, Erros: ${errors.length}`, 'Contacts');
         res.json({
             success: true,
             imported,
+            updated,
             skipped,
+            totalProcessed: contactsToInsert.length,
             errors: errors.length > 0 ? errors : undefined
         });
 
@@ -642,7 +892,6 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, error: 'Erro ao processar importação' });
     }
 });
-
 
 // PUT /api/contacts/:id - Atualizar contacto
 app.put('/api/contacts/:id', authMiddleware, async (req, res) => {
