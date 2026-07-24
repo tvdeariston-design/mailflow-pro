@@ -975,6 +975,214 @@ app.delete('/api/templates/:id', authMiddleware, async (req, res) => {
     }
 });
 
+
+// ============================================
+// CAMPAIGNS API
+// ============================================
+
+// GET /api/campaigns - Listar campanhas com paginacao e filtros
+app.get('/api/campaigns', authMiddleware, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, search = '', status = '' } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const offset = (pageNum - 1) * limitNum;
+
+        let query = req.supabase
+            .from('campaigns')
+            .select('*', { count: 'exact' })
+            .eq('user_id', req.user.id)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false });
+
+        if (search) query = query.or('nome.ilike.%' + search + '%,assunto.ilike.%' + search + '%');
+        if (status) query = query.eq('status', status);
+        query = query.range(offset, offset + limitNum - 1);
+
+        const { data, error, count } = await query;
+        if (error) {
+            logger.error('Erro ao listar campanhas: ' + error.message, 'Campaigns');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar campanhas' });
+        }
+        res.json({ campaigns: data || [], pagination: { page: pageNum, limit: limitNum, total: count || 0, totalPages: Math.ceil((count || 0) / limitNum) } });
+    } catch (error) {
+        logger.error('Erro inesperado ao listar campanhas: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// POST /api/campaigns - Criar campanha
+app.post('/api/campaigns', authMiddleware, async (req, res) => {
+    try {
+        const { nome, assunto, template_id, from_name, from_email, reply_to } = req.body;
+        if (!nome || !nome.trim()) return res.status(400).json({ success: false, error: 'Nome e obrigatorio' });
+
+        const { data, error } = await req.supabase
+            .from('campaigns')
+            .insert({
+                user_id: req.user.id, created_by: req.user.id,
+                nome: nome.trim(), assunto: (assunto || '').trim(),
+                template_id: template_id || null,
+                from_name: (from_name || '').trim(), from_email: (from_email || '').trim(),
+                reply_to: (reply_to || '').trim(), status: 'draft'
+            })
+            .select().single();
+
+        if (error) { logger.error('Erro ao criar campanha: ' + error.message, 'Campaigns'); return res.status(500).json({ success: false, error: 'Erro ao criar campanha' }); }
+        res.status(201).json({ success: true, campaign: data });
+    } catch (error) {
+        logger.error('Erro inesperado ao criar campanha: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// GET /api/campaigns/:id/recipients - Listar recipients (STATIC before :id)
+app.get('/api/campaigns/:id/recipients', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data: campaign, error: campErr } = await req.supabase
+            .from('campaigns').select('id').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (campErr || !campaign) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+
+        const { data, error } = await req.supabase
+            .from('campaign_recipients')
+            .select('*, contacts!inner(id, nome, email)')
+            .eq('campaign_id', id).order('created_at', { ascending: true });
+
+        if (error) { logger.error('Erro ao listar recipients: ' + error.message, 'Campaigns'); return res.status(500).json({ success: false, error: 'Erro ao buscar recipients' }); }
+        res.json({ recipients: data || [] });
+    } catch (error) {
+        logger.error('Erro inesperado ao listar recipients: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// POST /api/campaigns/:id/recipients - Adicionar contactos (STATIC before :id)
+app.post('/api/campaigns/:id/recipients', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { contact_ids, filter } = req.body;
+
+        const { data: campaign, error: campErr } = await req.supabase
+            .from('campaigns').select('id, status').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (campErr || !campaign) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+        if (campaign.status !== 'draft') return res.status(400).json({ success: false, error: 'Apenas campanhas em rascunho podem receber contactos' });
+
+        let contactIds = contact_ids || [];
+        if (filter && filter.tags && filter.tags.length > 0) {
+            const { data: filtered } = await req.supabase.from('contacts').select('id').eq('user_id', req.user.id).is('deleted_at', null).overlaps('tags', filter.tags);
+            if (filtered) contactIds = [...new Set([...contactIds, ...filtered.map(c => c.id)])];
+        }
+        if (contactIds.length === 0) return res.status(400).json({ success: false, error: 'Nenhum contacto selecionado' });
+
+        const { data: validContacts } = await req.supabase.from('contacts').select('id').eq('user_id', req.user.id).in('id', contactIds);
+        const validIds = (validContacts || []).map(c => c.id);
+
+        let added = 0, skipped = 0;
+        for (const contactId of validIds) {
+            const { error } = await req.supabase.from('campaign_recipients').insert({ campaign_id: id, contact_id: contactId });
+            if (error) { if (error.code === '23505') skipped++; else logger.error('Erro ao adicionar recipient: ' + error.message, 'Campaigns'); }
+            else added++;
+        }
+
+        const { count } = await req.supabase.from('campaign_recipients').select('id', { count: 'exact', head: true }).eq('campaign_id', id);
+        await req.supabase.from('campaigns').update({ total_recipients: count || 0 }).eq('id', id);
+
+        res.json({ success: true, added, skipped, total_recipients: count || 0 });
+    } catch (error) {
+        logger.error('Erro inesperado ao adicionar recipients: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// GET /api/campaigns/:id - Obter campanha por ID (AFTER static paths)
+app.get('/api/campaigns/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data, error } = await req.supabase
+            .from('campaigns').select('*').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (error) {
+            if (error.code === 'PGRST116') return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+            logger.error('Erro ao obter campanha: ' + error.message, 'Campaigns');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar campanha' });
+        }
+        res.json({ campaign: data });
+    } catch (error) {
+        logger.error('Erro inesperado ao obter campanha: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// PUT /api/campaigns/:id - Atualizar campanha
+app.put('/api/campaigns/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, assunto, template_id, from_name, from_email, reply_to, status } = req.body;
+
+        const { data: existing, error: checkError } = await req.supabase
+            .from('campaigns').select('id, status').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (checkError || !existing) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+        if (existing.status !== 'draft' && status === undefined) return res.status(400).json({ success: false, error: 'Apenas campanhas em rascunho podem ser editadas completamente' });
+
+        const updates = {};
+        if (nome !== undefined) updates.nome = nome.trim();
+        if (assunto !== undefined) updates.assunto = assunto.trim();
+        if (template_id !== undefined) updates.template_id = template_id || null;
+        if (from_name !== undefined) updates.from_name = (from_name || '').trim();
+        if (from_email !== undefined) updates.from_email = (from_email || '').trim();
+        if (reply_to !== undefined) updates.reply_to = (reply_to || '').trim();
+        if (status !== undefined) updates.status = status;
+        if (Object.keys(updates).length === 0) return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+
+        const { data, error } = await req.supabase.from('campaigns').update(updates).eq('id', id).eq('user_id', req.user.id).select().single();
+        if (error) { logger.error('Erro ao atualizar campanha: ' + error.message, 'Campaigns'); return res.status(500).json({ success: false, error: 'Erro ao atualizar campanha' }); }
+        res.json({ success: true, campaign: data });
+    } catch (error) {
+        logger.error('Erro inesperado ao atualizar campanha: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// DELETE /api/campaigns/:id/recipients/:contactId - Remover contacto (STATIC before :id)
+app.delete('/api/campaigns/:id/recipients/:contactId', authMiddleware, async (req, res) => {
+    try {
+        const { id, contactId } = req.params;
+        const { data: campaign, error: campErr } = await req.supabase
+            .from('campaigns').select('id, status').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (campErr || !campaign) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+        if (campaign.status !== 'draft') return res.status(400).json({ success: false, error: 'Apenas campanhas em rascunho podem ter contactos removidos' });
+
+        const { error } = await req.supabase.from('campaign_recipients').delete().eq('campaign_id', id).eq('contact_id', contactId);
+        if (error) { logger.error('Erro ao remover recipient: ' + error.message, 'Campaigns'); return res.status(500).json({ success: false, error: 'Erro ao remover recipient' }); }
+
+        const { count } = await req.supabase.from('campaign_recipients').select('id', { count: 'exact', head: true }).eq('campaign_id', id);
+        await req.supabase.from('campaigns').update({ total_recipients: count || 0 }).eq('id', id);
+
+        res.json({ success: true, message: 'Contacto removido da campanha' });
+    } catch (error) {
+        logger.error('Erro inesperado ao remover recipient: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// DELETE /api/campaigns/:id - Eliminar campanha (soft delete) (AFTER /:id/recipients/:contactId)
+app.delete('/api/campaigns/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data: existing, error: checkError } = await req.supabase
+            .from('campaigns').select('id').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (checkError || !existing) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+
+        const { error } = await req.supabase.from('campaigns').update({ deleted_at: new Date().toISOString() }).eq('id', id).eq('user_id', req.user.id);
+        if (error) { logger.error('Erro ao eliminar campanha: ' + error.message, 'Campaigns'); return res.status(500).json({ success: false, error: 'Erro ao eliminar campanha' }); }
+
+        res.json({ success: true, message: 'Campanha eliminada com sucesso' });
+    } catch (error) {
+        logger.error('Erro inesperado ao eliminar campanha: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
 // ============================================
 // 6. CRIAR CHECKOUT STRIPE (equivalente a criar-checkout)
 // ============================================

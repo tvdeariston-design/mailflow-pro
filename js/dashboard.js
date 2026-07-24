@@ -43,7 +43,7 @@
 
     var VIEWS = {
         'overview': { title: 'Visão Geral', module: function() { return window.OverviewView; } },
-        'campanhas': { title: 'Campanhas', module: null },
+        'campanhas': { title: 'Campanhas', module: function() { return window.CampanhasView; } },
         'contactos': { title: 'Contactos', module: function() { return window.ContactosView; } },
         'templates': { title: 'Templates', module: function() { return window.TemplatesView; } },
         'analytics': { title: 'Analytics', module: null },

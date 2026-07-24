@@ -2124,3 +2124,71 @@ button {
     .tl-search__input { width: 100%; }
     .tl-grid { grid-template-columns: 1fr; }
 }
+
+/* ========================================
+   Campaigns Module
+   ======================================== */
+
+/* Stepper */
+.cp-stepper {
+    display: flex;
+    gap: 0;
+    padding: 16px 24px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.cp-step {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+.cp-step--active {
+    color: #6366f1;
+    border-bottom-color: #6366f1;
+}
+
+/* Modal */
+.cp-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px);
+    z-index: 9999; display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+}
+.cp-modal {
+    background: white; border-radius: 16px; width: 100%; max-width: 640px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    max-height: 90vh; overflow-y: auto;
+}
+.cp-modal--lg { max-width: 720px; }
+.cp-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; }
+.cp-modal__title { font-size: 1rem; font-weight: 700; color: #111827; margin: 0; }
+.cp-modal__close {
+    width: 32px; height: 32px; border: none; background: transparent;
+    color: #9ca3af; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.cp-modal__close:hover { background: #f3f4f6; color: #374151; }
+.cp-modal__body { padding: 20px 24px; min-height: 200px; }
+.cp-modal__footer { display: flex; justify-content: flex-end; gap: 10px; padding: 0 24px 20px; border-top: 1px solid var(--border-color); padding-top: 16px; }
+
+/* Card selection */
+.cp-card--selected { border-color: #6366f1 !important; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
+
+/* Contact row */
+.cp-contact-row:hover { background: #fafbfc; }
+
+/* Badge colors */
+.tl-badge--blue { color: #1e40af; background: #dbeafe; }
+.tl-badge--yellow { color: #92400e; background: #fef3c7; }
+.tl-badge--orange { color: #9a3412; background: #ffedd5; }
+.tl-badge--red { color: #991b1b; background: #fee2e2; }
+
+/* Select input */
+.tl-input--select {
+    appearance: auto;
+    cursor: pointer;
+}
