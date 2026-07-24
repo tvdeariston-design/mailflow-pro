@@ -129,11 +129,21 @@ var ConfigView = (function() {
         var secure = (p && p.smtp_secure) ? true : false;
         var fromEmail = (p && p.smtp_from_email) ? esc(p.smtp_from_email) : '';
         var fromName = (p && p.smtp_from_name) ? esc(p.smtp_from_name) : '';
+        var smtpStatus = (p && p.smtp_status) ? p.smtp_status : 'not_configured';
+
+        var statusBadge = '';
+        if (smtpStatus === 'verified') {
+            statusBadge = '<span class="tl-badge tl-badge--green" style="margin-left:8px;font-size:0.75rem;">🟢 Ligação verificada</span>';
+        } else if (smtpStatus === 'configured') {
+            statusBadge = '<span class="tl-badge tl-badge--orange" style="margin-left:8px;font-size:0.75rem;">🟠 Configurado</span>';
+        } else {
+            statusBadge = '<span class="tl-badge tl-badge--red" style="margin-left:8px;font-size:0.75rem;">🔴 Não configurado</span>';
+        }
 
         return '' +
             '<div class="tl-card" style="margin-top:24px;">' +
                 '<div class="tl-card__header">' +
-                    '<h2 class="tl-card__title">SMTP Personalizado</h2>' +
+                    '<h2 class="tl-card__title">SMTP Personalizado' + statusBadge + '</h2>' +
                 '</div>' +
                 '<div class="tl-card__body" style="max-width:560px;">' +
                     '<div class="tl-field">' +
@@ -375,6 +385,11 @@ var ConfigView = (function() {
                     if (resp.ok && data.success) {
                         statusEl.innerHTML = '<div style="padding:10px 14px;background:#dcfce7;color:#166534;border-radius:8px;font-size:0.8125rem;font-weight:500;">Ligação SMTP bem-sucedida!</div>';
                         if (MailFlowToast && MailFlowToast.success) MailFlowToast.success('Ligação SMTP bem-sucedida!');
+                        // Update badge
+                        var badgeEl = document.querySelector('.tl-card__title .tl-badge');
+                        if (badgeEl) {
+                            badgeEl.outerHTML = '<span class="tl-badge tl-badge--green" style="margin-left:8px;font-size:0.75rem;">🟢 Ligação verificada</span>';
+                        }
                     } else {
                         statusEl.innerHTML = '<div style="padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:0.8125rem;font-weight:500;">' + esc(data.error || 'Erro ao testar ligação SMTP') + '</div>';
                         if (MailFlowToast && MailFlowToast.error) MailFlowToast.error(data.error || 'Erro ao testar ligação SMTP');

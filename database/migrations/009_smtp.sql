@@ -20,3 +20,8 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_from_name TEXT DEFAULT '';
 -- Índice para queries SMTP
 CREATE INDEX IF NOT EXISTS idx_profiles_smtp_host ON profiles(smtp_host);
 
+-- SMTP status tracking
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_status TEXT DEFAULT 'not_configured'
+  CHECK (smtp_status IN ('not_configured', 'configured', 'verified'));
+CREATE INDEX IF NOT EXISTS idx_profiles_smtp_status ON profiles(smtp_status);
+

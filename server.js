@@ -338,6 +338,21 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
             updates.smtp_from_name = body.smtp_from_name.trim();
         }
 
+        // Update smtp_status when SMTP fields are saved
+        var smtpFieldsProvided = body.smtp_host !== undefined && body.smtp_port !== undefined &&
+                                  body.smtp_username !== undefined && body.smtp_password !== undefined;
+        if (smtpFieldsProvided) {
+            var hasHost = body.smtp_host && body.smtp_host.trim();
+            var hasPort = body.smtp_port !== undefined && !isNaN(parseInt(body.smtp_port, 10)) && parseInt(body.smtp_port, 10) > 0;
+            var hasUser = body.smtp_username && body.smtp_username.trim();
+            var hasPass = body.smtp_password !== undefined && body.smtp_password !== '';
+            if (hasHost && hasPort && hasUser && hasPass) {
+                updates.smtp_status = 'configured';
+            } else {
+                updates.smtp_status = 'not_configured';
+            }
+        }
+
         updates.updated_at = new Date().toISOString();
 
         const { data, error } = await req.supabase
@@ -399,6 +414,12 @@ app.post('/api/smtp/test', authMiddleware, async (req, res) => {
 
         // Verify connection only - do NOT send email
         await testTransporter.verify();
+
+        // Update smtp_status to verified
+        await req.supabase
+            .from('profiles')
+            .update({ smtp_status: 'verified', smtp_verified_at: new Date().toISOString() })
+            .eq('id', req.user.id);
 
         logger.info('SMTP test successful - User: ' + req.user.id, 'SMTP');
         res.json({ success: true, message: 'Ligação SMTP bem-sucedida!' });
@@ -466,6 +487,12 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
             subject: 'MailFlow Pro - Teste SMTP',
             html: '<h2>Ligação SMTP bem-sucedida</h2><p>Este é um email de teste enviado pelo MailFlow Pro.</p>'
         });
+
+        // Update smtp_status to verified
+        await req.supabase
+            .from('profiles')
+            .update({ smtp_status: 'verified', smtp_verified_at: new Date().toISOString() })
+            .eq('id', req.user.id);
 
         logger.info('SMTP test email sent - User: ' + req.user.id + ', To: ' + body.to, 'SMTP');
         res.json({ success: true });
