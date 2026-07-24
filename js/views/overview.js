@@ -142,7 +142,7 @@ var OverviewView = (function() {
                 showHelpVideo({
                     title: 'Tutorial: Primeiros Passos no MailFlow Pro',
                     description: 'Veja este vídeo de 45 segundos e aprenda rapidamente a utilizar a plataforma.',
-                    videoUrl: null
+                    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
                 });
             });
         }
@@ -464,7 +464,7 @@ var OverviewView = (function() {
         showHelpVideo({
             title: 'Tutorial: Primeiros Passos no MailFlow Pro',
             description: 'Veja este vídeo de 45 segundos e aprenda rapidamente a utilizar a plataforma.',
-            videoUrl: null
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
         });
     }
 
