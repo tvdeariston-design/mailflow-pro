@@ -416,6 +416,19 @@ h1, h2, h3, h4, h5, h6 {
     transition: opacity var(--transition-base, 0.2s) ease;
 }
 
+.kpi-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.04) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity var(--transition-smooth);
+    pointer-events: none;
+}
+
 .kpi-card:hover {
     transform: translateY(-3px);
     box-shadow: var(--shadow-lg);
@@ -423,6 +436,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .kpi-card:hover::before {
+    opacity: 1;
+}
+
+.kpi-card:hover::after {
     opacity: 1;
 }
 
@@ -443,7 +460,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .kpi-card__value {
-    font-size: 1.875rem;
+    font-size: 2rem;
     font-weight: 800;
     color: #0f172a;
     line-height: 1.1;
@@ -452,6 +469,67 @@ h1, h2, h3, h4, h5, h6 {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+.kpi-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.kpi-card__icon--indigo {
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+}
+
+.kpi-card__icon--green {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.kpi-card__icon--amber {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.kpi-card__icon--rose {
+    background: rgba(244, 63, 94, 0.1);
+    color: #f43f5e;
+}
+
+.kpi-card__icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.kpi-card__label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 6px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.kpi-card__change {
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.kpi-card__change--up {
+    color: #059669;
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.kpi-card__change--down {
+    color: #dc2626;
+    background: rgba(239, 68, 68, 0.08);
 }
 
 /* ========================================
@@ -744,35 +822,38 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .quick-card__icon {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 14px;
-    transition: transform var(--transition-base, 0.2s) ease;
+    margin-bottom: 16px;
+    transition: transform var(--transition-base, 0.2s) ease, box-shadow var(--transition-base, 0.2s) ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .quick-card:hover .quick-card__icon {
     transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .quick-card__icon svg {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
 }
 
 .quick-card__title {
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     font-weight: 700;
-    color: #111827;
-    margin-bottom: 4px;
+    color: #0f172a;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
 }
 
 .quick-card__desc {
     font-size: 0.8125rem;
-    color: #6b7280;
+    color: #64748b;
     line-height: 1.5;
 }
 
@@ -1086,6 +1167,10 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 640px) {
     .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-grid {
         grid-template-columns: 1fr;
     }
 
@@ -1524,131 +1609,6 @@ h1, h2, h3, h4, h5, h6 {
 .content-body {
     animation: page-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
-/* ========================================
-    Sidebar User — Premium
-    ======================================== */
-.sidebar__user {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    border-top: 1px solid rgba(148, 163, 184, 0.08);
-    background: linear-gradient(180deg, rgba(99, 102, 241, 0.03) 0%, transparent 100%);
-}
-
-@media (max-width: 1024px) {
-    .quick-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 640px) {
-    .quick-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-.quick-card {
-    display: block;
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 24px;
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.2s ease;
-}
-
-.quick-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-    border-color: rgba(99, 102, 241, 0.3);
-}
-
-.quick-card__icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 16px;
-}
-
-.quick-card__icon svg {
-    width: 24px;
-    height: 24px;
-}
-
-.quick-card__title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #111827;
-    margin-bottom: 8px;
-}
-
-.quick-card__desc {
-    font-size: 0.8125rem;
-    color: #6b7280;
-    line-height: 1.5;
-}
-
-/* ========================================
-   Activity Feed (ensure consistent)
-   ======================================== */
-.activity-feed {
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    overflow: hidden;
-}
-
-.activity-feed__empty {
-    padding: 48px 24px;
-    text-align: center;
-    color: #9ca3af;
-    font-size: 0.875rem;
-}
-
-.activity-feed__item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--border-subtle);
-    transition: background 0.15s ease;
-}
-
-.activity-feed__item:last-child {
-    border-bottom: none;
-}
-
-.activity-feed__item:hover {
-    background: #fafbfc;
-}
-
-.activity-feed__dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #6366f1;
-    margin-top: 6px;
-    flex-shrink: 0;
-}
-
-.activity-feed__text {
-    font-size: 0.8125rem;
-    color: #374151;
-    line-height: 1.5;
-}
-
-.activity-feed__time {
-    font-size: 0.75rem;
-    color: #9ca3af;
-    margin-top: 2px;
-}
-
 
 /* ========================================
    Contactos Module
