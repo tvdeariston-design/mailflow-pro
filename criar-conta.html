@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criar Conta — MailFlow Pro</title>
+    <title>Criar a sua conta — MailFlow Pro</title>
     <meta name="description" content="Crie a sua conta gratuita no MailFlow Pro. CRM de email marketing para nichos.">
     <meta name="robots" content="noindex, nofollow">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,77 +19,170 @@
     <div class="auth-page__orb auth-page__orb--2" aria-hidden="true"></div>
 
     <main class="auth-page__main">
-        <div class="auth-card">
-            <!-- Logo -->
-            <a href="/" class="auth-card__logo" aria-label="MailFlow Pro — Página inicial">
-                📧 MailFlow Pro
-            </a>
-
-            <!-- Título -->
-            <h1 class="auth-card__title">Criar a sua conta</h1>
-            <p class="auth-card__subtitle">Comece a automatizar o seu email marketing em minutos.</p>
-
-            <!-- Formulário -->
-            <form id="signup-form" class="auth-form" novalidate>
-                <div class="auth-form__group">
-                    <label for="nome" class="auth-form__label">Nome</label>
-                    <input
-                        type="text"
-                        id="nome"
-                        name="nome"
-                        class="auth-form__input"
-                        placeholder="O seu nome"
-                        required
-                        autocomplete="name"
-                    >
-                </div>
-
-                <div class="auth-form__group">
-                    <label for="email" class="auth-form__label">Email</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        class="auth-form__input"
-                        placeholder="exemplo@email.com"
-                        required
-                        autocomplete="email"
-                    >
-                </div>
-
-                <div class="auth-form__group">
-                    <label for="password" class="auth-form__label">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        class="auth-form__input"
-                        placeholder="Mínimo 6 caracteres"
-                        required
-                        minlength="6"
-                        autocomplete="new-password"
-                    >
-                </div>
-
-                <!-- Erro (escondido por defeito) -->
-                <div id="error-message" class="auth-form__error" role="alert" hidden></div>
-
-                <button type="submit" id="btn-submit" class="auth-form__btn">
-                    <span class="auth-form__btn-text">Criar Conta</span>
-                    <span class="auth-form__btn-loading" hidden>
-                        <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10" stroke-opacity="0.3"/>
-                            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/>
+        <!-- Hero Section (esquerda) -->
+        <div class="auth-hero" aria-hidden="true">
+            <div class="auth-hero__content">
+                <a href="/" class="auth-hero__logo" aria-label="MailFlow Pro — Página inicial">
+                    <span class="auth-hero__logo-icon" aria-hidden="true">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="32" height="32" rx="8" fill="url(#grad)"/>
+                            <path d="M8 11L16 19L24 11" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <defs><linearGradient id="grad" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs>
                         </svg>
-                        A criar conta...
                     </span>
-                </button>
-            </form>
+                    <span class="auth-hero__logo-text">MailFlow Pro</span>
+                </a>
 
-            <!-- Link login -->
-            <p class="auth-card__footer">
-                Já tem conta? <a href="/entrar.html" class="auth-card__link">Entrar</a>
-            </p>
+                <h1 class="auth-hero__title">Comece a automatizar em minutos</h1>
+                <p class="auth-hero__description">Junte-se a milhares de criadores e equipas que usam o MailFlow Pro para crescer as suas audiências e converter mais com email marketing inteligente.</p>
+
+                <ul class="auth-hero__benefits" role="list">
+                    <li class="auth-hero__benefit">
+                        <svg class="auth-hero__benefit-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>
+                        <span>Plano gratuito generoso — sem cartão</span>
+                    </li>
+                    <li class="auth-hero__benefit">
+                        <svg class="auth-hero__benefit-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>
+                        <span>Setup em 2 minutos — sem código</span>
+                    </li>
+                    <li class="auth-hero__benefit">
+                        <svg class="auth-hero__benefit-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>
+                        <span>RGPD compliant por defeito</span>
+                    </li>
+                    <li class="auth-hero__benefit">
+                        <svg class="auth-hero__benefit-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>
+                        <span>Suporte prioritário no plano Pro</span>
+                    </li>
+                </ul>
+
+                <div class="auth-hero__trust">
+                    <span class="auth-hero__trust-label">Confiado por equipas modernas</span>
+                    <div class="auth-hero__avatars" aria-hidden="true">
+                        <div class="auth-hero__avatar" style="--i:0"></div>
+                        <div class="auth-hero__avatar" style="--i:1"></div>
+                        <div class="auth-hero__avatar" style="--i:2"></div>
+                        <div class="auth-hero__avatar" style="--i:3"></div>
+                        <div class="auth-hero__avatar auth-hero__avatar--more">+12</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-hero__illustration" aria-hidden="true">
+                <div class="auth-hero__float-card auth-hero__float-card--1">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    <span>+340% opens</span>
+                </div>
+                <div class="auth-hero__float-card auth-hero__float-card--2">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-6"/></svg>
+                    <span>+127% clicks</span>
+                </div>
+                <div class="auth-hero__float-card auth-hero__float-card--3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                    <span>99.9% uptime</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card do Formulário (direita) -->
+        <div class="auth-page__form-wrapper">
+            <div class="auth-card">
+                <!-- Header mobile only -->
+                <a href="/" class="auth-form__logo-mobile" aria-label="MailFlow Pro — Página inicial">
+                    <span class="auth-hero__logo-icon" aria-hidden="true">
+                        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="32" height="32" rx="8" fill="url(#grad2)"/>
+                            <path d="M8 11L16 19L24 11" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <defs><linearGradient id="grad2" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs>
+                        </svg>
+                    </span>
+                    <span>MailFlow Pro</span>
+                </a>
+
+                <!-- Título -->
+                <h1 class="auth-form__title">Criar a sua conta</h1>
+                <p class="auth-form__subtitle">Comece grátis. Sem cartão de crédito necessário.</p>
+
+                <!-- Formulário -->
+                <form id="signup-form" class="auth-form" novalidate>
+                    <div class="auth-form__group">
+                        <label for="nome" class="auth-form__label">Nome</label>
+                        <div class="auth-form__input-wrapper">
+                            <svg class="auth-form__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <input
+                                type="text"
+                                id="nome"
+                                name="nome"
+                                class="auth-form__input"
+                                placeholder="O seu nome"
+                                required
+                                autocomplete="name"
+                                aria-describedby="nome-hint"
+                            >
+                        </div>
+                        <span id="nome-hint" class="auth-form__hint">Como gostaria de ser chamado</span>
+                    </div>
+
+                    <div class="auth-form__group">
+                        <label for="email" class="auth-form__label">Email</label>
+                        <div class="auth-form__input-wrapper">
+                            <svg class="auth-form__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="auth-form__input"
+                                placeholder="exemplo@email.com"
+                                required
+                                autocomplete="email"
+                                aria-describedby="email-hint"
+                            >
+                        </div>
+                        <span id="email-hint" class="auth-form__hint">O seu email de acesso</span>
+                    </div>
+
+                    <div class="auth-form__group">
+                        <label for="password" class="auth-form__label">Password</label>
+                        <div class="auth-form__input-wrapper">
+                            <svg class="auth-form__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                class="auth-form__input"
+                                placeholder="Mínimo 6 caracteres"
+                                required
+                                minlength="6"
+                                autocomplete="new-password"
+                                aria-describedby="password-hint"
+                            >
+                            <button type="button" class="auth-form__toggle" id="toggle-password" aria-label="Mostrar password" aria-pressed="false">
+                                <svg class="auth-form__toggle-icon auth-form__toggle-icon--show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="auth-form__toggle-icon auth-form__toggle-icon--hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-5.523 0-10-4.477-10-10a10.07 10.07 0 0 1 4.34-9.34"/><path d="M1 1l22 22"/></svg>
+                            </button>
+                        </div>
+                        <span id="password-hint" class="auth-form__hint">Mínimo 6 caracteres</span>
+                    </div>
+
+                    <!-- Erro (escondido por defeito) -->
+                    <div id="error-message" class="auth-form__error" role="alert" hidden></div>
+
+                    <button type="submit" id="btn-submit" class="auth-form__btn">
+                        <span class="auth-form__btn-text">Criar Conta</span>
+                        <span class="auth-form__btn-loading" hidden>
+                            <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10" stroke-opacity="0.3"/>
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/>
+                            </svg>
+                            A criar conta...
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Link login -->
+                <p class="auth-form__footer">
+                    Já tem conta? <a href="/entrar.html" class="auth-form__link">Entrar</a>
+                </p>
+            </div>
         </div>
     </main>
 
@@ -108,6 +201,299 @@
         var btnText = btnSubmit.querySelector('.auth-form__btn-text');
         var btnLoading = btnSubmit.querySelector('.auth-form__btn-loading');
         var errorEl = document.getElementById('error-message');
+        var toggleBtn = document.getElementById('toggle-password');
+        var passwordInput = document.getElementById('password');
+
+        // Toggle password visibility
+        if (toggleBtn && passwordInput) {
+            toggleBtn.addEventListener('click', function() {
+                var isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                toggleBtn.setAttribute('aria-pressed', isPassword);
+                toggleBtn.setAttribute('aria-label', isPassword ? 'Ocultar password' : 'Mostrar password');
+            });
+        }
+
+        // Redirecionar se já autenticado
+        MailFlowAuth.getSession().then(function(session) {
+            if (session) window.location.href = '/dashboard.html';
+        });
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            var nome = document.getElementById('nome').value.trim();
+            var email = document.getElementById('email').value.trim();
+            var password = document.getElementById('password').value;
+
+            // Validação
+            if (!nome || !email || !password) {
+                showError('Preencha todos os campos.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('A password deve ter pelo menos 6 caracteres.');
+                return;
+            }
+
+            // UI: estado de loading
+            setLoading(true);
+            hideError();
+
+            try {
+                // 1. Criar conta via API (Netlify Function ou Render server)
+                var response = await fetch(window.MailFlowAPI.auth.signup, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password, nome: nome })
+                });
+
+                var data = await response.json();
+
+                if (!data.success) {
+                    showError(data.error || 'Ocorreu um erro. Tente novamente.');
+                    setLoading(false);
+                    return;
+                }
+
+                // 2. Login automático (a function já confirmou o email)
+                var loginResult = await MailFlowAuth.signIn(email, password);
+
+                if (loginResult.success) {
+                    MailFlowToast.success('Conta criada com sucesso!');
+                    window.location.href = '/dashboard.html';
+                } else {
+                    showError(loginResult.error || 'Conta criada. Faça login manualmente.');
+                    setLoading(false);
+                }
+
+            } catch (err) {
+                console.error('[Criar Conta] Erro de conexão:', err);
+                showError('Erro de conexão. Verifique a sua ligação à internet.');
+                setLoading(false);
+            }
+        });
+
+        function setLoading(loading) {
+            btnSubmit.disabled = loading;
+            btnText.hidden = loading;
+            btnLoading.hidden = !loading;
+        }
+
+        function showError(msg) {
+            errorEl.textContent = msg;
+            errorEl.hidden = false;
+        }
+
+        function hideError() {
+            errorEl.hidden = true;
+            errorEl.textContent = '';
+        }
+    })();
+    </script>
+</body>
+</html>
+    <!-- Background decorativo -->
+    <div class="auth-page__bg" aria-hidden="true"></div>
+    <div class="auth-page__orb auth-page__orb--1" aria-hidden="true"></div>
+    <div class="auth-page__orb auth-page__orb--2" aria-hidden="true"></div>
+
+    <main class="auth-page__main">
+        <!-- Hero Section (esquerda) -->
+        <div class="auth-hero" aria-hidden="true">
+            <div class="auth-hero__content">
+                <a href="/" class="auth-hero__logo" aria-label="MailFlow Pro — Página inicial">
+                    <span class="auth-hero__logo-icon" aria-hidden="true">
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="32" height="32" rx="8" fill="url(#grad)"/>
+                            <path d="M8 11L16 19L24 11" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <defs><linearGradient id="grad" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs>
+                        </svg>
+                    </span>
+                    <span class="auth-hero__logo-text">MailFlow Pro</span>
+                </a>
+
+                <h1 class="auth-hero__title">Comece a automatizar em minutos</h1>
+                <p class="auth-hero__description">Junte-se a milhares de criadores e equipas que usam o MailFlow Pro para crescer as suas audiências e converter mais com email marketing inteligente.</p>
+
+                <ul class="auth-hero__benefits" role="list">
+                    <li class="auth-hero__benefit">
+                        <svg class="auth-hero__benefit-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>
+                        <span>Plano gratuito generoso — sem cartão</span>
+                    </li>
+                    <li class="auth-hero__benefit">
+                        <svg class="auth-hero__benefit-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>
+                        <span>Setup em 2 minutos — sem código</span>
+                    </li>
+                    <li class="auth-hero__benefit">
+                        <svg class="auth-hero__benefit-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>
+                        <span>RGPD compliant por defeito</span>
+                    </li>
+                    <li class="auth-hero__benefit">
+                        <svg class="auth-hero__benefit-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill="currentColor"/></svg>
+                        <span>Suporte prioritário no plano Pro</span>
+                    </li>
+                </ul>
+
+                <div class="auth-hero__trust">
+                    <span class="auth-hero__trust-label">Confiado por equipas modernas</span>
+                    <div class="auth-hero__avatars" aria-hidden="true">
+                        <div class="auth-hero__avatar" style="--i:0"></div>
+                        <div class="auth-hero__avatar" style="--i:1"></div>
+                        <div class="auth-hero__avatar" style="--i:2"></div>
+                        <div class="auth-hero__avatar" style="--i:3"></div>
+                        <div class="auth-hero__avatar auth-hero__avatar--more">+12</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-hero__illustration" aria-hidden="true">
+                <div class="auth-hero__float-card auth-hero__float-card--1">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    <span>+340% opens</span>
+                </div>
+                <div class="auth-hero__float-card auth-hero__float-card--2">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-6"/></svg>
+                    <span>+127% clicks</span>
+                </div>
+                <div class="auth-hero__float-card auth-hero__float-card--3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                    <span>99.9% uptime</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card do Formulário (direita) -->
+        <div class="auth-page__form-wrapper">
+            <div class="auth-card">
+                <!-- Header mobile only -->
+                <a href="/" class="auth-form__logo-mobile" aria-label="MailFlow Pro — Página inicial">
+                    <span class="auth-hero__logo-icon" aria-hidden="true">
+                        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="32" height="32" rx="8" fill="url(#grad2)"/>
+                            <path d="M8 11L16 19L24 11" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <defs><linearGradient id="grad2" x1="0" y1="0" x2="32" y2="32"><stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs>
+                        </svg>
+                    </span>
+                    <span>MailFlow Pro</span>
+                </a>
+
+                <!-- Título -->
+                <h1 class="auth-form__title">Criar a sua conta</h1>
+                <p class="auth-form__subtitle">Comece grátis. Sem cartão de crédito necessário.</p>
+
+                <!-- Formulário -->
+                <form id="signup-form" class="auth-form" novalidate>
+                    <div class="auth-form__group">
+                        <label for="nome" class="auth-form__label">Nome</label>
+                        <div class="auth-form__input-wrapper">
+                            <svg class="auth-form__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <input
+                                type="text"
+                                id="nome"
+                                name="nome"
+                                class="auth-form__input"
+                                placeholder="O seu nome"
+                                required
+                                autocomplete="name"
+                                aria-describedby="nome-hint"
+                            >
+                        </div>
+                        <span id="nome-hint" class="auth-form__hint">Como gostaria de ser chamado</span>
+                    </div>
+
+                    <div class="auth-form__group">
+                        <label for="email" class="auth-form__label">Email</label>
+                        <div class="auth-form__input-wrapper">
+                            <svg class="auth-form__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="auth-form__input"
+                                placeholder="exemplo@email.com"
+                                required
+                                autocomplete="email"
+                                aria-describedby="email-hint"
+                            >
+                        </div>
+                        <span id="email-hint" class="auth-form__hint">O seu email de acesso</span>
+                    </div>
+
+                    <div class="auth-form__group">
+                        <label for="password" class="auth-form__label">Password</label>
+                        <div class="auth-form__input-wrapper">
+                            <svg class="auth-form__input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                class="auth-form__input"
+                                placeholder="Mínimo 6 caracteres"
+                                required
+                                minlength="6"
+                                autocomplete="new-password"
+                                aria-describedby="password-hint"
+                            >
+                            <button type="button" class="auth-form__toggle" id="toggle-password" aria-label="Mostrar password" aria-pressed="false">
+                                <svg class="auth-form__toggle-icon auth-form__toggle-icon--show" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg class="auth-form__toggle-icon auth-form__toggle-icon--hide" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-5.523 0-10-4.477-10-10a10.07 10.07 0 0 1 4.34-9.34"/><path d="M1 1l22 22"/></svg>
+                            </button>
+                        </div>
+                        <span id="password-hint" class="auth-form__hint">Mínimo 6 caracteres</span>
+                    </div>
+
+                    <!-- Erro (escondido por defeito) -->
+                    <div id="error-message" class="auth-form__error" role="alert" hidden></div>
+
+                    <button type="submit" id="btn-submit" class="auth-form__btn">
+                        <span class="auth-form__btn-text">Criar Conta</span>
+                        <span class="auth-form__btn-loading" hidden>
+                            <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10" stroke-opacity="0.3"/>
+                                <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/>
+                            </svg>
+                            A criar conta...
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Link login -->
+                <p class="auth-form__footer">
+                    Já tem conta? <a href="/entrar.html" class="auth-form__link">Entrar</a>
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/api-config.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        var form = document.getElementById('signup-form');
+        var btnSubmit = document.getElementById('btn-submit');
+        var btnText = btnSubmit.querySelector('.auth-form__btn-text');
+        var btnLoading = btnSubmit.querySelector('.auth-form__btn-loading');
+        var errorEl = document.getElementById('error-message');
+        var toggleBtn = document.getElementById('toggle-password');
+        var passwordInput = document.getElementById('password');
+
+        // Toggle password visibility
+        if (toggleBtn && passwordInput) {
+            toggleBtn.addEventListener('click', function() {
+                var isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                toggleBtn.setAttribute('aria-pressed', isPassword);
+                toggleBtn.setAttribute('aria-label', isPassword ? 'Ocultar password' : 'Mostrar password');
+            });
+        }
 
         // Redirecionar se já autenticado
         MailFlowAuth.getSession().then(function(session) {

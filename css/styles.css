@@ -2609,6 +2609,54 @@ a:hover {
     color: #a5b4fc;
 }
 
+/* Auth Form Classes (premium alternative) */
+.auth-form__logo-mobile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.auth-form__title {
+    font-size: var(--font-size-2xl);
+    font-weight: 800;
+    color: var(--color-white);
+    text-align: center;
+    margin-bottom: var(--space-2);
+    letter-spacing: -0.02em;
+}
+
+.auth-form__subtitle {
+    font-size: var(--font-size-sm);
+    color: #64748b;
+    text-align: center;
+    margin-bottom: var(--space-8);
+    line-height: 1.5;
+}
+
+.auth-form__footer {
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: #64748b;
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.auth-form__link {
+    color: #818cf8;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.auth-form__link:hover {
+    color: #a5b4fc;
+}
+
 /* Form */
 .auth-form__group {
     margin-bottom: var(--space-5);
