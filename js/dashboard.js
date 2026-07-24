@@ -46,8 +46,8 @@
         'campanhas': { title: 'Campanhas', module: function() { return window.CampanhasView; } },
         'contactos': { title: 'Contactos', module: function() { return window.ContactosView; } },
         'templates': { title: 'Templates', module: function() { return window.TemplatesView; } },
-        'analytics': { title: 'Analytics', module: null },
-        'config': { title: 'Configurações', module: null }
+        'analytics': { title: 'Analytics', module: function() { return window.AnalyticsView; } },
+        'config': { title: 'Configurações', module: function() { return window.ConfigView; } }
     };
 
     // ========================================
