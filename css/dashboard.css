@@ -2388,3 +2388,40 @@ button {
     .tl-preview-frame--desktop { max-width: 100%; }
     .tl-preview-container { padding: 10px; }
 }
+
+/* ========================================
+   Campaign Engine — Progress Bar + Actions
+   ======================================== */
+
+.cp-progress {
+    width: 100%;
+    height: 20px;
+    background: #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+.cp-progress__bar {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    border-radius: 10px;
+    transition: width 0.4s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: white;
+    min-width: 30px;
+}
+
+.cp-progress__info {
+    font-size: 0.6875rem;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.tl-action--send:hover { color: #2563eb; background: rgba(37, 99, 235, 0.08); }
+.tl-action--pause:hover { color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
+.tl-action--cancel:hover { color: #ef4444; background: rgba(239, 68, 68, 0.08); }

@@ -9,6 +9,7 @@ const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require('nodemailer');
+const campaignEngine = require('./services/campaign-engine');
 
 const app = express();
 const path = require('path');
@@ -1296,6 +1297,101 @@ app.delete('/api/campaigns/:id', authMiddleware, async (req, res) => {
 });
 
 // ============================================
+// ============================================
+// CAMPAIGN ENGINE API
+// ============================================
+
+// POST /api/campaigns/:id/send — Iniciar envio de campanha
+app.post('/api/campaigns/:id/send', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Verificar que a campanha existe e pertence ao utilizador
+        const { data: campaign, error: campErr } = await req.supabase
+            .from('campaigns').select('id, status').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (campErr || !campaign) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+
+        const result = await campaignEngine.startCampaign(supabaseAdmin, id, req.user.id);
+        if (!result.success) return res.status(400).json(result);
+
+        res.json(result);
+    } catch (error) {
+        logger.error('Erro ao enviar campanha: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao iniciar envio' });
+    }
+});
+
+// POST /api/campaigns/:id/pause — Pausar envio
+app.post('/api/campaigns/:id/pause', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: campaign, error: campErr } = await req.supabase
+            .from('campaigns').select('id, status').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (campErr || !campaign) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+
+        const result = campaignEngine.pauseCampaign(id);
+        if (!result.success) return res.status(400).json(result);
+
+        res.json(result);
+    } catch (error) {
+        logger.error('Erro ao pausar campanha: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao pausar campanha' });
+    }
+});
+
+// POST /api/campaigns/:id/resume — Retomar campanha pausada
+app.post('/api/campaigns/:id/resume', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: campaign, error: campErr } = await req.supabase
+            .from('campaigns').select('id, status').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (campErr || !campaign) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+
+        const result = await campaignEngine.resumeCampaign(supabaseAdmin, id, req.user.id);
+        if (!result.success) return res.status(400).json(result);
+
+        res.json(result);
+    } catch (error) {
+        logger.error('Erro ao retomar campanha: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao retomar campanha' });
+    }
+});
+
+// POST /api/campaigns/:id/cancel — Cancelar campanha
+app.post('/api/campaigns/:id/cancel', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: campaign, error: campErr } = await req.supabase
+            .from('campaigns').select('id, status').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
+        if (campErr || !campaign) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+
+        const result = campaignEngine.cancelCampaign(id);
+        if (!result.success) return res.status(400).json(result);
+
+        res.json(result);
+    } catch (error) {
+        logger.error('Erro ao cancelar campanha: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao cancelar campanha' });
+    }
+});
+
+// GET /api/campaigns/:id/progress — Obter progresso do envio
+app.get('/api/campaigns/:id/progress', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await campaignEngine.getProgress(supabaseAdmin, id, req.user.id);
+        if (!result.success) return res.status(404).json(result);
+        res.json(result);
+    } catch (error) {
+        logger.error('Erro ao obter progresso: ' + error.message, 'Campaigns');
+        res.status(500).json({ success: false, error: 'Erro ao obter progresso' });
+    }
+});
+
+
 // 6. CRIAR CHECKOUT STRIPE (equivalente a criar-checkout)
 // ============================================
 app.post('/api/checkout/create', async (req, res) => {

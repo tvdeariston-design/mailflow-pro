@@ -2,7 +2,8 @@
  * MailFlow Pro — View: Campanhas
  *
  * Gestao de campanhas de email marketing.
- * CRUD completo com soft delete, duplicar, selecao de templates e contactos.
+ * CRUD + motor de envio (send, pause, resume, cancel).
+ * Progress bar com polling.
  */
 
 var CampanhasView = (function() {
@@ -20,6 +21,7 @@ var CampanhasView = (function() {
         filterStatus: '',
         loading: false
     };
+    var pollingTimers = {};
 
     function init() { sb = window.supabaseClient; }
 
@@ -46,6 +48,34 @@ var CampanhasView = (function() {
             sent: 'Enviada', paused: 'Pausada', cancelled: 'Cancelada', failed: 'Falhou'
         };
         return '<span class="tl-badge ' + (map[status] || 'tl-badge--gray') + '">' + (labels[status] || status) + '</span>';
+    }
+
+    function getAPIBase() {
+        var cfg = window.MailFlowAPI;
+        if (cfg && cfg.email && cfg.email.send !== undefined) {
+            return cfg.email.send.replace('/api/email/send', '');
+        }
+        return '';
+    }
+
+    async function getAccessToken() {
+        try {
+            var session = await MailFlowAuth.getSession();
+            if (session && session.access_token) return session.access_token;
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+
+    async function apiCall(method, path, body) {
+        var token = await getAccessToken();
+        if (!token) { MailFlowToast.error('Sessao expirada.'); return null; }
+        var opts = {
+            method: method,
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+        };
+        if (body) opts.body = JSON.stringify(body);
+        var resp = await fetch(getAPIBase() + path, opts);
+        return resp.json();
     }
 
     // ========================================
@@ -98,9 +128,66 @@ var CampanhasView = (function() {
     }
 
     // ========================================
+    // Polling
+    // ========================================
+    function startPolling(campaignId) {
+        if (pollingTimers[campaignId]) return;
+        pollingTimers[campaignId] = setInterval(async function() {
+            var result = await apiCall('GET', '/api/campaigns/' + campaignId + '/progress');
+            if (result && result.success) {
+                var c = result.campaign;
+                // Update progress bar in DOM
+                var bar = document.getElementById('cp-progress-' + campaignId);
+                if (bar) {
+                    bar.style.width = (c.progress_percent || 0) + '%';
+                    bar.textContent = (c.progress_percent || 0) + '%';
+                }
+                var info = document.getElementById('cp-progress-info-' + campaignId);
+                if (info) {
+                    info.textContent = (c.total_sent || 0) + ' / ' + (c.total_recipients || 0) + ' enviados';
+                }
+                // Update status badge if changed
+                var badge = document.getElementById('cp-status-' + campaignId);
+                if (badge) {
+                    badge.outerHTML = statusBadge(c.status);
+                    badge.id = 'cp-status-' + campaignId;
+                }
+                // Stop polling if finished
+                if (c.status !== 'sending') {
+                    stopPolling(campaignId);
+                    // Update action buttons
+                    updateActionButtons(campaignId, c.status);
+                    // Refresh list
+                    refresh();
+                }
+            }
+        }, 2000);
+    }
+
+    function stopPolling(campaignId) {
+        if (pollingTimers[campaignId]) {
+            clearInterval(pollingTimers[campaignId]);
+            delete pollingTimers[campaignId];
+        }
+    }
+
+    function stopAllPolling() {
+        Object.keys(pollingTimers).forEach(stopPolling);
+    }
+
+    function updateActionButtons(campaignId, status) {
+        var actions = document.querySelector('[data-actions="' + campaignId + '"]');
+        if (actions) {
+            actions.innerHTML = getActionButtons(campaignId, status);
+            bindActionButtons(campaignId, status);
+        }
+    }
+
+    // ========================================
     // Render
     // ========================================
     async function render(container) {
+        stopAllPolling();
         init();
         currentContainer = container;
         user = await MailFlowAuth.getUser();
@@ -110,6 +197,38 @@ var CampanhasView = (function() {
         container.innerHTML = buildHTML(result.data, result.count);
         bindEvents();
         updateBadge(result.count);
+        // Start polling for active campaigns
+        result.data.forEach(function(c) {
+            if (c.status === 'sending') startPolling(c.id);
+        });
+    }
+
+    function getActionButtons(id, status) {
+        var btns = '';
+        if (status === 'draft') {
+            btns += '<button class="tl-action tl-action--send" data-action="send" data-id="' + id + '" title="Enviar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg></button>';
+            btns += '<button class="tl-action tl-action--edit" data-action="edit" data-id="' + id + '" title="Editar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>';
+        } else if (status === 'sending') {
+            btns += '<button class="tl-action tl-action--pause" data-action="pause" data-id="' + id + '" title="Pausar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></button>';
+        } else if (status === 'paused') {
+            btns += '<button class="tl-action tl-action--send" data-action="resume" data-id="' + id + '" title="Retomar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></button>';
+            btns += '<button class="tl-action tl-action--cancel" data-action="cancel" data-id="' + id + '" title="Cancelar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>';
+        } else if (status === 'failed') {
+            btns += '<button class="tl-action tl-action--send" data-action="resume" data-id="' + id + '" title="Tentar novamente"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>';
+        }
+        btns += '<button class="tl-action tl-action--duplicate" data-action="duplicate" data-id="' + id + '" title="Duplicar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></button>';
+        btns += '<button class="tl-action tl-action--delete" data-action="delete" data-id="' + id + '" title="Eliminar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>';
+        return btns;
+    }
+
+    function renderProgressBar(c) {
+        if (c.status !== 'sending' && c.status !== 'paused') return '';
+        var pct = c.progress_percent || 0;
+        return '' +
+            '<div class="cp-progress">' +
+                '<div class="cp-progress__bar" id="cp-progress-' + c.id + '" style="width:' + pct + '%">' + pct + '%</div>' +
+            '</div>' +
+            '<div class="cp-progress__info" id="cp-progress-info-' + c.id + '">' + (c.total_sent || 0) + ' / ' + (c.total_recipients || 0) + ' enviados</div>';
     }
 
     function buildHTML(campaigns, total) {
@@ -147,22 +266,20 @@ var CampanhasView = (function() {
     function renderTable(campaigns, total) {
         var totalPages = Math.ceil(total / state.limit);
         var rows = campaigns.map(function(c) {
-            var isDraft = c.status === 'draft';
             return '' +
                 '<tr class="ct-row">' +
                     '<td>' +
                         '<div class="ct-row__info">' +
                             '<div class="ct-row__title">' + esc(c.nome || 'Sem nome') + '</div>' +
                             '<div class="ct-row__subtitle">' + esc(c.assunto || 'Sem assunto') + '</div>' +
+                            renderProgressBar(c) +
                         '</div>' +
                     '</td>' +
-                    '<td>' + statusBadge(c.status) + '</td>' +
+                    '<td id="cp-status-' + c.id + '">' + statusBadge(c.status) + '</td>' +
                     '<td>' + (c.total_recipients || 0) + '</td>' +
                     '<td>' + formatDate(c.created_at) + '</td>' +
-                    '<td class="ct-row__actions">' +
-                        (isDraft ? '<button class="tl-action tl-action--edit" data-id="' + c.id + '" title="Editar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>' : '') +
-                        '<button class="tl-action tl-action--duplicate" data-id="' + c.id + '" title="Duplicar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg></button>' +
-                        '<button class="tl-action tl-action--delete" data-id="' + c.id + '" title="Eliminar"><svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>' +
+                    '<td class="ct-row__actions" data-actions="' + c.id + '">' +
+                        getActionButtons(c.id, c.status) +
                     '</td>' +
                 '</tr>';
         }).join('');
@@ -172,7 +289,7 @@ var CampanhasView = (function() {
             pagination = '<div class="tl-pagination"><span class="tl-pagination__info">Pagina ' + state.page + ' de ' + totalPages + '</span><div class="tl-pagination__btns"><button class="tl-btn tl-btn--ghost tl-btn--sm" id="cp-page-prev"' + (state.page <= 1 ? ' disabled' : '') + '>&larr; Anterior</button><button class="tl-btn tl-btn--ghost tl-btn--sm" id="cp-page-next"' + (state.page >= totalPages ? ' disabled' : '') + '>Proxima &rarr;</button></div></div>';
         }
 
-        return '<div class="ct-table-wrap"><table class="ct-table"><thead><tr><th>Nome / Assunto</th><th>Estado</th><th>Destinatarios</th><th>Criada</th><th style="width:120px">Acoes</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + pagination;
+        return '<div class="ct-table-wrap"><table class="ct-table"><thead><tr><th>Nome / Assunto</th><th>Estado</th><th>Destinatarios</th><th>Criada</th><th style="width:140px">Acoes</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + pagination;
     }
 
     function renderEmpty() {
@@ -183,6 +300,54 @@ var CampanhasView = (function() {
                 '<p class="tl-empty__desc">Crie a sua primeira campanha de email marketing.</p>' +
                 '<button class="tl-btn tl-btn--primary" id="cp-btn-add-empty"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Nova Campanha</button>' +
             '</div>';
+    }
+
+    // ========================================
+    // Campaign Actions
+    // ========================================
+    async function sendCampaign(id) {
+        var result = await apiCall('POST', '/api/campaigns/' + id + '/send');
+        if (result && result.success) {
+            MailFlowToast.success('Campanha iniciada!');
+            startPolling(id);
+            refresh();
+        } else {
+            MailFlowToast.error(result ? result.error : 'Erro ao enviar campanha.');
+        }
+    }
+
+    async function pauseCampaign(id) {
+        var result = await apiCall('POST', '/api/campaigns/' + id + '/pause');
+        if (result && result.success) {
+            MailFlowToast.success('Campanha pausada.');
+            stopPolling(id);
+            refresh();
+        } else {
+            MailFlowToast.error(result ? result.error : 'Erro ao pausar campanha.');
+        }
+    }
+
+    async function resumeCampaign(id) {
+        var result = await apiCall('POST', '/api/campaigns/' + id + '/resume');
+        if (result && result.success) {
+            MailFlowToast.success('Campanha retomada!');
+            startPolling(id);
+            refresh();
+        } else {
+            MailFlowToast.error(result ? result.error : 'Erro ao retomar campanha.');
+        }
+    }
+
+    async function cancelCampaign(id) {
+        if (!confirm('Cancelar esta campanha? Os emails pendentes nao serao enviados.')) return;
+        var result = await apiCall('POST', '/api/campaigns/' + id + '/cancel');
+        if (result && result.success) {
+            MailFlowToast.success('Campanha cancelada.');
+            stopPolling(id);
+            refresh();
+        } else {
+            MailFlowToast.error(result ? result.error : 'Erro ao cancelar campanha.');
+        }
     }
 
     // ========================================
@@ -210,20 +375,31 @@ var CampanhasView = (function() {
         var next = document.getElementById('cp-page-next');
         if (next) next.addEventListener('click', function() { state.page++; refresh(); });
 
-        document.querySelectorAll('.tl-action--edit').forEach(function(b) {
-            b.addEventListener('click', function() {
-                var c = state.campaigns.find(function(x) { return x.id === b.getAttribute('data-id'); });
-                if (c) showEditor(c);
-            });
+        // Bind action buttons
+        document.querySelectorAll('[data-actions]').forEach(function(td) {
+            var campaignId = td.getAttribute('data-actions');
+            var campaign = state.campaigns.find(function(x) { return x.id === campaignId; });
+            if (campaign) bindActionButtons(campaignId, campaign.status);
         });
-        document.querySelectorAll('.tl-action--duplicate').forEach(function(b) {
-            b.addEventListener('click', function() { duplicateCampaign(b.getAttribute('data-id')); });
-        });
-        document.querySelectorAll('.tl-action--delete').forEach(function(b) {
-            b.addEventListener('click', function() {
-                var c = state.campaigns.find(function(x) { return x.id === b.getAttribute('data-id'); });
-                if (c && confirm('Eliminar campanha "' + c.nome + '"?\nEsta acao nao pode ser desfeita.')) {
-                    deleteCampaign(c.id);
+    }
+
+    function bindActionButtons(campaignId, status) {
+        document.querySelectorAll('[data-action][data-id="' + campaignId + '"]').forEach(function(btn) {
+            var action = btn.getAttribute('data-action');
+            btn.addEventListener('click', function() {
+                if (action === 'send') sendCampaign(campaignId);
+                else if (action === 'pause') pauseCampaign(campaignId);
+                else if (action === 'resume') resumeCampaign(campaignId);
+                else if (action === 'cancel') cancelCampaign(campaignId);
+                else if (action === 'duplicate') duplicateCampaign(campaignId);
+                else if (action === 'delete') {
+                    var c = state.campaigns.find(function(x) { return x.id === campaignId; });
+                    if (c && confirm('Eliminar campanha "' + c.nome + '"?\nEsta acao nao pode ser desfeita.')) {
+                        deleteCampaign(campaignId);
+                    }
+                } else if (action === 'edit') {
+                    var c = state.campaigns.find(function(x) { return x.id === campaignId; });
+                    if (c) showEditor(c);
                 }
             });
         });
@@ -246,7 +422,6 @@ var CampanhasView = (function() {
             });
             if (error) throw error;
 
-            // Copy recipients
             var { data: recipients } = await sb.from('campaign_recipients').select('contact_id').eq('campaign_id', id);
             if (recipients && recipients.length > 0) {
                 var { data: newCamp } = await sb.from('campaigns').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
@@ -410,25 +585,17 @@ var CampanhasView = (function() {
             contacts = await fetchContacts();
             var grid = document.getElementById('cp-contacts-grid');
             if (!grid) return;
-
-            // If editing, load existing recipients
-            if (campaign) {
-                var { data: existingRecipients } = await sb.from('campaign_recipients').select('contact_id').eq('campaign_id', campaign.id);
-                selectedContacts = (existingRecipients || []).map(function(r) { return r.contact_id; });
-            }
-
             if (contacts.length === 0) {
                 grid.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af">Nenhum contacto disponivel. Adicione contactos primeiro.</div>';
                 return;
             }
-
-            var html2 = '<div style="margin-bottom:12px"><input type="text" class="tl-input" id="cp-contact-search" placeholder="Pesquisar contacto..." style="width:100%"></div>' +
+            var html2 = '<div style="margin-bottom:8px"><input type="text" class="tl-input" id="cp-contact-search" placeholder="Pesquisar contacto..." style="width:100%"></div>' +
                 '<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border-color);border-radius:8px">' +
                 contacts.map(function(c) {
                     var checked = selectedContacts.indexOf(c.id) >= 0 ? ' checked' : '';
-                    return '<label class="cp-contact-row" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border-subtle);cursor:pointer">' +
-                        '<input type="checkbox" value="' + c.id + '"' + checked + ' class="cp-contact-cb">' +
-                        '<div><div style="font-weight:600;font-size:0.8125rem">' + esc(c.nome || c.email) + '</div>' +
+                    return '<label class="cp-contact-row" style="display:flex;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border-subtle);cursor:pointer;gap:8px">' +
+                        '<input type="checkbox" class="cp-contact-cb" value="' + c.id + '"' + checked + '>' +
+                        '<div><div style="font-weight:600">' + esc(c.nome || c.email) + '</div>' +
                         '<div style="font-size:0.75rem;color:#9ca3af">' + esc(c.email) + '</div></div></label>';
                 }).join('') + '</div>' +
                 '<div style="margin-top:8px;font-size:0.75rem;color:#6b7280" id="cp-contacts-count">' + selectedContacts.length + ' contactos selecionados</div>';
@@ -479,18 +646,15 @@ var CampanhasView = (function() {
                 campaign.template_id = selectedTemplate;
                 step = 3;
             } else if (step === 3) {
-                // Save campaign
                 this.disabled = true; this.textContent = 'A guardar...';
                 var ok = await saveCampaign(campaign, isEdit ? campaign.id : null);
                 if (ok) {
-                    // Save recipients
                     var campId = campaign.id;
                     if (!campId) {
                         var { data: last } = await sb.from('campaigns').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
                         if (last) campId = last.id;
                     }
                     if (campId && selectedContacts.length > 0) {
-                        // Clear existing recipients if editing
                         if (isEdit) {
                             await sb.from('campaign_recipients').delete().eq('campaign_id', campId);
                         }
@@ -521,6 +685,10 @@ var CampanhasView = (function() {
         currentContainer.innerHTML = buildHTML(result.data, result.count);
         bindEvents();
         updateBadge(result.count);
+        // Restart polling for active campaigns
+        result.data.forEach(function(c) {
+            if (c.status === 'sending' && !pollingTimers[c.id]) startPolling(c.id);
+        });
     }
 
     function updateBadge(total) {
