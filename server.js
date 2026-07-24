@@ -2398,6 +2398,213 @@ app.post('/api/email/send', async (req, res) => {
 });
 
 // ============================================
+// AUTOMATIONS API
+// ============================================
+
+// GET /api/automations - Listar automações
+app.get('/api/automations', authMiddleware, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, search = '' } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const offset = (pageNum - 1) * limitNum;
+
+        let query = req.supabase
+            .from('automation_rules')
+            .select('*, campaign:campaigns(id,name)', { count: 'exact' })
+            .eq('user_id', req.user.id)
+            .order('created_at', { ascending: false });
+
+        if (search) {
+            query = query.ilike('name', `%${search}%`);
+        }
+
+        query = query.range(offset, offset + limitNum - 1);
+
+        const { data, error, count } = await query;
+
+        if (error) {
+            logger.error('Erro ao listar automações: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar automações' });
+        }
+
+        const totalPages = Math.ceil((count || 0) / limitNum);
+
+        logger.info('Automações listadas - User: ' + req.user.id + ', Página: ' + pageNum, 'Automations');
+        res.json({
+            automations: data || [],
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: count || 0,
+                totalPages: totalPages
+            }
+        });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao listar automações: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// POST /api/automations - Criar automação
+app.post('/api/automations', authMiddleware, async (req, res) => {
+    try {
+        const { name, trigger_type, delay_minutes, campaign_id, enabled } = req.body;
+
+        if (!name || !name.trim()) {
+            return res.status(400).json({ success: false, error: 'Nome é obrigatório' });
+        }
+        if (!trigger_type) {
+            return res.status(400).json({ success: false, error: 'Trigger é obrigatório' });
+        }
+        if (!['contact_created'].includes(trigger_type)) {
+            return res.status(400).json({ success: false, error: 'Trigger inválido' });
+        }
+
+        const delay = parseInt(delay_minutes, 10) || 0;
+        if (delay < 0 || delay > 10080) {
+            return res.status(400).json({ success: false, error: 'Delay inválido (máx. 7 dias)' });
+        }
+
+        // Verify campaign belongs to user
+        if (campaign_id) {
+            const { data: campaign, error: campError } = await req.supabase
+                .from('campaigns')
+                .select('id')
+                .eq('id', campaign_id)
+                .eq('user_id', req.user.id)
+                .single();
+            if (campError || !campaign) {
+                return res.status(400).json({ success: false, error: 'Campanha não encontrada' });
+            }
+        }
+
+        const { data, error } = await req.supabase
+            .from('automation_rules')
+            .insert({
+                user_id: req.user.id,
+                name: name.trim(),
+                trigger_type: trigger_type,
+                delay_minutes: delay,
+                campaign_id: campaign_id || null,
+                enabled: Boolean(enabled)
+            })
+            .select()
+            .single();
+
+        if (error) {
+            logger.error('Erro ao criar automação: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao criar automação' });
+        }
+
+        logger.info('Automação criada - User: ' + req.user.id + ', ID: ' + data.id, 'Automations');
+        res.status(201).json({ automation: data });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao criar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// PUT /api/automations/:id - Atualizar automação
+app.put('/api/automations/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, trigger_type, delay_minutes, campaign_id, enabled } = req.body;
+
+        const updates = {};
+        if (name !== undefined) {
+            if (!name.trim()) {
+                return res.status(400).json({ success: false, error: 'Nome é obrigatório' });
+            }
+            updates.name = name.trim();
+        }
+        if (trigger_type !== undefined) {
+            if (!['contact_created'].includes(trigger_type)) {
+                return res.status(400).json({ success: false, error: 'Trigger inválido' });
+            }
+            updates.trigger_type = trigger_type;
+        }
+        if (delay_minutes !== undefined) {
+            const delay = parseInt(delay_minutes, 10);
+            if (isNaN(delay) || delay < 0 || delay > 10080) {
+                return res.status(400).json({ success: false, error: 'Delay inválido (máx. 7 dias)' });
+            }
+            updates.delay_minutes = delay;
+        }
+        if (campaign_id !== undefined) {
+            if (campaign_id) {
+                const { data: campaign, error: campError } = await req.supabase
+                    .from('campaigns')
+                    .select('id')
+                    .eq('id', campaign_id)
+                    .eq('user_id', req.user.id)
+                    .single();
+                if (campError || !campaign) {
+                    return res.status(400).json({ success: false, error: 'Campanha não encontrada' });
+                }
+            }
+            updates.campaign_id = campaign_id || null;
+        }
+        if (enabled !== undefined) {
+            updates.enabled = Boolean(enabled);
+        }
+
+        updates.updated_at = new Date().toISOString();
+
+        const { data, error } = await req.supabase
+            .from('automation_rules')
+            .update(updates)
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .select()
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ success: false, error: 'Automação não encontrada' });
+            }
+            logger.error('Erro ao atualizar automação: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao atualizar automação' });
+        }
+
+        logger.info('Automação atualizada - User: ' + req.user.id + ', ID: ' + id, 'Automations');
+        res.json({ automation: data });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao atualizar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// DELETE /api/automations/:id - Eliminar automação
+app.delete('/api/automations/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { error } = await req.supabase
+            .from('automation_rules')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', req.user.id);
+
+        if (error) {
+            logger.error('Erro ao eliminar automação: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao eliminar automação' });
+        }
+
+        logger.info('Automação eliminada - User: ' + req.user.id + ', ID: ' + id, 'Automations');
+        res.json({ success: true });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao eliminar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+
+// ============================================
 // Start server
 // ============================================
 app.listen(PORT, async () => {

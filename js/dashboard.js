@@ -47,7 +47,8 @@
         'contactos': { title: 'Contactos', module: function() { return window.ContactosView; } },
         'templates': { title: 'Templates', module: function() { return window.TemplatesView; } },
         'analytics': { title: 'Analytics', module: function() { return window.AnalyticsView; } },
-        'config': { title: 'Configurações', module: function() { return window.ConfigView; } }
+        'config': { title: 'Configurações', module: function() { return window.ConfigView; } },
+        'automations': { title: 'Automações', module: function() { return window.AutomationsView; } }
     };
 
     // ========================================
