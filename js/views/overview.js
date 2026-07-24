@@ -138,7 +138,13 @@ var OverviewView = (function() {
         // Bind help video button
         var helpBtn = document.getElementById('help-video-btn');
         if (helpBtn) {
-            helpBtn.addEventListener('click', openHelpModal);
+            helpBtn.addEventListener('click', function() {
+                showHelpVideo({
+                    title: 'Tutorial: Primeiros Passos no MailFlow Pro',
+                    description: 'Veja este vídeo de 45 segundos e aprenda rapidamente a utilizar a plataforma.',
+                    videoUrl: null
+                });
+            });
         }
     }
 
@@ -379,23 +385,50 @@ var OverviewView = (function() {
     }
 
     // ========================================
-    // Help Modal
+    // Help Modal (generic video player)
     // ========================================
-    function openHelpModal() {
+    function showHelpVideo(options) {
+        var title = options && options.title ? options.title : 'Tutorial';
+        var description = options && options.description ? options.description : '';
+        var videoUrl = options && options.videoUrl ? options.videoUrl : null;
+
         var modalHtml = '' +
             '<div class="tl-modal" id="help-video-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">' +
                 '<div class="tl-modal__overlay"></div>' +
                 '<div class="tl-modal__content" style="max-width:720px;">' +
                     '<div class="tl-modal__header">' +
-                        '<h3 class="tl-modal__title" id="help-modal-title">Tutorial: Primeiros Passos no MailFlow Pro</h3>' +
+                        '<h3 class="tl-modal__title" id="help-modal-title">' + esc(title) + '</h3>' +
                         '<button class="tl-modal__close" id="help-modal-close" aria-label="Fechar"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>' +
                     '</div>' +
-                    '<div class="tl-modal__body" style="padding:32px;text-align:center;">' +
-                        '<div class="video-placeholder" style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:16px;padding:60px 40px;">' +
-                            '<svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#94a3b8;margin-bottom:16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' +
-                            '<p style="font-size:1.125rem;color:#334155;font-weight:500;margin-bottom:8px;">Em breve: vídeo tutorial do Dashboard</p>' +
-                            '<p style="color:#64748b;font-size:0.875rem;">O tutorial em vídeo está a ser preparado. Volte em breve!</p>' +
-                        '</div>' +
+                    '<div class="tl-modal__body" style="padding:0;">';
+
+        if (videoUrl) {
+            // Extract video ID from YouTube URL if needed
+            var embedUrl = videoUrl;
+            if (videoUrl.includes('youtube.com/watch?v=')) {
+                var videoId = videoUrl.split('v=')[1].split('&')[0];
+                embedUrl = 'https://www.youtube.com/embed/' + videoId;
+            } else if (videoUrl.includes('youtu.be/')) {
+                var videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
+                embedUrl = 'https://www.youtube.com/embed/' + videoId;
+            }
+            modalHtml +=
+                '<div class="video-container" style="position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#000;">' +
+                    '<iframe src="' + esc(embedUrl) + '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:12px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>' +
+                '</div>';
+            if (description) {
+                modalHtml += '<p style="margin-top:16px;font-size:0.875rem;color:#64748b;text-align:left;">' + esc(description) + '</p>';
+            }
+        } else {
+            modalHtml +=
+                '<div class="video-placeholder" style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:16px;padding:60px 40px;">' +
+                    '<svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#94a3b8;margin-bottom:16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' +
+                    '<p style="font-size:1.125rem;color:#334155;font-weight:500;margin-bottom:8px;">' + esc(description || 'Em breve: vídeo tutorial') + '</p>' +
+                    '<p style="color:#64748b;font-size:0.875rem;">O tutorial em vídeo está a ser preparado. Volte em breve!</p>' +
+                '</div>';
+        }
+
+        modalHtml +=
                     '</div>' +
                 '</div>' +
             '</div>';
@@ -424,6 +457,15 @@ var OverviewView = (function() {
 
         // Focus trap
         setTimeout(function() { if (closeBtn) closeBtn.focus(); }, 50);
+    }
+
+    // Legacy wrapper for backward compatibility
+    function openHelpModal() {
+        showHelpVideo({
+            title: 'Tutorial: Primeiros Passos no MailFlow Pro',
+            description: 'Veja este vídeo de 45 segundos e aprenda rapidamente a utilizar a plataforma.',
+            videoUrl: null
+        });
     }
 
     // ========================================
