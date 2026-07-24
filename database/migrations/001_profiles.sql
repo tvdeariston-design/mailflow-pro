@@ -26,3 +26,18 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- Índices para queries frequentes
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
+
+-- ============================================
+-- SMTP Configuration columns
+-- ============================================
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_host TEXT DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_port INTEGER DEFAULT 587;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_username TEXT DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_password TEXT DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_secure BOOLEAN DEFAULT false;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_from_email TEXT DEFAULT '';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_from_name TEXT DEFAULT '';
+
+-- Índices para queries SMTP
+CREATE INDEX IF NOT EXISTS idx_profiles_smtp_host ON profiles(smtp_host);
+

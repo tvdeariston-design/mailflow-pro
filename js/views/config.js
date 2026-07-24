@@ -1,9 +1,9 @@
 /**
  * MailFlow Pro — View: Configurações
  *
- * Pagina de configuracoes do utilizador.
+ * Página de configurações do utilizador.
  * Edição de perfil (nome, empresa, telefone, timezone),
- * info da conta, e ações de logout.
+ * info da conta, SMTP, e ações de logout.
  */
 
 var ConfigView = (function() {
@@ -121,6 +121,66 @@ var ConfigView = (function() {
             '</div>';
     }
 
+    function renderSMTPForm(p) {
+        var host = (p && p.smtp_host) ? esc(p.smtp_host) : '';
+        var port = (p && p.smtp_port) ? esc(p.smtp_port) : '587';
+        var username = (p && p.smtp_username) ? esc(p.smtp_username) : '';
+        var password = (p && p.smtp_password) ? esc(p.smtp_password) : '';
+        var secure = (p && p.smtp_secure) ? true : false;
+        var fromEmail = (p && p.smtp_from_email) ? esc(p.smtp_from_email) : '';
+        var fromName = (p && p.smtp_from_name) ? esc(p.smtp_from_name) : '';
+
+        return '' +
+            '<div class="tl-card" style="margin-top:24px;">' +
+                '<div class="tl-card__header">' +
+                    '<h2 class="tl-card__title">SMTP Personalizado</h2>' +
+                '</div>' +
+                '<div class="tl-card__body" style="max-width:560px;">' +
+                    '<div class="tl-field">' +
+                        '<label class="tl-label" for="cfg-smtp-host">Host</label>' +
+                        '<input class="tl-input" type="text" id="cfg-smtp-host" value="' + host + '" placeholder="smtp.gmail.com">' +
+                    '</div>' +
+                    '<div class="tl-field">' +
+                        '<label class="tl-label" for="cfg-smtp-port">Porta</label>' +
+                        '<input class="tl-input" type="number" id="cfg-smtp-port" value="' + port + '" placeholder="587" min="1" max="65535">' +
+                    '</div>' +
+                    '<div class="tl-field">' +
+                        '<label class="tl-label" for="cfg-smtp-username">Username</label>' +
+                        '<input class="tl-input" type="text" id="cfg-smtp-username" value="' + username + '" placeholder="seu@email.com">' +
+                    '</div>' +
+                    '<div class="tl-field">' +
+                        '<label class="tl-label" for="cfg-smtp-password">Password</label>' +
+                        '<input class="tl-input" type="password" id="cfg-smtp-password" value="' + password + '" placeholder="••••••••" autocomplete="current-password">' +
+                    '</div>' +
+                    '<div class="tl-field">' +
+                        '<label class="tl-label">SSL/TLS</label>' +
+                        '<div class="tl-checkbox-wrapper">' +
+                            '<input type="checkbox" class="tl-checkbox" id="cfg-smtp-secure" ' + (secure ? 'checked' : '') + '>' +
+                            '<label class="tl-checkbox-label" for="cfg-smtp-secure">' +
+                                '<span class="tl-checkbox-box">' +
+                                    '<svg class="tl-checkbox-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7L6 10L11 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+                                '</span>' +
+                                'Usar conexão segura (SSL/TLS)' +
+                            '</label>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="tl-field">' +
+                        '<label class="tl-label" for="cfg-smtp-from-email">Email remetente</label>' +
+                        '<input class="tl-input" type="email" id="cfg-smtp-from-email" value="' + fromEmail + '" placeholder="noreply@seudominio.com">' +
+                    '</div>' +
+                    '<div class="tl-field">' +
+                        '<label class="tl-label" for="cfg-smtp-from-name">Nome remetente</label>' +
+                        '<input class="tl-input" type="text" id="cfg-smtp-from-name" value="' + fromName + '" placeholder="MailFlow Pro">' +
+                    '</div>' +
+                    '<div id="cfg-smtp-save-status" style="margin-bottom:16px;"></div>' +
+                    '<button class="tl-btn tl-btn--primary" id="cfg-smtp-save-btn">' +
+                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' +
+                        'Guardar Configuração SMTP' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+    }
+
     function renderAccountInfo(p) {
         var created = (p && p.created_at) ? formatDate(p.created_at) : '—';
         var plan = (p && p.plan) ? esc(p.plan) : 'free';
@@ -197,6 +257,53 @@ var ConfigView = (function() {
             });
         }
 
+        var smtpSaveBtn = document.getElementById('cfg-smtp-save-btn');
+        if (smtpSaveBtn) {
+            smtpSaveBtn.addEventListener('click', async function() {
+                var statusEl = document.getElementById('cfg-smtp-save-status');
+                smtpSaveBtn.disabled = true;
+                smtpSaveBtn.innerHTML = '<svg class="tl-spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m9.24-2.83l2.83 2.83M2 12h4m16 0h4"/></svg> A guardar...';
+
+                var updates = {
+                    smtp_host: (document.getElementById('cfg-smtp-host').value || '').trim(),
+                    smtp_port: parseInt(document.getElementById('cfg-smtp-port').value, 10) || 587,
+                    smtp_username: (document.getElementById('cfg-smtp-username').value || '').trim(),
+                    smtp_password: document.getElementById('cfg-smtp-password').value,
+                    smtp_secure: document.getElementById('cfg-smtp-secure').checked,
+                    smtp_from_email: (document.getElementById('cfg-smtp-from-email').value || '').trim(),
+                    smtp_from_name: (document.getElementById('cfg-smtp-from-name').value || '').trim()
+                };
+
+                // Validação
+                if (!updates.smtp_host) {
+                    statusEl.innerHTML = '<div style="padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:0.8125rem;font-weight:500;">Host SMTP é obrigatório.</div>';
+                    smtpSaveBtn.disabled = false;
+                    smtpSaveBtn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Guardar Configuração SMTP';
+                    return;
+                }
+                if (isNaN(updates.smtp_port) || updates.smtp_port < 1 || updates.smtp_port > 65535) {
+                    statusEl.innerHTML = '<div style="padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:0.8125rem;font-weight:500;">Porta SMTP inválida.</div>';
+                    smtpSaveBtn.disabled = false;
+                    smtpSaveBtn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Guardar Configuração SMTP';
+                    return;
+                }
+
+                var result = await saveProfile(updates);
+
+                if (result.success) {
+                    profile = result.profile;
+                    statusEl.innerHTML = '<div style="padding:10px 14px;background:#dcfce7;color:#166534;border-radius:8px;font-size:0.8125rem;font-weight:500;">SMTP guardado com sucesso.</div>';
+                    if (MailFlowToast && MailFlowToast.success) MailFlowToast.success('Configuração SMTP atualizada.');
+                    setTimeout(function() { statusEl.innerHTML = ''; }, 3000);
+                } else if (result.error !== 'unauthorized') {
+                    statusEl.innerHTML = '<div style="padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:0.8125rem;font-weight:500;">' + esc(result.error) + '</div>';
+                }
+
+                smtpSaveBtn.disabled = false;
+                smtpSaveBtn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Guardar Configuração SMTP';
+            });
+        }
+
         var logoutBtn = document.getElementById('cfg-logout-btn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async function() {
@@ -218,6 +325,7 @@ var ConfigView = (function() {
         profile = await fetchProfile();
 
         var html = renderProfileForm(profile);
+        html += renderSMTPForm(profile);
         html += renderAccountInfo(profile);
         html += renderDangerZone();
 

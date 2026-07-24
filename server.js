@@ -310,6 +310,34 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
             updates.locale = body.locale;
         }
 
+        // SMTP fields
+        if (body.smtp_host !== undefined) {
+            updates.smtp_host = body.smtp_host.trim();
+        }
+        if (body.smtp_port !== undefined) {
+            const port = parseInt(body.smtp_port, 10);
+            if (!isNaN(port) && port > 0 && port <= 65535) {
+                updates.smtp_port = port;
+            } else {
+                return res.status(400).json({ success: false, error: 'Porta SMTP inválida' });
+            }
+        }
+        if (body.smtp_username !== undefined) {
+            updates.smtp_username = body.smtp_username.trim();
+        }
+        if (body.smtp_password !== undefined) {
+            updates.smtp_password = body.smtp_password;
+        }
+        if (body.smtp_secure !== undefined) {
+            updates.smtp_secure = Boolean(body.smtp_secure);
+        }
+        if (body.smtp_from_email !== undefined) {
+            updates.smtp_from_email = body.smtp_from_email.trim();
+        }
+        if (body.smtp_from_name !== undefined) {
+            updates.smtp_from_name = body.smtp_from_name.trim();
+        }
+
         updates.updated_at = new Date().toISOString();
 
         const { data, error } = await req.supabase
