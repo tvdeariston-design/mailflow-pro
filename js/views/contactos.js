@@ -441,33 +441,62 @@ var ContactosView = (function() {
             '<div class="ct-modal-overlay" id="ct-modal-overlay">' +
                 '<div class="ct-modal ct-modal--lg">' +
                     '<div class="ct-modal__header">' +
-                        '<h3 class="ct-modal__title">Importar Contactos de CSV</h3>' +
+                        '<h3 class="ct-modal__title">Importar Contactos</h3>' +
                         '<button class="ct-modal__close" id="ct-modal-close">' +
                             '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
                         '</button>' +
                     '</div>' +
                     '<div class="ct-modal__body">' +
                         '<div class="ct-import-info">' +
-                            '<p><strong>Formato esperado:</strong> CSV com cabeçalho na primeira linha.</p>' +
-                            '<p><strong>Colunas aceites:</strong> <code>email</code> (obrigatório), <code>nome</code>, <code>telefone</code>, <code>empresa</code>, <code>tags</code> (separadas por <code>;</code>).</p>' +
+                            '<p><strong>Formatos:</strong> CSV ou XLSX com cabe\u00e7alho na primeira linha.</p>' +
+                            '<p><strong>Colunas:</strong> <code>email</code> (obrigat\u00f3rio), <code>nome</code>, <code>telefone</code>, <code>empresa</code>, <code>tags</code> (separadas por <code>;</code>).</p>' +
                         '</div>' +
                         '<div class="ct-field">' +
-                            '<label class="ct-label">Ficheiro CSV</label>' +
+                            '<label class="ct-label">Ficheiro</label>' +
                             '<div class="ct-dropzone" id="ct-dropzone">' +
                                 '<svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>' +
                                 '<p>Arraste o ficheiro aqui ou clique para selecionar</p>' +
-                                '<input type="file" id="ct-file-input" accept=".csv,text/csv" style="display:none">' +
+                                '<input type="file" id="ct-file-input" accept=".csv,text/csv,.xlsx,.xls" style="display:none">' +
                             '</div>' +
                             '<div class="ct-file-info" id="ct-file-info" style="display:none"></div>' +
                         '</div>' +
-                        '<div class="ct-field" id="ct-csv-preview-wrap" style="display:none">' +
-                            '<label class="ct-label">Pré-visualização</label>' +
-                            '<pre class="ct-csv-preview" id="ct-csv-preview"></pre>' +
+                        
+                        // Step 2: Preview & Mapping
+                        '<div id="ct-import-step2" style="display:none">' +
+                            '<div class="ct-field">' +
+                                '<label class="ct-label">Pr\u00e9-visualiza\u00e7\u00e3o (primeiras 10 linhas)</label>' +
+                                '<div class="ct-table-wrap" style="max-height:300px;overflow:auto">' +
+                                    '<table class="ct-table" id="ct-preview-table">' +
+                                        '<thead><tr>' +
+                                            '<th>#</th><th>Email</th><th>Nome</th><th>Telefone</th><th>Empresa</th><th>Tags</th><th>Status</th>' +
+                                        '</tr></thead>' +
+                                        '<tbody id="ct-preview-body"></tbody>' +
+                                    '</table>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="ct-field" id="ct-preview-stats" style="display:none"></div>' +
+                            
+                            // Column Mapping
+                            '<div class="ct-field" id="ct-mapping-wrap" style="display:none">' +
+                                '<label class="ct-label">Mapeamento de colunas</label>' +
+                                '<div class="ct-grid ct-grid--2" id="ct-mapping-fields"></div>' +
+                            '</div>' +
+                            
+                            // Duplicate Mode
+                            '<div class="ct-field" id="ct-duplicate-mode-wrap" style="display:none">' +
+                                '<label class="ct-label">Modo para contactos existentes na base de dados</label>' +
+                                '<div class="ct-radio-group" id="ct-duplicate-mode">' +
+                                    '<label class="ct-radio"><input type="radio" name="duplicateMode" value="create-only" checked> <span>Criar apenas novos</span> <small class="ct-muted">(ignora duplicados)</small></label>' +
+                                    '<label class="ct-radio"><input type="radio" name="duplicateMode" value="update"> <span>Atualizar existentes</span> <small class="ct-muted">(sobrescreve dados)</small></label>' +
+                                    '<label class="ct-radio"><input type="radio" name="duplicateMode" value="skip"> <span>Ignorar duplicados</span> <small class="ct-muted">(n\u00e3o importa nem atualiza)</small></label>' +
+                                '</div>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="ct-modal__footer">' +
                         '<button class="ct-btn ct-btn--ghost" id="ct-modal-cancel">Cancelar</button>' +
-                        '<button class="ct-btn ct-btn--primary" id="ct-modal-import" disabled>Importar</button>' +
+                        '<button class="ct-btn ct-btn--secondary" id="ct-btn-preview" style="display:none">Pr\u00e9-visualizar</button>' +
+                        '<button class="ct-btn ct-btn--primary" id="ct-modal-import" style="display:none" disabled>Importar</button>' +
                     '</div>' +
                 '</div>' +
             '</div>';
@@ -477,15 +506,25 @@ var ContactosView = (function() {
         var overlay = document.getElementById('ct-modal-overlay');
         var closeBtn = document.getElementById('ct-modal-close');
         var cancelBtn = document.getElementById('ct-modal-cancel');
+        var previewBtn = document.getElementById('ct-btn-preview');
         var importBtn = document.getElementById('ct-modal-import');
         var dropzone = document.getElementById('ct-dropzone');
         var fileInput = document.getElementById('ct-file-input');
         var fileInfo = document.getElementById('ct-file-info');
-        var previewWrap = document.getElementById('ct-csv-preview-wrap');
-        var preview = document.getElementById('ct-csv-preview');
-        var csvContent = '';
+        var step2 = document.getElementById('ct-import-step2');
+        var previewBody = document.getElementById('ct-preview-body');
+        var previewStats = document.getElementById('ct-preview-stats');
+        var mappingWrap = document.getElementById('ct-mapping-wrap');
+        var mappingFields = document.getElementById('ct-mapping-fields');
+        var duplicateModeWrap = document.getElementById('ct-duplicate-mode-wrap');
+
+        var selectedFile = null;
+        var fileBase64 = null;
+        var previewData = null;
+        var currentMapping = {};
 
         function closeModal() { overlay.remove(); }
+
         closeBtn.addEventListener('click', closeModal);
         cancelBtn.addEventListener('click', closeModal);
         overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
@@ -501,45 +540,218 @@ var ContactosView = (function() {
         fileInput.addEventListener('change', function() { if (this.files.length) handleFile(this.files[0]); });
 
         function handleFile(file) {
-            if (!file.name.endsWith('.csv')) {
-                MailFlowToast.error('Por favor selecione um ficheiro CSV.');
+            var validExt = ['.csv', '.xlsx', '.xls'];
+            var ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            if (!validExt.includes(ext)) {
+                MailFlowToast.error('Formato n\u00e3o suportado. Use CSV ou XLSX.');
                 return;
             }
+            selectedFile = file;
             var reader = new FileReader();
             reader.onload = function(e) {
-                csvContent = e.target.result;
-                var lines = csvContent.trim().split('\n');
+                fileBase64 = e.target.result.split(',')[1]; // remove data:... prefix
                 fileInfo.style.display = 'block';
-                fileInfo.innerHTML = '<strong>' + esc(file.name) + '</strong> — ' + (lines.length - 1) + ' linhas de dados';
-                previewWrap.style.display = 'block';
-                preview.textContent = lines.slice(0, 6).join('\n') + (lines.length > 6 ? '\n... (' + (lines.length - 1) + ' contactos no total)' : '');
-                importBtn.disabled = false;
+                fileInfo.innerHTML = '<strong>' + esc(file.name) + '</strong> — ' + formatBytes(file.size);
+                previewBtn.style.display = 'inline-block';
+                previewBtn.disabled = false;
+                previewBtn.textContent = 'Pr\u00e9-visualizar';
+                step2.style.display = 'none';
+                importBtn.style.display = 'none';
             };
-            reader.readAsText(file);
+            reader.readAsDataURL(file);
         }
 
-        importBtn.addEventListener('click', async function() {
-            if (!csvContent) return;
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // Step 1: Preview
+        previewBtn.addEventListener('click', async function() {
+            if (!fileBase64 || !selectedFile) return;
             this.disabled = true;
-            this.textContent = 'A importar...';
+            this.textContent = 'A processar...';
 
             try {
-                var resp = await fetch('/api/contacts/import', {
+                var token = (await sb.auth.getSession()).data.session.access_token;
+                var resp = await fetch('/api/contacts/import/preview', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token
+                        'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({ csv: csvContent })
+                    body: JSON.stringify({
+                        content: fileBase64,
+                        filename: selectedFile.name,
+                        mapping: null
+                    })
+                });
+
+                var result = await resp.json();
+                if (!result.success) {
+                    MailFlowToast.error(result.error || 'Erro ao processar ficheiro');
+                    this.disabled = false;
+                    this.textContent = 'Pr\u00e9-visualizar';
+                    return;
+                }
+
+                previewData = result;
+                renderPreview(result);
+                buildMappingUI(result.headers, result.finalHeaders);
+                
+                step2.style.display = 'block';
+                mappingWrap.style.display = 'block';
+                duplicateModeWrap.style.display = 'block';
+                previewBtn.style.display = 'none';
+                importBtn.style.display = 'inline-block';
+                importBtn.disabled = result.validCount === 0;
+                
+            } catch (err) {
+                console.error('[Contactos] Erro preview:', err);
+                MailFlowToast.error('Erro ao comunicar com o servidor.');
+            }
+            this.disabled = false;
+            this.textContent = 'Pr\u00e9-visualizar';
+        });
+
+        function renderPreview(data) {
+            previewBody.innerHTML = '';
+            data.preview.forEach(function(row) {
+                var statusClass = 'ct-badge';
+                var statusText = row.statusLabel;
+                if (row.status === 'valid') statusClass += ' ct-badge--success';
+                else if (row.status === 'invalid_email') statusClass += ' ct-badge--danger';
+                else if (row.status === 'empty') statusClass += ' ct-badge--warning';
+                else if (row.status === 'duplicate') statusClass += ' ct-badge--info';
+                else if (row.status === 'db_duplicate') statusClass += ' ct-badge--warning';
+                
+                var tr = document.createElement('tr');
+                tr.innerHTML = '' +
+                    '<td>' + row.rowIndex + '</td>' +
+                    '<td>' + esc(row.email) + '</td>' +
+                    '<td>' + esc(row.nome) + '</td>' +
+                    '<td>' + esc(row.telefone) + '</td>' +
+                    '<td>' + esc(row.empresa) + '</td>' +
+                    '<td>' + esc(row.tags.join(', ')) + '</td>' +
+                    '<td><span class="' + statusClass + '">' + esc(statusText) + '</span></td>';
+                previewBody.appendChild(tr);
+            });
+
+            // Stats
+            previewStats.style.display = 'block';
+            previewStats.innerHTML = '' +
+                '<div class="ct-grid ct-grid--4" style="margin-top:8px">' +
+                    '<div class="ct-stat"><span class="ct-stat__value ct-stat--success">' + data.validCount + '</span><span class="ct-stat__label">V\u00e1lidas</span></div>' +
+                    '<div class="ct-stat"><span class="ct-stat__value ct-stat--danger">' + data.invalidCount + '</span><span class="ct-stat__label">Email inv\u00e1lido</span></div>' +
+                    '<div class="ct-stat"><span class="ct-stat__value ct-stat--warning">' + data.emptyEmailCount + '</span><span class="ct-stat__label">Email vazio</span></div>' +
+                    '<div class="ct-stat"><span class="ct-stat__value ct-stat--info">' + data.duplicateCount + '</span><span class="ct-stat__label">Duplicados</span></div>' +
+                    '<div class="ct-stat"><span class="ct-stat__value">' + data.totalRows + '</span><span class="ct-stat__label">Total linhas</span></div>' +
+                '</div>';
+        }
+
+        function buildMappingUI(headers, finalHeaders) {
+            var fields = [
+                { key: 'email', label: 'Email *', required: true },
+                { key: 'nome', label: 'Nome', required: false },
+                { key: 'telefone', label: 'Telefone', required: false },
+                { key: 'empresa', label: 'Empresa', required: false },
+                { key: 'tags', label: 'Tags', required: false }
+            ];
+            
+            mappingFields.innerHTML = '';
+            fields.forEach(function(field) {
+                var mappedIdx = finalHeaders[field.key];
+                var options = '<option value="-1">— N\u00e3o mapear —</option>';
+                headers.forEach(function(h, i) {
+                    var selected = (i === mappedIdx) ? 'selected' : '';
+                    options += '<option value="' + i + '" ' + selected + '>' + esc(h) + '</option>';
+                });
+                
+                var div = document.createElement('div');
+                div.className = 'ct-field';
+                div.innerHTML = '' +
+                    '<label class="ct-label">' + field.label + '</label>' +
+                    '<select class="ct-select" data-field="' + field.key + '">' + options + '</select>';
+                mappingFields.appendChild(div);
+                
+                div.querySelector('select').addEventListener('change', function() {
+                    currentMapping[field.key] = parseInt(this.value, 10);
+                    refreshPreviewWithMapping();
+                });
+                
+                // Initialize mapping
+                currentMapping[field.key] = mappedIdx >= 0 ? mappedIdx : -1;
+            });
+        }
+
+        async function refreshPreviewWithMapping() {
+            if (!fileBase64 || !selectedFile) return;
+            
+            try {
+                var token = (await sb.auth.getSession()).data.session.access_token;
+                var resp = await fetch('/api/contacts/import/preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        content: fileBase64,
+                        filename: selectedFile.name,
+                        mapping: currentMapping
+                    })
                 });
 
                 var result = await resp.json();
                 if (result.success) {
-                    MailFlowToast.success('Importados: ' + result.imported + (result.skipped ? ' | Ignorados: ' + result.skipped : ''));
+                    previewData = result;
+                    renderPreview(result);
+                    importBtn.disabled = result.validCount === 0;
+                }
+            } catch (err) {
+                console.error('[Contactos] Erro refresh preview:', err);
+            }
+        }
+
+        // Step 2: Import
+        importBtn.addEventListener('click', async function() {
+            if (!fileBase64 || !selectedFile || !previewData) return;
+            
+            var duplicateMode = document.querySelector('input[name="duplicateMode"]:checked').value;
+            
+            this.disabled = true;
+            this.textContent = 'A importar...';
+
+            try {
+                var token = (await sb.auth.getSession()).data.session.access_token;
+                var resp = await fetch('/api/contacts/import', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        content: fileBase64,
+                        filename: selectedFile.name,
+                        mapping: currentMapping,
+                        duplicateMode: duplicateMode
+                    })
+                });
+
+                var result = await resp.json();
+                if (result.success) {
+                    var msg = 'Importados: ' + result.imported;
+                    if (result.updated) msg += ' | Atualizados: ' + result.updated;
+                    if (result.skipped) msg += ' | Ignorados: ' + result.skipped;
+                    MailFlowToast.success(msg);
                     closeModal();
                     refresh();
                 } else {
                     MailFlowToast.error(result.error || 'Erro na importação.');
+                    if (result.errors && result.errors.length) {
+                        console.error('[Contactos] Import errors:', result.errors);
+                    }
                     this.disabled = false;
                     this.textContent = 'Importar';
                 }
@@ -551,7 +763,6 @@ var ContactosView = (function() {
             }
         });
     }
-
     // ========================================
     // Export CSV
     // ========================================
