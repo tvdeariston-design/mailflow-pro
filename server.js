@@ -409,6 +409,72 @@ app.post('/api/smtp/test', authMiddleware, async (req, res) => {
     }
 });
 
+// ============================================
+// SMTP SEND TEST EMAIL ENDPOINT
+// ============================================
+app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
+    try {
+        const body = req.body;
+        
+        // Validate required fields
+        if (!body.smtp_host || !body.smtp_host.trim()) {
+            return res.status(400).json({ success: false, error: 'Host SMTP é obrigatório' });
+        }
+        const port = parseInt(body.smtp_port, 10);
+        if (isNaN(port) || port < 1 || port > 65535) {
+            return res.status(400).json({ success: false, error: 'Porta SMTP inválida' });
+        }
+        if (!body.smtp_username || !body.smtp_username.trim()) {
+            return res.status(400).json({ success: false, error: 'Username SMTP é obrigatório' });
+        }
+        if (!body.smtp_password) {
+            return res.status(400).json({ success: false, error: 'Password SMTP é obrigatória' });
+        }
+        if (!body.to || !body.to.trim()) {
+            return res.status(400).json({ success: false, error: 'Email de destino é obrigatório' });
+        }
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(body.to.trim())) {
+            return res.status(400).json({ success: false, error: 'Email de destino inválido' });
+        }
+
+        // Create temporary transporter
+        const testTransporter = nodemailer.createTransport({
+            host: body.smtp_host.trim(),
+            port: port,
+            secure: Boolean(body.smtp_secure),
+            auth: {
+                user: body.smtp_username.trim(),
+                pass: body.smtp_password
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
+
+        // Verify connection first
+        await testTransporter.verify();
+
+        // Send test email
+        const fromEmail = (body.smtp_from_email && body.smtp_from_email.trim()) ? body.smtp_from_email.trim() : body.smtp_username.trim();
+        const fromName = (body.smtp_from_name && body.smtp_from_name.trim()) ? body.smtp_from_name.trim() : 'MailFlow Pro';
+        
+        await testTransporter.sendMail({
+            from: '"' + fromName + '" <' + fromEmail + '>',
+            to: body.to.trim(),
+            subject: 'MailFlow Pro - Teste SMTP',
+            html: '<h2>Ligação SMTP bem-sucedida</h2><p>Este é um email de teste enviado pelo MailFlow Pro.</p>'
+        });
+
+        logger.info('SMTP test email sent - User: ' + req.user.id + ', To: ' + body.to, 'SMTP');
+        res.json({ success: true });
+
+    } catch (error) {
+        logger.error('SMTP test email failed - User: ' + req.user.id + ' - ' + error.message, 'SMTP');
+        res.status(400).json({ success: false, error: error.message || 'Erro ao enviar email de teste' });
+    }
+});
 
 
 
