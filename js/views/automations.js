@@ -2,6 +2,7 @@
  * MailFlow Pro — View: Automações
  *
  * CRUD de regras de automação (trigger: novo contacto).
+ * Em execução posterior: engine de automações.
  */
 
 var AutomationsView = (function() {
@@ -35,9 +36,7 @@ var AutomationsView = (function() {
     }
 
     function triggerLabel(trigger) {
-        var map = {
-            'contact_created': 'Novo contacto'
-        };
+        var map = { 'contact_created': 'Novo contacto' };
         return map[trigger] || trigger;
     }
 
@@ -123,7 +122,8 @@ var AutomationsView = (function() {
                 .is('deleted_at', null)
                 .eq('status', 'sent')
                 .order('created_at', { ascending: false });
-            return r.data || [];
+            state.campaigns = r.data || [];
+            return state.campaigns;
         } catch { return []; }
     }
 
@@ -324,69 +324,46 @@ var AutomationsView = (function() {
         var isEdit = !!automation;
 
         var closeBtn = document.getElementById('at-modal-close');
-        if (closeBtn) closeBtn.addEventListener('click', closeModal);
-
         var cancelBtn = document.getElementById('at-btn-cancel');
-        if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-
         var saveBtn = document.getElementById('at-btn-save');
+        var overlay = document.querySelector('#at-modal-editor .tl-modal__overlay');
+
+        [closeBtn, cancelBtn, overlay].forEach(function(el) {
+            if (el) el.addEventListener('click', closeModal);
+        });
+
         if (saveBtn) {
             saveBtn.addEventListener('click', async function() {
                 var statusEl = document.getElementById('at-editor-status');
                 var name = (document.getElementById('at-name').value || '').trim();
                 var delay = parseInt(document.getElementById('at-delay').value, 10) || 0;
-                var campaignId = document.getElementById('at-campaign').value;
+                var campaign = document.getElementById('at-campaign').value;
                 var enabled = document.getElementById('at-enabled').checked;
 
                 if (!name) {
-                    statusEl.innerHTML = '<div style="padding:10px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:.875rem;">Nome é obrigatório.</div>';
+                    statusEl.innerHTML = '<div style="padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:.8125rem;font-weight:500;">Nome é obrigatório.</div>';
                     return;
                 }
-                if (!campaignId) {
-                    statusEl.innerHTML = '<div style="padding:10px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:.875rem;">Campanha é obrigatória.</div>';
+                if (!campaign) {
+                    statusEl.innerHTML = '<div style="padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:.8125rem;font-weight:500;">Selecione uma campanha.</div>';
                     return;
                 }
 
                 saveBtn.disabled = true;
                 saveBtn.innerHTML = '<svg class="tl-spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m9.24-2.83l2.83 2.83M2 12h4m16 0h4"/></svg> A guardar...';
 
-                var data = {
-                    name: name,
-                    trigger_type: 'contact_created',
-                    delay_minutes: delay,
-                    campaign_id: campaignId,
-                    enabled: enabled
-                };
+                var data = { name: name, trigger_type: 'contact_created', delay_minutes: delay, campaign_id: campaign, enabled: enabled };
 
-                try {
-                    if (isEdit) {
-                        await updateAutomation(automation.id, data);
-                    } else {
-                        await createAutomation(data);
-                    }
-                } catch (err) {
-                    console.error('[Automations] Erro ao guardar:', err);
-                    statusEl.innerHTML = '<div style="padding:10px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:.875rem;">Erro de rede.</div>';
-                    saveBtn.disabled = false;
-                    saveBtn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' + (isEdit ? 'Guardar Alterações' : 'Criar Automação');
+                if (isEdit) {
+                    await updateAutomation(automation.id, data);
+                } else {
+                    await createAutomation(data);
                 }
+
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>' + (isEdit ? 'Guardar Alterações' : 'Criar Automação');
             });
         }
-
-        // Close on overlay click
-        var overlay = document.querySelector('#at-modal-editor .tl-modal__overlay');
-        if (overlay) overlay.addEventListener('click', closeModal);
-    }
-
-    // ========================================
-    // Refresh
-    // ========================================
-    async function refresh() {
-        if (!currentContainer) return;
-        var [automationsResult, campaignsResult] = await Promise.all([fetchAutomations(), fetchCampaigns()]);
-        state.campaigns = campaignsResult;
-        currentContainer.innerHTML = buildHTML(automationsResult.data, automationsResult.count);
-        bindEvents();
     }
 
     // ========================================
@@ -394,12 +371,14 @@ var AutomationsView = (function() {
     // ========================================
     function bindEvents() {
         var addBtn = document.getElementById('at-btn-add');
-        if (addBtn) addBtn.addEventListener('click', function() { openEditor(null); });
-
         var addEmpty = document.getElementById('at-btn-add-empty');
+        var searchInput = document.getElementById('at-search');
+        var prevBtn = document.getElementById('at-page-prev');
+        var nextBtn = document.getElementById('at-page-next');
+
+        if (addBtn) addBtn.addEventListener('click', function() { openEditor(null); });
         if (addEmpty) addEmpty.addEventListener('click', function() { openEditor(null); });
 
-        var searchInput = document.getElementById('at-search');
         if (searchInput) {
             var dt; searchInput.addEventListener('input', function() {
                 clearTimeout(dt); var v = this.value;
@@ -407,39 +386,39 @@ var AutomationsView = (function() {
             });
         }
 
-        var prev = document.getElementById('at-page-prev');
-        if (prev) prev.addEventListener('click', function() { state.page--; refresh(); });
+        if (prevBtn) prevBtn.addEventListener('click', function() { state.page--; refresh(); });
+        if (nextBtn) nextBtn.addEventListener('click', function() { state.page++; refresh(); });
 
-        var next = document.getElementById('at-page-next');
-        if (next) next.addEventListener('click', function() { state.page++; refresh(); });
+        // Delegate action buttons
+        var tbody = document.querySelector('.ct-table tbody');
+        if (tbody) {
+            tbody.addEventListener('click', function(e) {
+                var btn = e.target.closest('button');
+                if (!btn) return;
+                var editId = btn.getAttribute('data-edit');
+                var toggleId = btn.getAttribute('data-toggle');
+                var deleteId = btn.getAttribute('data-delete');
+                var enabled = btn.getAttribute('data-enabled');
 
-        // Action buttons
-        document.querySelectorAll('[data-edit]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.getAttribute('data-edit');
-                var automation = state.automations.find(function(x) { return x.id === id; });
-                if (automation) openEditor(automation);
+                if (editId) { openEditor(state.automations.find(function(a) { return a.id === editId; })); }
+                else if (toggleId) { toggleAutomation(toggleId, enabled !== 'true'); }
+                else if (deleteId) { deleteAutomation(deleteId); }
             });
-        });
-
-        document.querySelectorAll('[data-toggle]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.getAttribute('data-toggle');
-                var enabled = this.getAttribute('data-enabled') === 'true';
-                toggleAutomation(id, !enabled);
-            });
-        });
-
-        document.querySelectorAll('[data-delete]').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var id = this.getAttribute('data-delete');
-                deleteAutomation(id);
-            });
-        });
+        }
     }
 
     // ========================================
-    // Main render
+    // Refresh
+    // ========================================
+    async function refresh() {
+        if (!currentContainer) return;
+        var result = await fetchAutomations();
+        currentContainer.innerHTML = buildHTML(result.data, result.count);
+        bindEvents();
+    }
+
+    // ========================================
+    // Public
     // ========================================
     async function render(container) {
         currentContainer = container;
@@ -450,27 +429,10 @@ var AutomationsView = (function() {
 
         container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af;font-size:.875rem;">A carregar automações...</div>';
 
-        var [automationsResult, campaignsResult] = await Promise.all([fetchAutomations(), fetchCampaigns()]);
-        state.campaigns = campaignsResult;
+        await fetchCampaigns();
 
-        var html = '' +
-            '<div class="ct-page">' +
-                '<div class="ct-toolbar">' +
-                    '<div class="ct-toolbar__left">' +
-                        '<h1 class="ct-toolbar__title">Automações</h1>' +
-                    '</div>' +
-                    '<div class="ct-toolbar__right">' +
-                        '<div class="ct-search">' +
-                            '<svg class="ct-search__icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
-                            '<input type="text" class="ct-search__input" id="at-search" placeholder="Pesquisar automação...">' +
-                        '</div>' +
-                        '<button class="tl-btn tl-btn--primary" id="at-btn-add"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Nova Automação</button>' +
-                    '</div>' +
-                '</div>' +
-                buildHTML(automationsResult.data, automationsResult.count) +
-            '</div>';
-
-        container.innerHTML = html;
+        var result = await fetchAutomations();
+        container.innerHTML = buildHTML(result.data, result.count);
         bindEvents();
     }
 

@@ -1310,6 +1310,100 @@ h1, h2, h3, h4, h5, h6 {
 
 .dashboard-hero__btn svg {
     width: 18px;
+
+/* ========================================
+   Help Video Card
+   ======================================== */
+.help-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: white;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: var(--radius-md, 12px);
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+}
+
+.help-card__icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.help-card__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.help-card__title {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 4px 0;
+}
+
+.help-card__desc {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.help-card__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all var(--transition-base, 0.2s) ease;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.help-card__btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+}
+
+.help-card__btn:active {
+    transform: translateY(0);
+}
+
+.help-card__btn:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+.help-card__btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* ========================================
+   Video Placeholder
+   ======================================== */
+.video-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.video-placeholder svg {
+    flex-shrink: 0;
+}
+
+.dashboard-hero__btn svg {
+    width: 18px;
     height: 18px;
 }
 

@@ -120,6 +120,9 @@ var OverviewView = (function() {
         // Banner hero
         html += renderHero();
 
+        // Help video card
+        html += renderHelpCard();
+
         if (isNewUser) {
             html += renderOnboarding();
         }
@@ -131,6 +134,12 @@ var OverviewView = (function() {
         html += renderActivity(stats);
 
         container.innerHTML = html;
+        
+        // Bind help video button
+        var helpBtn = document.getElementById('help-video-btn');
+        if (helpBtn) {
+            helpBtn.addEventListener('click', openHelpModal);
+        }
     }
 
     function renderHero() {
@@ -143,6 +152,21 @@ var OverviewView = (function() {
                         'Criar a minha primeira campanha' +
                     '</a>' +
                 '</div>' +
+            '</div>';
+    }
+
+    function renderHelpCard() {
+        return '' +
+            '<div class="help-card" style="margin-bottom:24px;">' +
+                '<div class="help-card__icon" aria-hidden="true">🎥</div>' +
+                '<div class="help-card__content">' +
+                    '<h3 class="help-card__title">Aprenda o MailFlow Pro</h3>' +
+                    '<p class="help-card__desc">Veja este vídeo de 45 segundos e aprenda rapidamente a utilizar a plataforma.</p>' +
+                '</div>' +
+                '<button class="help-card__btn" id="help-video-btn" type="button" aria-label="Ver vídeo tutorial">' +
+                    '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>' +
+                    'Ver vídeo' +
+                '</button>' +
             '</div>';
     }
 
@@ -352,6 +376,54 @@ var OverviewView = (function() {
     function updateBadge(id, count) {
         var el = document.getElementById(id);
         if (el) el.textContent = count;
+    }
+
+    // ========================================
+    // Help Modal
+    // ========================================
+    function openHelpModal() {
+        var modalHtml = '' +
+            '<div class="tl-modal" id="help-video-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">' +
+                '<div class="tl-modal__overlay"></div>' +
+                '<div class="tl-modal__content" style="max-width:720px;">' +
+                    '<div class="tl-modal__header">' +
+                        '<h3 class="tl-modal__title" id="help-modal-title">Tutorial: Primeiros Passos no MailFlow Pro</h3>' +
+                        '<button class="tl-modal__close" id="help-modal-close" aria-label="Fechar"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>' +
+                    '</div>' +
+                    '<div class="tl-modal__body" style="padding:32px;text-align:center;">' +
+                        '<div class="video-placeholder" style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:16px;padding:60px 40px;">' +
+                            '<svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#94a3b8;margin-bottom:16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' +
+                            '<p style="font-size:1.125rem;color:#334155;font-weight:500;margin-bottom:8px;">Em breve: vídeo tutorial do Dashboard</p>' +
+                            '<p style="color:#64748b;font-size:0.875rem;">O tutorial em vídeo está a ser preparado. Volte em breve!</p>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        var wrapper = document.createElement('div');
+        wrapper.innerHTML = modalHtml;
+        document.body.appendChild(wrapper.firstElementChild);
+
+        // Bind close events
+        var modal = document.getElementById('help-video-modal');
+        var closeBtn = document.getElementById('help-modal-close');
+        var overlay = modal ? modal.querySelector('.tl-modal__overlay') : null;
+
+        function closeModal() {
+            if (modal) modal.remove();
+            document.removeEventListener('keydown', onKeydown);
+        }
+
+        if (closeBtn) closeBtn.addEventListener('click', closeModal);
+        if (overlay) overlay.addEventListener('click', closeModal);
+
+        function onKeydown(e) {
+            if (e.key === 'Escape') closeModal();
+        }
+        document.addEventListener('keydown', onKeydown);
+
+        // Focus trap
+        setTimeout(function() { if (closeBtn) closeBtn.focus(); }, 50);
     }
 
     // ========================================
