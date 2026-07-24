@@ -18,7 +18,12 @@ var AutomationsView = (function() {
         limit: 20,
         search: '',
         campaigns: [],
-        loading: false
+        loading: false,
+        activeTab: 'automations',
+        jobs: [],
+        jobsTotal: 0,
+        jobsPage: 1,
+        jobsLimit: 20
     };
 
     function init() { sb = window.supabaseClient; }
@@ -127,10 +132,38 @@ var AutomationsView = (function() {
         } catch { return []; }
     }
 
+    async function fetchJobs() {
+        if (!sb || !user) return { data: [], count: 0 };
+        state.loading = true;
+        try {
+            var from = (state.jobsPage - 1) * state.jobsLimit;
+            var query = sb.from('automation_jobs')
+                .select('*, automation:automation_rules(id,name), contact:contacts(id,nome,email), campaign:campaigns(id,nome)', { count: 'exact' })
+                .eq('automation.user_id', user.id)
+                .order('created_at', { ascending: false })
+                .range(from, from + state.jobsLimit - 1);
+            var result = await query;
+            state.jobs = result.data || [];
+            state.jobsTotal = result.count || 0;
+            state.loading = false;
+            return { data: state.jobs, count: state.jobsTotal };
+        } catch (err) {
+            console.error('[Automations] Erro ao buscar jobs:', err);
+            state.loading = false;
+            return { data: [], count: 0 };
+        }
+    }
+
     // ========================================
     // Render
     // ========================================
     function buildHTML(automations, total) {
+        var isJobsTab = state.activeTab === 'jobs';
+
+        if (isJobsTab) {
+            return buildJobsHTML();
+        }
+
         var rows = automations.map(function(a) {
             var campaignName = (a.campaign && a.campaign.nome) ? esc(a.campaign.nome) : '—';
             return '' +
@@ -173,6 +206,58 @@ var AutomationsView = (function() {
             '<div class="ct-table-wrap"><table class="ct-table"><thead>' +
                 '<tr><th>Nome</th><th>Trigger</th><th>Delay</th><th>Campanha</th><th>Estado</th><th style="width:120px">Ações</th></tr>' +
             '</thead><tbody>' + rows + '</tbody></table></div>' + pagination;
+
+    function buildJobsHTML() {
+        var jobs = state.jobs;
+        var total = state.jobsTotal;
+        var totalPages = Math.ceil(total / state.jobsLimit);
+
+        var rows = jobs.map(function(j) {
+            var automationName = (j.automation && j.automation.name) ? esc(j.automation.name) : '—';
+            var contactName = (j.contact && j.contact.nome) ? esc(j.contact.nome) : '—';
+            var contactEmail = (j.contact && j.contact.email) ? esc(j.contact.email) : '';
+            var campaignName = (j.campaign && j.campaign.nome) ? esc(j.campaign.nome) : '—';
+            var statusBadge = '';
+            if (j.status === 'pending') statusBadge = '<span class="tl-badge tl-badge--yellow">Pendente</span>';
+            else if (j.status === 'sent') statusBadge = '<span class="tl-badge tl-badge--green">Enviado</span>';
+            else if (j.status === 'failed') statusBadge = '<span class="tl-badge tl-badge--red">Falhou</span>';
+            else if (j.status === 'skipped') statusBadge = '<span class="tl-badge tl-badge--gray">Ignorado</span>';
+            else statusBadge = '<span class="tl-badge tl-badge--gray">' + j.status + '</span>';
+            var createdAt = j.created_at ? new Date(j.created_at).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+
+            return '' +
+                '<tr>' +
+                    '<td>' + createdAt + '</td>' +
+                    '<td>' + automationName + '</td>' +
+                    '<td>' + contactName + (contactEmail ? ' <' + contactEmail + '>' : '') + '</td>' +
+                    '<td>' + campaignName + '</td>' +
+                    '<td>' + statusBadge + '</td>' +
+                '</tr>';
+        }).join('');
+
+        var pagination = '' +
+            '<div class="tl-pagination">' +
+                '<span class="tl-pagination__info">Página ' + state.jobsPage + ' de ' + totalPages + '</span>' +
+                '<div class="tl-pagination__btns">' +
+                    '<button class="tl-btn tl-btn--ghost tl-btn--sm" id="at-jobs-page-prev"' + (state.jobsPage <= 1 ? ' disabled' : '') + '>&larr; Anterior</button>' +
+                    '<button class="tl-btn tl-btn--ghost tl-btn--sm" id="at-jobs-page-next"' + (state.jobsPage >= totalPages ? ' disabled' : '') + '>Próxima &rarr;</button>' +
+                '</div>' +
+            '</div>';
+
+        if (jobs.length === 0) {
+            return '' +
+                '<div class="tl-empty">' +
+                    '<div class="tl-empty__icon"><svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>' +
+                    '<h3 class="tl-empty__title">Nenhuma execução</h3>' +
+                    '<p class="tl-empty__desc">As execuções de automações aparecerão aqui quando contactos forem adicionados.</p>' +
+                '</div>' + pagination;
+        }
+
+        return '' +
+            '<div class="ct-table-wrap"><table class="ct-table"><thead>' +
+                '<tr><th>Data</th><th>Automação</th><th>Contacto</th><th>Campanha</th><th>Estado</th></tr>' +
+            '</thead><tbody>' + rows + '</tbody></table></div>' + pagination;
+    }
     }
 
     function renderEmpty() {
@@ -431,8 +516,9 @@ var AutomationsView = (function() {
 
         await fetchCampaigns();
 
-        var result = await fetchAutomations();
-        container.innerHTML = buildHTML(result.data, result.count);
+        var automationsResult = await fetchAutomations();
+        var jobsResult = await fetchJobs();
+        container.innerHTML = buildHTML(automationsResult.data, automationsResult.count);
         bindEvents();
     }
 

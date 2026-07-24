@@ -733,6 +733,36 @@ app.post('/api/contacts', authMiddleware, async (req, res) => {
         }
 
         logger.info('Contacto criado - ID: ' + data.id + ', User: ' + req.user.id, 'Contacts');
+
+        // Create automation jobs for active automations with contact_created trigger
+        try {
+            const { data: automations } = await req.supabase
+                .from('automation_rules')
+                .select('id, campaign_id, delay_minutes')
+                .eq('user_id', req.user.id)
+                .eq('enabled', true)
+                .eq('trigger_type', 'contact_created');
+
+            if (automations && automations.length > 0) {
+                const jobs = automations.map(a => ({
+                    automation_id: a.id,
+                    contact_id: data.id,
+                    campaign_id: a.campaign_id,
+                    status: 'pending'
+                }));
+                const { error: jobsError } = await req.supabase
+                    .from('automation_jobs')
+                    .insert(jobs);
+                if (jobsError) {
+                    logger.error('Erro ao criar jobs de automação: ' + jobsError.message, 'Automations');
+                } else {
+                    logger.info('Jobs de automação criados - Contact: ' + data.id + ', Count: ' + jobs.length, 'Automations');
+                }
+            }
+        } catch (autoErr) {
+            logger.error('Erro ao processar automações: ' + autoErr.message, 'Automations');
+        }
+
         res.status(201).json({ success: true, contact: data });
 
     } catch (error) {
@@ -2599,6 +2629,58 @@ app.delete('/api/automations/:id', authMiddleware, async (req, res) => {
 
     } catch (error) {
         logger.error('Erro inesperado ao eliminar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// GET /api/automations/jobs - Listar jobs de automação
+app.get('/api/automations/jobs', authMiddleware, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, automation_id = '', status = '', search = '' } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const offset = (pageNum - 1) * limitNum;
+
+        let query = req.supabase
+            .from('automation_jobs')
+            .select('*, automation:automation_rules(id,name), contact:contacts(id,nome,email), campaign:campaigns(id,nome)', { count: 'exact' })
+            .eq('automation.user_id', req.user.id)
+            .order('created_at', { ascending: false });
+
+        if (automation_id) {
+            query = query.eq('automation_id', automation_id);
+        }
+        if (status) {
+            query = query.eq('status', status);
+        }
+        if (search) {
+            query = query.or('contact.nome.ilike.%' + search + '%,contact.email.ilike.%' + search + '%,automation.name.ilike.%' + search + '%,campaign.nome.ilike.%' + search + '%');
+        }
+
+        query = query.range(offset, offset + limitNum - 1);
+
+        const { data, error, count } = await query;
+
+        if (error) {
+            logger.error('Erro ao listar jobs de automação: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar jobs' });
+        }
+
+        const totalPages = Math.ceil((count || 0) / limitNum);
+
+        logger.info('Jobs de automação listados - User: ' + req.user.id + ', Página: ' + pageNum, 'Automations');
+        res.json({
+            jobs: data || [],
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: count || 0,
+                totalPages: totalPages
+            }
+        });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao listar jobs: ' + error.message, 'Automations');
         res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
     }
 });
