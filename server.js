@@ -360,6 +360,57 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, error: 'Erro ao processar alterações' });
     }
 });
+// ============================================
+// SMTP TEST ENDPOINT
+// ============================================
+app.post('/api/smtp/test', authMiddleware, async (req, res) => {
+    try {
+        const body = req.body;
+        
+        // Validate required fields
+        if (!body.smtp_host || !body.smtp_host.trim()) {
+            return res.status(400).json({ success: false, error: 'Host SMTP é obrigatório' });
+        }
+        const port = parseInt(body.smtp_port, 10);
+        if (isNaN(port) || port < 1 || port > 65535) {
+            return res.status(400).json({ success: false, error: 'Porta SMTP inválida' });
+        }
+        if (!body.smtp_username || !body.smtp_username.trim()) {
+            return res.status(400).json({ success: false, error: 'Username SMTP é obrigatório' });
+        }
+        if (!body.smtp_password) {
+            return res.status(400).json({ success: false, error: 'Password SMTP é obrigatória' });
+        }
+
+        // Create temporary transporter
+        const testTransporter = nodemailer.createTransport({
+            host: body.smtp_host.trim(),
+            port: port,
+            secure: Boolean(body.smtp_secure),
+            auth: {
+                user: body.smtp_username.trim(),
+                pass: body.smtp_password
+            },
+            tls: {
+                // Allow self-signed certificates for testing
+                rejectUnauthorized: false
+            }
+        });
+
+        // Verify connection only - do NOT send email
+        await testTransporter.verify();
+
+        logger.info('SMTP test successful - User: ' + req.user.id, 'SMTP');
+        res.json({ success: true, message: 'Ligação SMTP bem-sucedida!' });
+
+    } catch (error) {
+        logger.error('SMTP test failed - User: ' + req.user.id + ' - ' + error.message, 'SMTP');
+        res.status(400).json({ success: false, error: error.message || 'Erro ao testar ligação SMTP' });
+    }
+});
+
+
+
 
 
 
