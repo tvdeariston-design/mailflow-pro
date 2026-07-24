@@ -765,6 +765,216 @@ app.delete('/api/contacts/:id', authMiddleware, async (req, res) => {
 });
 
 
+
+// ============================================
+// TEMPLATES API
+// ============================================
+
+// GET /api/templates - Listar templates com paginacao e pesquisa
+app.get('/api/templates', authMiddleware, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, search = '' } = req.query;
+
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const offset = (pageNum - 1) * limitNum;
+
+        let query = req.supabase
+            .from('templates')
+            .select('*', { count: 'exact' })
+            .eq('user_id', req.user.id)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false });
+
+        if (search) {
+            query = query.or('nome.ilike.%' + search + '%,subject.ilike.%' + search + '%');
+        }
+
+        query = query.range(offset, offset + limitNum - 1);
+
+        const { data, error, count } = await query;
+
+        if (error) {
+            logger.error('Erro ao listar templates: ' + error.message, 'Templates');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar templates' });
+        }
+
+        const totalPages = Math.ceil((count || 0) / limitNum);
+
+        logger.info('Templates listados - User: ' + req.user.id + ', Pagina: ' + pageNum, 'Templates');
+        res.json({
+            templates: data || [],
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: count || 0,
+                totalPages: totalPages
+            }
+        });
+    } catch (error) {
+        logger.error('Erro inesperado ao listar templates: ' + error.message, 'Templates');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// GET /api/templates/:id - Obter template por ID
+app.get('/api/templates/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data, error } = await req.supabase
+            .from('templates')
+            .select('*')
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .is('deleted_at', null)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ success: false, error: 'Template nao encontrado' });
+            }
+            logger.error('Erro ao obter template: ' + error.message, 'Templates');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar template' });
+        }
+
+        logger.info('Template obtido - ID: ' + id, 'Templates');
+        res.json({ template: data });
+    } catch (error) {
+        logger.error('Erro inesperado ao obter template: ' + error.message, 'Templates');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// POST /api/templates - Criar template
+app.post('/api/templates', authMiddleware, async (req, res) => {
+    try {
+        const { nome, subject, preheader, html, text_version, is_default } = req.body;
+
+        if (!nome || !nome.trim()) {
+            return res.status(400).json({ success: false, error: 'Nome e obrigatorio' });
+        }
+        if (!subject || !subject.trim()) {
+            return res.status(400).json({ success: false, error: 'Assunto e obrigatorio' });
+        }
+        if (!html || !html.trim()) {
+            return res.status(400).json({ success: false, error: 'Corpo HTML e obrigatorio' });
+        }
+
+        const { data, error } = await req.supabase
+            .from('templates')
+            .insert({
+                user_id: req.user.id,
+                nome: nome.trim(),
+                subject: subject.trim(),
+                preheader: (preheader || '').trim(),
+                html: html,
+                text_version: (text_version || '').trim(),
+                is_default: is_default === true
+            })
+            .select()
+            .single();
+
+        if (error) {
+            logger.error('Erro ao criar template: ' + error.message, 'Templates');
+            return res.status(500).json({ success: false, error: 'Erro ao criar template' });
+        }
+
+        logger.info('Template criado - ID: ' + data.id + ', User: ' + req.user.id, 'Templates');
+        res.status(201).json({ success: true, template: data });
+    } catch (error) {
+        logger.error('Erro inesperado ao criar template: ' + error.message, 'Templates');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// PUT /api/templates/:id - Atualizar template
+app.put('/api/templates/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, subject, preheader, html, text_version, is_default } = req.body;
+
+        const { data: existing, error: checkError } = await req.supabase
+            .from('templates')
+            .select('id')
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .is('deleted_at', null)
+            .single();
+
+        if (checkError || !existing) {
+            return res.status(404).json({ success: false, error: 'Template nao encontrado' });
+        }
+
+        const updates = {};
+        if (nome !== undefined) updates.nome = nome.trim();
+        if (subject !== undefined) updates.subject = subject.trim();
+        if (preheader !== undefined) updates.preheader = (preheader || '').trim();
+        if (html !== undefined) updates.html = html;
+        if (text_version !== undefined) updates.text_version = (text_version || '').trim();
+        if (is_default !== undefined) updates.is_default = is_default === true;
+
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+        }
+
+        const { data, error } = await req.supabase
+            .from('templates')
+            .update(updates)
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .select()
+            .single();
+
+        if (error) {
+            logger.error('Erro ao atualizar template: ' + error.message, 'Templates');
+            return res.status(500).json({ success: false, error: 'Erro ao atualizar template' });
+        }
+
+        logger.info('Template atualizado - ID: ' + id, 'Templates');
+        res.json({ success: true, template: data });
+    } catch (error) {
+        logger.error('Erro inesperado ao atualizar template: ' + error.message, 'Templates');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// DELETE /api/templates/:id - Eliminar template (soft delete)
+app.delete('/api/templates/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: existing, error: checkError } = await req.supabase
+            .from('templates')
+            .select('id')
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .is('deleted_at', null)
+            .single();
+
+        if (checkError || !existing) {
+            return res.status(404).json({ success: false, error: 'Template nao encontrado' });
+        }
+
+        const { error } = await req.supabase
+            .from('templates')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('user_id', req.user.id);
+
+        if (error) {
+            logger.error('Erro ao eliminar template: ' + error.message, 'Templates');
+            return res.status(500).json({ success: false, error: 'Erro ao eliminar template' });
+        }
+
+        logger.info('Template eliminado (soft) - ID: ' + id, 'Templates');
+        res.json({ success: true, message: 'Template eliminado com sucesso' });
+    } catch (error) {
+        logger.error('Erro inesperado ao eliminar template: ' + error.message, 'Templates');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
 // ============================================
 // 6. CRIAR CHECKOUT STRIPE (equivalente a criar-checkout)
 // ============================================

@@ -45,7 +45,7 @@
         'overview': { title: 'Visão Geral', module: function() { return window.OverviewView; } },
         'campanhas': { title: 'Campanhas', module: null },
         'contactos': { title: 'Contactos', module: function() { return window.ContactosView; } },
-        'templates': { title: 'Templates', module: null },
+        'templates': { title: 'Templates', module: function() { return window.TemplatesView; } },
         'analytics': { title: 'Analytics', module: null },
         'config': { title: 'Configurações', module: null }
     };
