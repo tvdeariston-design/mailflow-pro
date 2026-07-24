@@ -1720,9 +1720,14 @@ app.post('/api/email/send', async (req, res) => {
 // ============================================
 // Start server
 // ============================================
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     logger.info('Servidor iniciado na porta ' + PORT, 'Server');
     logger.info('Health check: http://localhost:' + PORT + '/health', 'Server');
+
+    // Recuperar campanhas presas em 'sending' (ex: apos restart do servidor)
+    if (supabaseAdmin && campaignEngine.recoverStuckCampaigns) {
+        await campaignEngine.recoverStuckCampaigns(supabaseAdmin);
+    }
 });
 
 module.exports = app;

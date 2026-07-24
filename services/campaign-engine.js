@@ -319,7 +319,7 @@ async function sendInBatches(supabaseAdmin, campaignState, campaign, template, a
         let offset = 0;
         const batchSize = BATCH_SIZE;
 
-        while (offset < allRecipients.length) {
+        while (offset < campaignState.totalRecipients) {
             // Verificar se foi pausada ou cancelada
             if (campaignState.abortController.aborted) {
                 break;
@@ -394,7 +394,7 @@ async function sendInBatches(supabaseAdmin, campaignState, campaign, template, a
             offset += batchSize;
 
             // Esperar entre batches (se não foi cancelado/pausado)
-            if (offset < allRecipients.length && !campaignState.abortController.aborted) {
+            if (offset < campaignState.totalRecipients && !campaignState.abortController.aborted) {
                 campaignState.lastBatchAt = new Date();
                 await sleep(BATCH_DELAY_MS);
             }
@@ -552,6 +552,44 @@ function isActive(campaignId) {
     return activeCampaigns.has(campaignId);
 }
 
+
+// ============================================
+// Recuperar campanhas presas em 'sending' (boot)
+// ============================================
+async function recoverStuckCampaigns(supabaseAdmin) {
+    try {
+        const { data: stuck, error } = await supabaseAdmin
+            .from('campaigns')
+            .select('id, nome')
+            .eq('status', 'sending')
+            .is('deleted_at', null);
+
+        if (error) {
+            console.error('[CampaignEngine] Erro ao buscar campanhas presas:', error.message);
+            return 0;
+        }
+
+        if (!stuck || stuck.length === 0) return 0;
+
+        const { error: updateError } = await supabaseAdmin
+            .from('campaigns')
+            .update({ status: 'paused', updated_at: new Date().toISOString() })
+            .eq('status', 'sending')
+            .is('deleted_at', null);
+
+        if (updateError) {
+            console.error('[CampaignEngine] Erro ao recuperar campanhas:', updateError.message);
+            return 0;
+        }
+
+        console.log('[CampaignEngine] Recovered ' + stuck.length + ' stuck campaign(s)');
+        return stuck.length;
+    } catch (err) {
+        console.error('[CampaignEngine] Erro inesperado na recuperacao:', err.message);
+        return 0;
+    }
+}
+
 module.exports = {
     startCampaign,
     pauseCampaign,
@@ -560,6 +598,7 @@ module.exports = {
     getProgress,
     getActiveCampaigns,
     isActive,
+    recoverStuckCampaigns,
     // Exportados para testes
     BATCH_SIZE,
     BATCH_DELAY_MS,

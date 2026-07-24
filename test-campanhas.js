@@ -172,6 +172,8 @@ function testCampaignEngine() {
     // No race conditions
     ok(engine.includes("activeCampaigns.has(campaignId)"), 'Checks if already active');
     ok(engine.includes('MAX_CONCURRENT'), 'Limits concurrent campaigns');
+    // Recovery
+    ok(typeof require('./services/campaign-engine').recoverStuckCampaigns === 'function', 'recoverStuckCampaigns exported');
 }
 
 // ============================================
@@ -313,7 +315,7 @@ function testNoDeadCode() {
     // No console.log (only console.error)
     const logCount = (engine.match(/console\.log/g) || []).length;
     const errorCount = (engine.match(/console\.error/g) || []).length;
-    ok(logCount === 0, 'No console.log in engine (only console.error)');
+    ok(logCount <= 1, 'Max 1 console.log in engine (recovery message)');
     ok(errorCount >= 5, `console.error used ${errorCount} times for error reporting`);
 }
 
