@@ -2425,3 +2425,24 @@ button {
 .tl-action--send:hover { color: #2563eb; background: rgba(37, 99, 235, 0.08); }
 .tl-action--pause:hover { color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
 .tl-action--cancel:hover { color: #ef4444; background: rgba(239, 68, 68, 0.08); }
+
+/* ========================================
+   Campaign Tracking — Stats Row
+   ======================================== */
+
+.cp-stats-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.cp-stat {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #4b5563;
+    background: #f3f4f6;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+}

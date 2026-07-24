@@ -161,13 +161,49 @@ function sleep(ms) {
 }
 
 // ============================================
+
+// ============================================
+// Helpers — Tracking (pixel + link rewriting)
+// ============================================
+function getTrackingBase() {
+    const url = process.env.TRACKING_URL || process.env.RENDER_EXTERNAL_URL || '';
+    if (!url) return '';
+    return url.startsWith('http') ? url : 'https://' + url;
+}
+
+function injectTrackingPixel(html, recipientId) {
+    const base = getTrackingBase();
+    if (!base || !html) return html;
+    const pixel = '<img src="' + base + '/track/open/' + recipientId + '" width="1" height="1" style="display:none" alt="" />';
+    // Insert before </body> if present, otherwise append
+    if (html.indexOf('</body>') !== -1) {
+        return html.replace('</body>', pixel + '</body>');
+    }
+    return html + pixel;
+}
+
+function rewriteLinks(html, recipientId) {
+    const base = getTrackingBase();
+    if (!base || !html) return html;
+    // Rewrite href="http..." and href="https..."
+    return html.replace(/href="(https?:\/\/[^"\s>]+)"/gi, function(match, url) {
+        return 'href="' + base + '/track/click/' + recipientId + '?url=' + encodeURIComponent(url) + '"';
+    });
+}
+
 // Helpers — batch sender
 // ============================================
-async function sendSingleEmail(transporter, campaign, template, contact) {
+async function sendSingleEmail(transporter, campaign, template, contact, recipientId) {
     const subject = renderMergeTags(template.subject || campaign.assunto, contact);
     const preheader = renderMergeTags(template.preheader || '', contact);
-    const html = renderMergeTags(template.html || '', contact);
+    let html = renderMergeTags(template.html || '', contact);
     const text = renderMergeTags(template.text_version || '', contact);
+
+    // Injetar tracking pixel e reescrever links
+    if (recipientId) {
+        html = injectTrackingPixel(html, recipientId);
+        html = rewriteLinks(html, recipientId);
+    }
 
     const fromName = campaign.from_name || 'MailFlow Pro';
     const fromEmail = campaign.from_email || process.env.EMAIL_USER || 'noreply@mailflowpro.com';
@@ -356,7 +392,7 @@ async function sendInBatches(supabaseAdmin, campaignState, campaign, template, a
                     await updateRecipientStatus(supabaseAdmin, recipient.id, { status: 'sending' });
 
                     // Enviar
-                    const messageId = await sendSingleEmail(transporter, campaign, template, contact);
+                    const messageId = await sendSingleEmail(transporter, campaign, template, contact, recipient.id);
 
                     // Marcar como sent
                     await updateRecipientStatus(supabaseAdmin, recipient.id, {

@@ -222,13 +222,27 @@ var CampanhasView = (function() {
     }
 
     function renderProgressBar(c) {
-        if (c.status !== 'sending' && c.status !== 'paused') return '';
-        var pct = c.progress_percent || 0;
-        return '' +
-            '<div class="cp-progress">' +
+        var html = '';
+        if (c.status === 'sending' || c.status === 'paused') {
+            var pct = c.progress_percent || 0;
+            html += '<div class="cp-progress">' +
                 '<div class="cp-progress__bar" id="cp-progress-' + c.id + '" style="width:' + pct + '%">' + pct + '%</div>' +
             '</div>' +
             '<div class="cp-progress__info" id="cp-progress-info-' + c.id + '">' + (c.total_sent || 0) + ' / ' + (c.total_recipients || 0) + ' enviados</div>';
+        }
+        if (c.status === 'sent' || c.status === 'sending' || c.status === 'paused') {
+            var sent = c.total_sent || 0;
+            var opened = c.total_opened || 0;
+            var clicked = c.total_clicked || 0;
+            var openRate = sent > 0 ? Math.round((opened / sent) * 10000) / 100 : 0;
+            var clickRate = sent > 0 ? Math.round((clicked / sent) * 10000) / 100 : 0;
+            html += '<div class="cp-stats-row">' +
+                '<span class="cp-stat" title="Aberturas">&#x1F4E8; ' + openRate + '%</span>' +
+                '<span class="cp-stat" title="Cliques">&#x1F517; ' + clickRate + '%</span>' +
+                '<span class="cp-stat" title="Enviados">&#x2709; ' + sent + '</span>' +
+            '</div>';
+        }
+        return html;
     }
 
     function buildHTML(campaigns, total) {

@@ -1392,6 +1392,228 @@ app.get('/api/campaigns/:id/progress', authMiddleware, async (req, res) => {
 });
 
 
+
+// ============================================
+// TRACKING API (sem auth — chamado por clientes de email)
+// ============================================
+
+// GIF transparente 1x1 para pixel de abertura
+const TRACKING_GIF = Buffer.from(
+    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    'base64'
+);
+
+// GET /track/open/:recipientId — Pixel de abertura
+app.get('/track/open/:recipientId', async (req, res) => {
+    try {
+        const { recipientId } = req.params;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const userAgent = req.headers['user-agent'] || '';
+
+        // Atualizar tracking (apenas via service_role para bypass RLS)
+        if (supabaseAdmin) {
+            // Buscar recipient para saber o campaign_id
+            const { data: recipient } = await supabaseAdmin
+                .from('campaign_recipients')
+                .select('id, campaign_id, opened_at')
+                .eq('id', recipientId)
+                .single();
+
+            if (recipient) {
+                const isFirstOpen = !recipient.opened_at;
+
+                // Atualizar recipient
+                const recipientUpdates = {
+                    open_count: supabaseAdmin.rpc ? 1 : 1, // fallback below
+                    last_open_ip: ip,
+                    last_open_user_agent: userAgent
+                };
+
+                // Incrementar open_count atomicamente via SQL raw
+                await supabaseAdmin
+                    .from('campaign_recipients')
+                    .update({
+                        last_open_ip: ip,
+                        last_open_user_agent: userAgent
+                    })
+                    .eq('id', recipientId);
+
+                // Incrementar open_count via rpc ou update manual
+                if (isFirstOpen) {
+                    await supabaseAdmin
+                        .from('campaign_recipients')
+                        .update({
+                            opened_at: new Date().toISOString(),
+                            open_count: 1
+                        })
+                        .eq('id', recipientId);
+
+                    // Incrementar total_opened na campanha (apenas primeira vez)
+                    await supabaseAdmin.rpc('increment_campaign_counter', {
+                        p_campaign_id: recipient.campaign_id,
+                        p_column: 'total_opened',
+                        p_increment: 1
+                    }).catch(() => {
+                        // Fallback: update manual se rpc não existir
+                        supabaseAdmin.from('campaigns').update({
+                            total_opened: supabaseAdmin.rpc ? 0 : 1
+                        }).eq('id', recipient.campaign_id);
+                    });
+                } else {
+                    // Abertura subsequente: incrementar open_count
+                    const { data: current } = await supabaseAdmin
+                        .from('campaign_recipients')
+                        .select('open_count')
+                        .eq('id', recipientId)
+                        .single();
+
+                    await supabaseAdmin
+                        .from('campaign_recipients')
+                        .update({
+                            open_count: (current ? current.open_count || 0 : 0) + 1
+                        })
+                        .eq('id', recipientId);
+                }
+            }
+        }
+    } catch (err) {
+        // Silencioso — tracking nunca deve falhar o email
+    }
+
+    // Responder sempre com GIF
+    res.set({
+        'Content-Type': 'image/gif',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    });
+    res.send(TRACKING_GIF);
+});
+
+// GET /track/click/:recipientId?url=... — Click tracking + redirect
+app.get('/track/click/:recipientId', async (req, res) => {
+    try {
+        const { recipientId } = req.params;
+        const targetUrl = req.query.url;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+        const userAgent = req.headers['user-agent'] || '';
+
+        if (!targetUrl) {
+            return res.status(400).send('Missing url parameter');
+        }
+
+        // Validar URL (básico)
+        if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+            return res.status(400).send('Invalid url');
+        }
+
+        if (supabaseAdmin) {
+            const { data: recipient } = await supabaseAdmin
+                .from('campaign_recipients')
+                .select('id, campaign_id, clicked_at')
+                .eq('id', recipientId)
+                .single();
+
+            if (recipient) {
+                const isFirstClick = !recipient.clicked_at;
+
+                // Atualizar IP e User-Agent
+                await supabaseAdmin
+                    .from('campaign_recipients')
+                    .update({
+                        last_click_ip: ip,
+                        last_click_user_agent: userAgent
+                    })
+                    .eq('id', recipientId);
+
+                if (isFirstClick) {
+                    // Primeiro clique
+                    await supabaseAdmin
+                        .from('campaign_recipients')
+                        .update({
+                            clicked_at: new Date().toISOString(),
+                            click_count: 1
+                        })
+                        .eq('id', recipientId);
+
+                    // Incrementar total_clicked na campanha
+                    await supabaseAdmin.rpc('increment_campaign_counter', {
+                        p_campaign_id: recipient.campaign_id,
+                        p_column: 'total_clicked',
+                        p_increment: 1
+                    }).catch(() => {});
+                } else {
+                    // Clique subsequente
+                    const { data: current } = await supabaseAdmin
+                        .from('campaign_recipients')
+                        .select('click_count')
+                        .eq('id', recipientId)
+                        .single();
+
+                    await supabaseAdmin
+                        .from('campaign_recipients')
+                        .update({
+                            click_count: (current ? current.click_count || 0 : 0) + 1
+                        })
+                        .eq('id', recipientId);
+                }
+            }
+        }
+    } catch (err) {
+        // Silencioso
+    }
+
+    // Redirect para URL original
+    const targetUrl = req.query.url;
+    if (targetUrl && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
+        res.redirect(302, targetUrl);
+    } else {
+        res.status(400).send('Invalid url');
+    }
+});
+
+// GET /api/campaigns/:id/stats — Estatísticas da campanha
+app.get('/api/campaigns/:id/stats', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: campaign, error: campErr } = await supabaseAdmin
+            .from('campaigns')
+            .select('id, user_id, total_recipients, total_sent, total_failed, total_opened, total_clicked, status')
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .is('deleted_at', null)
+            .single();
+
+        if (campErr || !campaign) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
+
+        const sent = campaign.total_sent || 0;
+        const opened = campaign.total_opened || 0;
+        const clicked = campaign.total_clicked || 0;
+
+        const openRate = sent > 0 ? Math.round((opened / sent) * 10000) / 100 : 0;
+        const clickRate = sent > 0 ? Math.round((clicked / sent) * 10000) / 100 : 0;
+
+        res.json({
+            success: true,
+            stats: {
+                total_recipients: campaign.total_recipients || 0,
+                total_sent: sent,
+                total_failed: campaign.total_failed || 0,
+                total_opened: opened,
+                total_clicked: clicked,
+                open_rate: openRate,
+                click_rate: clickRate,
+                status: campaign.status
+            }
+        });
+    } catch (error) {
+        logger.error('Erro ao buscar stats: ' + error.message, 'Tracking');
+        res.status(500).json({ success: false, error: 'Erro ao buscar estatisticas' });
+    }
+});
+
+
 // 6. CRIAR CHECKOUT STRIPE (equivalente a criar-checkout)
 // ============================================
 app.post('/api/checkout/create', async (req, res) => {
