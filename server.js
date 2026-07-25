@@ -6,10 +6,12 @@
  */
 
 const express = require('express');
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require('nodemailer');
 const campaignEngine = require('./services/campaign-engine');
+const contactsParser = require('./services/contacts-parser');
 
 const app = express();
 const path = require('path');
@@ -44,6 +46,61 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
     ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     : null;
+
+// ============================================
+// SMTP Password Encryption (AES-256-GCM)
+// ============================================
+const ENCRYPTION_KEY_HEX = process.env.SMTP_ENCRYPTION_KEY;
+var encryptionAvailable = false;
+
+if (ENCRYPTION_KEY_HEX) {
+    if (ENCRYPTION_KEY_HEX.length === 64) {
+        encryptionAvailable = true;
+    } else {
+        console.error('[SMTP] SMTP_ENCRYPTION_KEY must be a 64-char hex string (32 bytes) — SMTP passwords will be stored in plaintext');
+    }
+} else {
+    console.warn('[SMTP] SMTP_ENCRYPTION_KEY not set — SMTP passwords will be stored in plaintext');
+}
+
+function encrypt(text) {
+    if (!encryptionAvailable) return text;
+    try {
+        var key = Buffer.from(ENCRYPTION_KEY_HEX, 'hex');
+        var iv = crypto.randomBytes(12);
+        var cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+        var encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        var authTag = cipher.getAuthTag().toString('hex');
+        return iv.toString('hex') + ':' + authTag + ':' + encrypted;
+    } catch (e) {
+        console.error('[SMTP] Encryption failed: ' + e.message);
+        return text;
+    }
+}
+
+function decrypt(encoded) {
+    if (!encryptionAvailable) return encoded;
+    if (!encoded || typeof encoded !== 'string') return encoded;
+    var parts = encoded.split(':');
+    if (parts.length !== 3) {
+        return encoded;
+    }
+    try {
+        var key = Buffer.from(ENCRYPTION_KEY_HEX, 'hex');
+        var iv = Buffer.from(parts[0], 'hex');
+        var authTag = Buffer.from(parts[1], 'hex');
+        var encrypted = parts[2];
+        var decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(authTag);
+        var decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (e) {
+        console.error('[SMTP] Corrupted encrypted password — decryption failed: ' + e.message);
+        return null;
+    }
+}
 
 // ============================================
 // Helpers
@@ -258,13 +315,16 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
     try {
         const { data, error } = await req.supabase
             .from('profiles')
-            .select('*')
+            .select('id, nome, empresa, telefone, timezone, locale, created_at, plan, smtp_host, smtp_port, smtp_username, smtp_password, smtp_secure, smtp_from_email, smtp_from_name, smtp_status, smtp_verified_at, updated_at')
             .eq('id', req.user.id)
             .single();
 
         if (error || !data) {
             return res.status(404).json({ success: false, error: 'Profile não encontrado' });
         }
+
+        data.smtp_has_password = !!(data.smtp_password);
+        delete data.smtp_password;
 
         res.json({ profile: data });
 
@@ -325,8 +385,8 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
         if (body.smtp_username !== undefined) {
             updates.smtp_username = body.smtp_username.trim();
         }
-        if (body.smtp_password !== undefined) {
-            updates.smtp_password = body.smtp_password;
+        if (body.smtp_password !== undefined && body.smtp_password !== '') {
+            updates.smtp_password = encrypt(body.smtp_password);
         }
         if (body.smtp_secure !== undefined) {
             updates.smtp_secure = Boolean(body.smtp_secure);
@@ -340,16 +400,17 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
 
         // Update smtp_status when SMTP fields are saved
         var smtpFieldsProvided = body.smtp_host !== undefined && body.smtp_port !== undefined &&
-                                  body.smtp_username !== undefined && body.smtp_password !== undefined;
+                                  body.smtp_username !== undefined;
         if (smtpFieldsProvided) {
             var hasHost = body.smtp_host && body.smtp_host.trim();
             var hasPort = body.smtp_port !== undefined && !isNaN(parseInt(body.smtp_port, 10)) && parseInt(body.smtp_port, 10) > 0;
             var hasUser = body.smtp_username && body.smtp_username.trim();
+            // Only require password if explicitly sending a new one (not empty string preserving existing)
             var hasPass = body.smtp_password !== undefined && body.smtp_password !== '';
             if (hasHost && hasPort && hasUser && hasPass) {
                 updates.smtp_status = 'configured';
-            } else {
-                updates.smtp_status = 'not_configured';
+            } else if (!hasPass && hasHost && hasPort && hasUser) {
+                // Password was empty — keep current status (already configured)
             }
         }
 
@@ -451,12 +512,12 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
         if (!body.smtp_password) {
             return res.status(400).json({ success: false, error: 'Password SMTP é obrigatória' });
         }
-        if (!body.to || !body.to.trim()) {
+        if (!body.test_email || !body.test_email.trim()) {
             return res.status(400).json({ success: false, error: 'Email de destino é obrigatório' });
         }
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(body.to.trim())) {
+        if (!emailRegex.test(body.test_email.trim())) {
             return res.status(400).json({ success: false, error: 'Email de destino inválido' });
         }
 
@@ -483,7 +544,7 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
         
         await testTransporter.sendMail({
             from: '"' + fromName + '" <' + fromEmail + '>',
-            to: body.to.trim(),
+            to: body.test_email.trim(),
             subject: 'MailFlow Pro - Teste SMTP',
             html: '<h2>Ligação SMTP bem-sucedida</h2><p>Este é um email de teste enviado pelo MailFlow Pro.</p>'
         });
@@ -494,7 +555,7 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
             .update({ smtp_status: 'verified', smtp_verified_at: new Date().toISOString() })
             .eq('id', req.user.id);
 
-        logger.info('SMTP test email sent - User: ' + req.user.id + ', To: ' + body.to, 'SMTP');
+        logger.info('SMTP test email sent - User: ' + req.user.id + ', To: ' + body.test_email, 'SMTP');
         res.json({ success: true });
 
     } catch (error) {
@@ -649,9 +710,9 @@ app.get('/api/contacts/export', authMiddleware, async (req, res) => {
             res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '.xlsx"');
             res.send(buf);
         } else {
-            // CSV export with UTF-8 BOM
-            const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\n');
-            const bom = '\uFEFF'; // UTF-8 BOM
+            // CSV export with UTF-8 BOM + CRLF (Windows compatibility)
+            const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\r\n');
+            const bom = '\uFEFF';
 
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '.csv"');
@@ -782,70 +843,19 @@ app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
         }
 
         const ext = filename.split('.').pop().toLowerCase();
-        let headers = [];
-        let rows = [];
-
-        if (ext === 'csv') {
-            const lines = content.trim().split('\n');
-            if (lines.length < 2) {
-                return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
-            }
-
-            // Auto-detect separator
-            const separators = [',', ';', '\t'];
-            let bestSep = ',';
-            let maxCols = 0;
-            for (const sep of separators) {
-                const cols = lines[0].split(sep).length;
-                if (cols > maxCols) {
-                    maxCols = cols;
-                    bestSep = sep;
-                }
-            }
-
-            headers = lines[0].split(bestSep).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
-            rows = lines.slice(1).map(line => {
-                const cells = [];
-                let current = '';
-                let inQuotes = false;
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"') inQuotes = !inQuotes;
-                    else if (char === bestSep && !inQuotes) {
-                        cells.push(current.trim().replace(/""/g, '"'));
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                cells.push(current.trim().replace(/""/g, '"'));
-                return cells;
-            });
-        } else if (ext === 'xlsx' || ext === 'xls') {
-            const XLSX = require('xlsx');
-            const buffer = Buffer.from(content, 'base64');
-            const workbook = XLSX.read(buffer, { type: 'buffer' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
-            if (json.length < 2) {
-                return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
-            }
-
-            headers = json[0].map(h => String(h).trim().toLowerCase());
-            rows = json.slice(1);
-        } else {
+        if (ext !== 'csv' && ext !== 'xlsx' && ext !== 'xls') {
             return res.status(400).json({ success: false, error: 'Formato não suportado. Use CSV ou XLSX' });
         }
 
-        // Apply column mapping if provided
-        const requiredFields = ['nome', 'email', 'telefone', 'empresa', 'tags'];
-        const finalHeaders = {};
-        for (const field of requiredFields) {
-            const mappedIdx = mapping && mapping[field] !== undefined ? mapping[field] : headers.indexOf(field);
-            finalHeaders[field] = mappedIdx >= 0 ? mappedIdx : -1;
+        const parsed = contactsParser.parseContent(content, filename);
+        if (parsed.headers.length === 0 || parsed.rows.length === 0) {
+            return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
         }
 
+        const headers = parsed.headers;
+        const rows = parsed.rows;
+
+        const finalHeaders = contactsParser.buildColumnMapping(headers, mapping);
         if (finalHeaders.email === -1) {
             return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória (mapeie uma coluna do ficheiro)' });
         }
@@ -860,12 +870,12 @@ app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
 
         for (let i = 0; i < Math.min(rows.length, 10); i++) {
             const row = rows[i];
-            const email = finalHeaders.email >= 0 ? row[finalHeaders.email] : '';
-            const nome = finalHeaders.nome >= 0 ? row[finalHeaders.nome] : '';
-            const telefone = finalHeaders.telefone >= 0 ? row[finalHeaders.telefone] : '';
-            const empresa = finalHeaders.empresa >= 0 ? row[finalHeaders.empresa] : '';
-            const tags = finalHeaders.tags >= 0 && row[finalHeaders.tags] ? 
-                String(row[finalHeaders.tags]).split(';').map(t => t.trim()).filter(t => t) : [];
+            const email = contactsParser.extractField(row, finalHeaders.email);
+            const nome = contactsParser.extractField(row, finalHeaders.nome);
+            const telefone = contactsParser.extractField(row, finalHeaders.telefone);
+            const empresa = contactsParser.extractField(row, finalHeaders.empresa);
+            const tagsRaw = contactsParser.extractField(row, finalHeaders.tags);
+            const tags = tagsRaw ? tagsRaw.split(';').map(t => t.trim()).filter(t => t) : [];
 
             const emailStr = String(email).toLowerCase().trim();
             const isEmpty = !emailStr;
@@ -895,7 +905,7 @@ app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
         // Count total stats for all rows
         for (let i = 10; i < rows.length; i++) {
             const row = rows[i];
-            const emailStr = String(finalHeaders.email >= 0 ? row[finalHeaders.email] : '').toLowerCase().trim();
+            const emailStr = contactsParser.extractField(row, finalHeaders.email).toLowerCase().trim();
             const isEmpty = !emailStr;
             const emailValid = emailStr && validateEmail(emailStr);
             const isDuplicate = emailStr && seenEmails.has(emailStr);
@@ -929,7 +939,6 @@ app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
                 }
             }
         }
-
         res.json({
             success: true,
             preview,
@@ -959,70 +968,19 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
         }
 
         const ext = filename.split('.').pop().toLowerCase();
-        let headers = [];
-        let rows = [];
-
-        if (ext === 'csv') {
-            const lines = content.trim().split('\n');
-            if (lines.length < 2) {
-                return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
-            }
-
-            // Auto-detect separator
-            const separators = [',', ';', '\t'];
-            let bestSep = ',';
-            let maxCols = 0;
-            for (const sep of separators) {
-                const cols = lines[0].split(sep).length;
-                if (cols > maxCols) {
-                    maxCols = cols;
-                    bestSep = sep;
-                }
-            }
-
-            headers = lines[0].split(bestSep).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
-            rows = lines.slice(1).map(line => {
-                const cells = [];
-                let current = '';
-                let inQuotes = false;
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"') inQuotes = !inQuotes;
-                    else if (char === bestSep && !inQuotes) {
-                        cells.push(current.trim().replace(/""/g, '"'));
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                cells.push(current.trim().replace(/""/g, '"'));
-                return cells;
-            });
-        } else if (ext === 'xlsx' || ext === 'xls') {
-            const XLSX = require('xlsx');
-            const buffer = Buffer.from(content, 'base64');
-            const workbook = XLSX.read(buffer, { type: 'buffer' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-            
-            if (json.length < 2) {
-                return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
-            }
-            
-            headers = json[0].map(h => String(h).trim().toLowerCase());
-            rows = json.slice(1);
-        } else {
+        if (ext !== 'csv' && ext !== 'xlsx' && ext !== 'xls') {
             return res.status(400).json({ success: false, error: 'Formato não suportado. Use CSV ou XLSX' });
         }
 
-        // Apply column mapping
-        const requiredFields = ['nome', 'email', 'telefone', 'empresa', 'tags'];
-        const finalHeaders = {};
-        for (const field of requiredFields) {
-            const mappedIdx = mapping && mapping[field] !== undefined ? mapping[field] : headers.indexOf(field);
-            finalHeaders[field] = mappedIdx >= 0 ? mappedIdx : -1;
+        const parsed = contactsParser.parseContent(content, filename);
+        if (parsed.headers.length === 0 || parsed.rows.length === 0) {
+            return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
         }
 
+        const headers = parsed.headers;
+        const rows = parsed.rows;
+
+        const finalHeaders = contactsParser.buildColumnMapping(headers, mapping);
         if (finalHeaders.email === -1) {
             return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória' });
         }
@@ -1034,12 +992,12 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
         
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
-            const email = finalHeaders.email >= 0 ? String(row[finalHeaders.email] || '').toLowerCase().trim() : '';
-            const nome = finalHeaders.nome >= 0 ? String(row[finalHeaders.nome] || '').trim() : '';
-            const telefone = finalHeaders.telefone >= 0 ? String(row[finalHeaders.telefone] || '').trim() : '';
-            const empresa = finalHeaders.empresa >= 0 ? String(row[finalHeaders.empresa] || '').trim() : '';
-            const tags = finalHeaders.tags >= 0 && row[finalHeaders.tags] ? 
-                String(row[finalHeaders.tags]).split(';').map(t => t.trim()).filter(t => t) : [];
+            const email = contactsParser.extractField(row, finalHeaders.email).toLowerCase().trim();
+            const nome = contactsParser.extractField(row, finalHeaders.nome).trim();
+            const telefone = contactsParser.extractField(row, finalHeaders.telefone).trim();
+            const empresa = contactsParser.extractField(row, finalHeaders.empresa).trim();
+            const tagsRaw = contactsParser.extractField(row, finalHeaders.tags);
+            const tags = tagsRaw ? tagsRaw.split(';').map(t => t.trim()).filter(t => t) : [];
 
             if (!email) {
                 errors.push({ line: i + 2, error: 'Email vazio', type: 'empty' });
@@ -2685,6 +2643,129 @@ app.get('/api/automations/jobs', authMiddleware, async (req, res) => {
     }
 });
 
+// POST /api/automations/:id/run - Executar automação manualmente
+app.post('/api/automations/:id/run', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: automation, error: autoErr } = await req.supabase
+            .from('automation_rules')
+            .select('*, campaign:campaigns(*)')
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .single();
+
+        if (autoErr || !automation) {
+            return res.status(404).json({ success: false, error: 'Automação não encontrada' });
+        }
+
+        if (!automation.campaign) {
+            return res.status(400).json({ success: false, error: 'Automação não tem campanha associada' });
+        }
+
+        const { data: jobs, error: jobsErr } = await req.supabase
+            .from('automation_jobs')
+            .select('*')
+            .eq('automation_id', id)
+            .eq('status', 'pending');
+
+        if (jobsErr) {
+            logger.error('Erro ao buscar jobs pendentes: ' + jobsErr.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar jobs' });
+        }
+
+        if (!jobs || jobs.length === 0) {
+            return res.json({ jobs_processed: 0, completed: 0, failed: 0 });
+        }
+
+        const transporter = campaignEngine.getTransporter();
+        if (!transporter) {
+            return res.status(500).json({ success: false, error: 'Serviço de email não configurado' });
+        }
+
+        const { data: template, error: tplErr } = await req.supabase
+            .from('templates')
+            .select('*')
+            .eq('id', automation.campaign.template_id)
+            .eq('user_id', req.user.id)
+            .is('deleted_at', null)
+            .single();
+
+        if (tplErr || !template) {
+            return res.status(500).json({ success: false, error: 'Template não encontrado' });
+        }
+
+        var completed = 0;
+        var failed = 0;
+
+        for (var i = 0; i < jobs.length; i++) {
+            var job = jobs[i];
+
+            try {
+                await req.supabase
+                    .from('automation_jobs')
+                    .update({
+                        status: 'running',
+                        started_at: new Date().toISOString()
+                    })
+                    .eq('id', job.id);
+
+                var { data: contact, error: contactErr } = await req.supabase
+                    .from('contacts')
+                    .select('*')
+                    .eq('id', job.contact_id)
+                    .single();
+
+                if (contactErr || !contact) {
+                    throw new Error(contactErr ? contactErr.message : 'Contacto não encontrado');
+                }
+
+                if (!contact.email) {
+                    throw new Error('Contacto sem email');
+                }
+
+                var messageId = await campaignEngine.sendSingleEmail(
+                    transporter,
+                    automation.campaign,
+                    template,
+                    contact,
+                    null
+                );
+
+                await req.supabase
+                    .from('automation_jobs')
+                    .update({
+                        status: 'completed',
+                        completed_at: new Date().toISOString(),
+                        error_message: null
+                    })
+                    .eq('id', job.id);
+
+                completed++;
+            } catch (sendErr) {
+                logger.error('Erro ao executar job ' + job.id + ': ' + sendErr.message, 'Automations');
+
+                await req.supabase
+                    .from('automation_jobs')
+                    .update({
+                        status: 'failed',
+                        completed_at: new Date().toISOString(),
+                        error_message: sendErr.message || 'Erro ao enviar email'
+                    })
+                    .eq('id', job.id);
+
+                failed++;
+            }
+        }
+
+        logger.info('Automação executada - ID: ' + id + ', Jobs: ' + jobs.length + ', OK: ' + completed + ', Falhas: ' + failed, 'Automations');
+        res.json({ jobs_processed: jobs.length, completed: completed, failed: failed });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao executar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
 
 // ============================================
 // Start server
