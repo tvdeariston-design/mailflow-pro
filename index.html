@@ -677,18 +677,16 @@
                             </li>
                         </ul>
                         
-                        <button 
-                            type="button"
-                            class="btn btn--primary btn--lg" 
-                            style="width: 100%;"
-                            aria-describedby="cta-note"
-                            onclick="alert('Os pagamentos ser\u00e3o ativados quando a conta Stripe for validada. Agradecemos a paci\u00eancia!')"
-                        >
-                            Subscrever Pro
-                        </button>
-                        <p id="cta-note" class="text-sm text-gray-500 mt-4">
-                            Em breve ativo. Conta Stripe a ser validada.
-                        </p>
+                        <div id="stripe-cta">
+                            <button 
+                                type="button"
+                                class="btn btn--primary btn--lg" 
+                                style="width: 100%;"
+                            >
+                                Subscrever Pro
+                            </button>
+                            <p id="stripe-cta-status" class="text-sm text-gray-500 mt-4"></p>
+                        </div>
                     </div>
                 </div>
             </div>

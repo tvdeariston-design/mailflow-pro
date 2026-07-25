@@ -7,6 +7,8 @@
 (function() {
     'use strict';
 
+    const STRIPE_ACTIVE = false;
+
     /* ========================================
        Navbar Scroll Effect
        ======================================== */
@@ -96,6 +98,18 @@
     }
 
     /* ========================================
+       Stripe CTA Placeholder
+       ======================================== */
+    function initStripeCTA() {
+        var statusEl = document.getElementById('stripe-cta-status');
+        if (!statusEl) return;
+
+        if (!STRIPE_ACTIVE) {
+            statusEl.textContent = 'Em breve ativo. Conta Stripe a ser validada.';
+        }
+    }
+
+    /* ========================================
        Button Loading State
        ======================================== */
     window.setButtonLoading = function(button, loading) {
@@ -118,6 +132,7 @@
         initMobileMenu();
         initFAQ();
         initSmoothScroll();
+        initStripeCTA();
     });
 
 })();
