@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — MailFlow Pro</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-secondary: #64748b;
+            --indigo: #6366f1;
+            --indigo-light: #818cf8;
+            --indigo-dark: #4f46e5;
+            --glass-bg: rgba(255,255,255,0.72);
+            --glass-border: rgba(255,255,255,0.5);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.04);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.08);
+            --transition: 0.2s cubic-bezier(0.25,0.46,0.45,0.94);
+            --transition-smooth: 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        .dash { display:flex; min-height:100vh; }
+        .sidebar {
+            position:fixed; top:0; left:0; width:260px; height:100vh;
+            background:var(--glass-bg); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+            border-right:1px solid var(--glass-border); z-index:100;
+            display:flex; flex-direction:column; transition:transform var(--transition-smooth);
+        }
+        .sidebar__logo {
+            display:flex; align-items:center; gap:10px; padding:20px 20px 16px;
+            text-decoration:none; color:var(--text); font-weight:800; font-size:1.0625rem;
+            letter-spacing:-0.02em; border-bottom:1px solid rgba(0,0,0,0.04);
+        }
+        .sidebar__logo-icon { font-size:1.5rem; }
+        .sidebar__nav { flex:1; padding:12px 10px; overflow-y:auto; }
+        .sidebar__section {
+            font-size:0.625rem; font-weight:700; color:var(--text-secondary);
+            text-transform:uppercase; letter-spacing:0.1em; padding:16px 14px 8px;
+        }
+        .sidebar__link {
+            display:flex; align-items:center; gap:10px; padding:10px 14px;
+            border-radius:10px; text-decoration:none; color:var(--text-secondary);
+            font-size:0.8125rem; font-weight:500; transition:all var(--transition);
+            min-height:40px; cursor:pointer; border:none; background:none; width:100%;
+            font-family:inherit; text-align:left;
+        }
+        .sidebar__link:hover { background:rgba(99,102,241,0.06); color:var(--text); }
+        .sidebar__link--active { background:rgba(99,102,241,0.1); color:var(--indigo); font-weight:600; }
+        .sidebar__link svg { width:18px; height:18px; flex-shrink:0; }
+        .sidebar__link-badge {
+            margin-left:auto; background:var(--indigo); color:white; font-size:0.625rem;
+            font-weight:700; padding:2px 7px; border-radius:10px; min-width:20px; text-align:center;
+        }
+        .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(15,23,42,0.5); z-index:90; }
+        .sidebar-overlay--visible { display:block; }
+        .main { margin-left:260px; flex:1; min-height:100vh; }
+        .header {
+            position:sticky; top:0; z-index:50; background:rgba(255,255,255,0.8);
+            backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+            border-bottom:1px solid var(--border); padding:12px 24px;
+            display:flex; align-items:center; justify-content:space-between; gap:16px;
+        }
+        .header__left { display:flex; align-items:center; gap:14px; }
+        .header__title { font-size:1.125rem; font-weight:700; color:var(--text); letter-spacing:-0.01em; }
+        .header__badge { font-size:0.625rem; font-weight:700; padding:3px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:0.06em; }
+        .header__badge--admin { background:rgba(99,102,241,0.1); color:var(--indigo); }
+        .header__right { display:flex; align-items:center; gap:10px; }
+        .header__user { display:flex; align-items:center; gap:8px; font-size:0.8125rem; font-weight:500; color:var(--text); }
+        .header__avatar {
+            width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--indigo),var(--indigo-light));
+            color:white; display:flex; align-items:center; justify-content:center;
+            font-size:0.75rem; font-weight:700;
+        }
+        .content { padding:24px; }
+        .section { display:none; }
+        .section--active { display:block; animation:fadeIn 0.25s ease both; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        .admin-card {
+            background:var(--glass-bg); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+            border:1px solid var(--glass-border); border-radius:var(--radius); padding:24px;
+            box-shadow:var(--shadow); transition:box-shadow var(--transition);
+        }
+        .admin-card:hover { box-shadow:var(--shadow-lg); }
+        .admin-card__header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+        .admin-card__title { font-size:1rem; font-weight:700; color:var(--text); }
+        .admin-grid { display:grid; gap:20px; }
+        .admin-grid--2 { grid-template-columns:repeat(2,1fr); }
+        .admin-grid--3 { grid-template-columns:repeat(3,1fr); }
+        .admin-grid--4 { grid-template-columns:repeat(4,1fr); }
+        .admin-kpi {
+            background:var(--surface); border:1px solid var(--border); border-radius:14px;
+            padding:20px; transition:all var(--transition); position:relative; overflow:hidden;
+        }
+        .admin-kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,transparent,rgba(99,102,241,0.3),transparent); opacity:0; transition:opacity var(--transition); }
+        .admin-kpi:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); border-color:#d1d5db; }
+        .admin-kpi:hover::before { opacity:1; }
+        .admin-kpi__label { font-size:0.6875rem; color:var(--text-secondary); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
+        .admin-kpi__value { font-size:1.5rem; font-weight:800; color:var(--text); letter-spacing:-0.02em; line-height:1.1; }
+        .admin-kpi__change { font-size:0.75rem; margin-top:6px; font-weight:500; }
+        .admin-kpi__change--up { color:#10b981; }
+        .admin-kpi__change--down { color:#ef4444; }
+        .admin-kpi__change--neutral { color:var(--text-secondary); }
+        .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+        .table { width:100%; border-collapse:collapse; font-size:0.8125rem; }
+        .table th { text-align:left; padding:10px 14px; font-size:0.6875rem; font-weight:600; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid var(--border); background:#fafbfc; white-space:nowrap; }
+        .table td { padding:10px 14px; border-bottom:1px solid rgba(0,0,0,0.03); white-space:nowrap; }
+        .table tr:hover td { background:rgba(99,102,241,0.02); }
+        .badge { display:inline-flex; align-items:center; padding:2px 10px; font-size:0.6875rem; font-weight:600; border-radius:20px; white-space:nowrap; }
+        .badge--green { background:rgba(16,185,129,0.1); color:#059669; }
+        .badge--red { background:rgba(239,68,68,0.1); color:#dc2626; }
+        .badge--yellow { background:rgba(245,158,11,0.1); color:#d97706; }
+        .badge--gray { background:rgba(148,163,184,0.1); color:#64748b; }
+        .badge--indigo { background:rgba(99,102,241,0.1); color:var(--indigo); }
+        .badge--blue { background:rgba(59,130,246,0.1); color:#2563eb; }
+        .empty { text-align:center; padding:60px 24px; color:var(--text-secondary); }
+        .empty__icon { margin-bottom:12px; opacity:0.3; }
+        .empty__title { font-size:1rem; font-weight:600; color:var(--text); margin-bottom:6px; }
+        .empty__desc { font-size:0.8125rem; max-width:320px; margin:0 auto; line-height:1.5; }
+        .skeleton { background:linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%); background-size:200% 100%; border-radius:8px; animation:shimmer 1.5s infinite; }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        .skeleton-card { height:100px; border-radius:14px; margin-bottom:16px; }
+        .skeleton-line { height:14px; border-radius:6px; margin-bottom:10px; }
+        .skeleton-line--sm { width:40%; }
+        .skeleton-line--lg { width:60%; height:20px; }
+        .toolbar { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:center; }
+        .toolbar__search { position:relative; flex:1; min-width:180px; max-width:300px; }
+        .toolbar__search svg { position:absolute; left:10px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:#94a3b8; pointer-events:none; }
+        .toolbar__search input { width:100%; padding:8px 12px 8px 34px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.8125rem; font-family:inherit; background:var(--surface); transition:border-color var(--transition); }
+        .toolbar__search input:focus { outline:none; border-color:var(--indigo); box-shadow:0 0 0 3px rgba(99,102,241,0.12); }
+        .toolbar__filter { padding:8px 32px 8px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.8125rem; font-family:inherit; background:var(--surface); appearance:none; cursor:pointer; background-image:url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position:right 8px center; background-repeat:no-repeat; background-size:14px; }
+        .toolbar__count { font-size:0.8125rem; font-weight:600; color:var(--text-secondary); padding:6px 0; }
+        .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; font-size:0.8125rem; font-weight:600; border-radius:var(--radius-sm); border:none; cursor:pointer; transition:all var(--transition); font-family:inherit; text-decoration:none; min-height:36px; }
+        .btn--primary { background:linear-gradient(135deg,var(--indigo),var(--indigo-light)); color:white; box-shadow:0 2px 8px rgba(99,102,241,0.25); }
+        .btn--primary:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(99,102,241,0.35); }
+        .btn--ghost { background:transparent; color:var(--text-secondary); border:1px solid var(--border); }
+        .btn--ghost:hover { border-color:var(--indigo); color:var(--indigo); }
+        .btn--danger { background:transparent; color:#dc2626; border:1px solid #fee2e2; }
+        .btn--danger:hover { background:#fee2e2; }
+        .btn--sm { padding:5px 10px; font-size:0.75rem; min-height:30px; }
+        .admin-footer { padding:20px 24px; text-align:center; font-size:0.75rem; color:var(--text-secondary); border-top:1px solid var(--border); margin-top:40px; }
+        .section__header { margin-bottom:20px; }
+        .section__header h2 { font-size:1.25rem; font-weight:700; color:var(--text); margin-bottom:4px; }
+        .section__header p { font-size:0.8125rem; color:var(--text-secondary); }
+        .page-title { font-size:1.375rem; font-weight:800; color:var(--text); letter-spacing:-0.02em; margin-bottom:4px; }
+        .page-subtitle { font-size:0.875rem; color:var(--text-secondary); }
+        @media(max-width:1024px){ .admin-grid--4{grid-template-columns:repeat(2,1fr)} .admin-grid--3{grid-template-columns:repeat(2,1fr)} }
+        @media(max-width:768px){
+            .sidebar{transform:translateX(-100%)} .sidebar--open{transform:translateX(0)} .main{margin-left:0} .content{padding:16px} .admin-grid--4,.admin-grid--3,.admin-grid--2{grid-template-columns:1fr} .header{padding:10px 16px} .header__title{font-size:1rem} .toolbar{flex-direction:column} .toolbar__search{max-width:100%}
+        }
+        @media(max-width:480px){ .admin-kpi{padding:14px} .admin-kpi__value{font-size:1.25rem} }
+    </style>
+</head>
+<body>
+<div class="dash">
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="Menu de administração">
+        <a href="/admin.html" class="sidebar__logo">
+            <span class="sidebar__logo-icon">⚙️</span>
+            Admin MailFlow
+        </a>
+        <nav class="sidebar__nav">
+            <div class="sidebar__section">Principal</div>
+            <a href="#/admin" class="sidebar__link sidebar__link--active" data-section="dashboard" id="nav-dashboard">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </a>
+            <div class="sidebar__section">Gestão</div>
+            <a href="#/admin/utilizadores" class="sidebar__link" data-section="users" id="nav-users">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                Utilizadores
+                <span class="sidebar__link-badge" id="badge-users">0</span>
+            </a>
+            <a href="#/admin/campanhas" class="sidebar__link" data-section="campaigns" id="nav-campaigns">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Campanhas
+            </a>
+            <a href="#/admin/templates" class="sidebar__link" data-section="templates" id="nav-templates">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+                Templates
+            </a>
+            <a href="#/admin/automacoes" class="sidebar__link" data-section="automations" id="nav-automations">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Automações
+            </a>
+            <a href="#/admin/smtp" class="sidebar__link" data-section="smtp" id="nav-smtp">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                SMTP
+            </a>
+            <div class="sidebar__section">Análise</div>
+            <a href="#/admin/analytics" class="sidebar__link" data-section="analytics" id="nav-analytics">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Analytics
+            </a>
+            <div class="sidebar__section">Sistema</div>
+            <a href="#/admin/logs" class="sidebar__link" data-section="logs" id="nav-logs">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Logs
+            </a>
+            <a href="#/admin/sistema" class="sidebar__link" data-section="system" id="nav-system">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/></svg>
+                Sistema
+            </a>
+            <a href="#/admin/configuracoes" class="sidebar__link" data-section="settings" id="nav-settings">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Configurações
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main" id="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div class="header__left">
+                <button class="btn btn--ghost btn--sm" id="mobile-menu-btn" style="display:none;" aria-label="Abrir menu">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <h1 class="header__title">Admin</h1>
+                <span class="header__badge header__badge--admin">Administrador</span>
+            </div>
+            <div class="header__right">
+                <div class="header__user">
+                    <div class="header__avatar" id="admin-avatar">A</div>
+                    <span id="admin-email">admin@mailflow.pro</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="content" id="admin-content">
+
+            <!-- ========== DASHBOARD ========== -->
+            <section class="section section--active" id="section-dashboard">
+                <div class="section__header">
+                    <h2 class="page-title">Dashboard</h2>
+                    <p class="page-subtitle">Visão geral da plataforma</p>
+                </div>
+                <div class="admin-grid admin-grid--4" id="kpi-dashboard">
+                    <div class="admin-kpi skeleton-card"></div>
+                    <div class="admin-kpi skeleton-card"></div>
+                    <div class="admin-kpi skeleton-card"></div>
+                    <div class="admin-kpi skeleton-card"></div>
+                </div>
+                <div class="admin-card" style="margin-top:20px;">
+                    <div class="admin-card__header">
+                        <h3 class="admin-card__title">Atividade Recente</h3>
+                    </div>
+                    <div class="empty">
+                        <div class="empty__icon"><svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div>
+                        <p class="empty__title">A carregar dados...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ========== UTILIZADORES ========== -->
+            <section class="section" id="section-users">
+                <div class="section__header">
+                    <h2 class="page-title">Utilizadores</h2>
+                    <p class="page-subtitle">Gerir todos os utilizadores da plataforma</p>
+                </div>
+                <div class="admin-card">
+                    <div class="toolbar">
+                        <div class="toolbar__search">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            <input type="text" placeholder="Pesquisar utilizadores..." id="admin-user-search">
+                        </div>
+                        <select class="toolbar__filter" id="admin-user-role"><option value="all">Todos os papéis</option><option value="admin">Admin</option><option value="premium">Premium</option><option value="free">Free</option></select>
+                        <select class="toolbar__filter" id="admin-user-status"><option value="all">Todos os estados</option><option value="active">Ativos</option><option value="suspended">Suspensos</option></select>
+                        <span class="toolbar__count" id="admin-user-count">0 utilizadores</span>
+                    </div>
+                    <div class="table-wrap"><table class="table" id="admin-users-table"><thead><tr><th>Nome</th><th>Email</th><th>Plano</th><th>Último acesso</th><th>Estado</th><th>Ações</th></tr></thead><tbody><tr><td colspan="6"><div class="empty"><div class="empty__icon"><svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div><p class="empty__title">A carregar utilizadores...</p></div></td></tr></tbody></table></div>
+                </div>
+            </section>
+
+            <!-- ========== CAMPANHAS ========== -->
+            <section class="section" id="section-campaigns">
+                <div class="section__header">
+                    <h2 class="page-title">Campanhas</h2>
+                    <p class="page-subtitle">Gerir todas as campanhas de email</p>
+                </div>
+                <div class="admin-card">
+                    <div class="toolbar">
+                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar campanhas..."></div>
+                        <select class="toolbar__filter"><option value="all">Todos os estados</option><option value="active">Ativas</option><option value="draft">Rascunhos</option><option value="sent">Enviadas</option></select>
+                        <span class="toolbar__count" id="admin-campaign-count">0 campanhas</span>
+                    </div>
+                    <div class="table-wrap"><table class="table" id="admin-campaigns-table"><thead><tr><th>Nome</th><th>Owner</th><th>Estado</th><th>Envios</th><th>Aberturas</th><th>Cliques</th><th>Falhas</th><th>Data</th></tr></thead><tbody><tr><td colspan="8"><div class="empty"><p class="empty__title">A carregar campanhas...</p></div></td></tr></tbody></table></div>
+                </div>
+            </section>
+
+            <!-- ========== TEMPLATES ========== -->
+            <section class="section" id="section-templates">
+                <div class="section__header">
+                    <h2 class="page-title">Templates</h2>
+                    <p class="page-subtitle">Gerir todos os templates de email</p>
+                </div>
+                <div class="admin-card">
+                    <div class="toolbar">
+                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar templates..."></div>
+                        <span class="toolbar__count" id="admin-template-count">0 templates</span>
+                    </div>
+                    <div class="table-wrap"><table class="table" id="admin-templates-table"><thead><tr><th>Nome</th><th>Criado por</th><th>Data</th><th>Ações</th></tr></thead><tbody><tr><td colspan="4"><div class="empty"><p class="empty__title">A carregar templates...</p></div></td></tr></tbody></table></div>
+                </div>
+            </section>
+
+            <!-- ========== AUTOMAÇÕES ========== -->
+            <section class="section" id="section-automations">
+                <div class="section__header">
+                    <h2 class="page-title">Automações</h2>
+                    <p class="page-subtitle">Gerir todas as regras de automação</p>
+                </div>
+                <div class="admin-card">
+                    <div class="toolbar">
+                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar automações..."></div>
+                        <select class="toolbar__filter"><option value="all">Todos os estados</option><option value="active">Ativas</option><option value="inactive">Inativas</option></select>
+                        <span class="toolbar__count" id="admin-automation-count">0 regras</span>
+                    </div>
+                    <div class="table-wrap"><table class="table" id="admin-automations-table"><thead><tr><th>Nome</th><th>Owner</th><th>Trigger</th><th>Estado</th><th>Jobs</th><th>Falhas</th><th>Última execução</th><th>Ações</th></tr></thead><tbody><tr><td colspan="8"><div class="empty"><p class="empty__title">A carregar automações...</p></div></td></tr></tbody></table></div>
+                </div>
+            </section>
+
+            <!-- ========== ANALYTICS ========== -->
+            <section class="section" id="section-analytics">
+                <div class="section__header">
+                    <h2 class="page-title">Analytics</h2>
+                    <p class="page-subtitle">Métricas globais da plataforma</p>
+                </div>
+                <div class="admin-grid admin-grid--4" id="kpi-analytics">
+                    <div class="admin-kpi skeleton-card"></div>
+                    <div class="admin-kpi skeleton-card"></div>
+                    <div class="admin-kpi skeleton-card"></div>
+                    <div class="admin-kpi skeleton-card"></div>
+                </div>
+                <div class="admin-card" style="margin-top:20px;">
+                    <div class="admin-card__header"><h3 class="admin-card__title">Gráfico de Crescimento</h3></div>
+                    <div class="empty" style="min-height:200px;"><div class="empty__icon"><svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg></div><p class="empty__title">Dados de analytics em breve</p></div>
+                </div>
+            </section>
+
+            <!-- ========== SMTP ========== -->
+            <section class="section" id="section-smtp">
+                <div class="section__header">
+                    <h2 class="page-title">SMTP</h2>
+                    <p class="page-subtitle">Gerir configurações SMTP</p>
+                </div>
+                <div class="admin-card">
+                    <div class="toolbar"><span class="toolbar__count" id="admin-smtp-count">0 configurações</span></div>
+                    <div class="table-wrap"><table class="table" id="admin-smtp-table"><thead><tr><th>Host</th><th>Porta</th><th>Username</th><th>SSL/TLS</th><th>Estado</th><th>Última validação</th><th>Ações</th></tr></thead><tbody><tr><td colspan="7"><div class="empty"><p class="empty__title">A carregar SMTP...</p></div></td></tr></tbody></table></div>
+                </div>
+            </section>
+
+            <!-- ========== LOGS ========== -->
+            <section class="section" id="section-logs">
+                <div class="section__header">
+                    <h2 class="page-title">Logs</h2>
+                    <p class="page-subtitle">Auditoria e monitoring de eventos</p>
+                </div>
+                <div class="admin-card">
+                    <div class="toolbar">
+                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar logs..."></div>
+                        <select class="toolbar__filter"><option value="all">Todos os tipos</option><option value="login">Login</option><option value="error">Erros</option><option value="webhook">Webhooks</option><option value="event">Eventos</option></select>
+                        <span class="toolbar__count" id="admin-log-count">0 entradas</span>
+                    </div>
+                    <div class="table-wrap"><table class="table" id="admin-logs-table"><thead><tr><th>Timestamp</th><th>Tipo</th><th>Usuário</th><th>Descrição</th><th>Detalhes</th></tr></thead><tbody><tr><td colspan="5"><div class="empty"><p class="empty__title">A carregar logs...</p></div></td></tr></tbody></table></div>
+                </div>
+            </section>
+
+            <!-- ========== SISTEMA ========== -->
+            <section class="section" id="section-system">
+                <div class="section__header">
+                    <h2 class="page-title">Sistema</h2>
+                    <p class="page-subtitle">Monitorização e estado do sistema</p>
+                </div>
+                <div class="admin-grid admin-grid--2" id="kpi-system">
+                    <div class="admin-kpi skeleton-card"></div>
+                    <div class="admin-kpi skeleton-card"></div>
+                </div>
+                <div class="admin-card" style="margin-top:20px;">
+                    <div class="admin-card__header"><h3 class="admin-card__title">Serviços</h3></div>
+                    <div class="table-wrap"><table class="table" id="admin-system-table"><thead><tr><th>Serviço</th><th>Estado</th><th>Versão</th><th>Uptime</th><th>Detalhes</th></tr></thead><tbody><tr><td colspan="5"><div class="empty"><p class="empty__title">A carregar serviços...</p></div></td></tr></tbody></table></div>
+                </div>
+            </section>
+
+            <!-- ========== CONFIGURAÇÕES ========== -->
+            <section class="section" id="section-settings">
+                <div class="section__header">
+                    <h2 class="page-title">Configurações</h2>
+                    <p class="page-subtitle">Configurações globais da plataforma</p>
+                </div>
+                <div class="admin-card">
+                    <div class="empty">
+                        <div class="empty__icon"><svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
+                        <p class="empty__title">Configurações globais</p>
+                        <p class="empty__desc">Painel de configurações da plataforma em construção.</p>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="admin-footer">
+            MailFlow Pro Admin — v1.0.0 — &copy; 2026 MailFlow Pro
+        </div>
+    </main>
+</div>
+
+<script>
+(function(){
+    'use strict';
+    var sb = window.supabaseClient;
+    var isAdminAccess = false;
+
+    async function checkAdmin(){
+        try {
+            var user = await MailFlowAuth.getUser();
+            if(!user){ window.location.href='/entrar.html'; return false; }
+            var el=document.getElementById('admin-email'); if(el) el.textContent=user.email||'admin';
+            var av=document.getElementById('admin-avatar'); if(av) av.textContent=(user.email||'A').charAt(0).toUpperCase();
+            if(user.email==='tvdeariston@gmail.com'){ isAdminAccess=true; return true; }
+            var r=await fetch('/api/admin/check',{headers:{'Authorization':'Bearer '+(await MailFlowAuth.getSession()).data.session?.access_token}});
+            if(r.ok){ var d=await r.json(); if(d.admin){ isAdminAccess=true; return true; } }
+            window.location.href='/dashboard.html'; return false;
+        }catch(e){ window.location.href='/dashboard.html'; return false; }
+    }
+
+    function initNav(){
+        var links=document.querySelectorAll('.sidebar__link[data-section]');
+        var sections=document.querySelectorAll('.section');
+        function navigate(hash){
+            var sec=(hash||'#/admin').replace('#/admin','dashboard');
+            if(!sec) sec='dashboard';
+            if(hash.indexOf('admin/')===0) sec=hash.replace('#/admin/','');
+            links.forEach(function(l){ l.classList.toggle('sidebar__link--active',l.getAttribute('data-section')===sec); });
+            sections.forEach(function(s){ s.classList.toggle('section--active',s.id==='section-'+sec); });
+            var title={dashboard:'Dashboard',users:'Utilizadores',campaigns:'Campanhas',templates:'Templates',automations:'Automações',analytics:'Analytics',smtp:'SMTP',logs:'Logs',system:'Sistema',settings:'Configurações'};
+            var h=document.querySelector('.header__title'); if(h&&title[sec]) h.textContent=title[sec];
+        }
+        window.addEventListener('hashchange',function(){ navigate(window.location.hash); });
+        links.forEach(function(l){ l.addEventListener('click',function(e){ e.preventDefault(); var s=l.getAttribute('data-section'); window.location.hash='#/admin/'+s; navigate('#/admin/'+s); var ov=document.getElementById('sidebar-overlay'); var sb=document.getElementById('sidebar'); if(ov) ov.classList.remove('sidebar-overlay--visible'); if(sb) sb.classList.remove('sidebar--open'); }); });
+        navigate(window.location.hash||'#/admin');
+    }
+
+    function initMobileMenu(){
+        var btn=document.getElementById('mobile-menu-btn');
+        var ov=document.getElementById('sidebar-overlay');
+        var sb=document.getElementById('sidebar');
+        if(!btn) return;
+        function checkSize(){ if(window.innerWidth<=768){ btn.style.display='flex'; }else{ btn.style.display='none'; if(sb) sb.classList.remove('sidebar--open'); if(ov) ov.classList.remove('sidebar-overlay--visible'); } }
+        btn.addEventListener('click',function(){ if(sb) sb.classList.toggle('sidebar--open'); if(ov) ov.classList.toggle('sidebar-overlay--visible'); });
+        if(ov) ov.addEventListener('click',function(){ if(sb) sb.classList.remove('sidebar--open'); if(ov) ov.classList.remove('sidebar-overlay--visible'); });
+        window.addEventListener('resize',checkSize); checkSize();
+    }
+
+    async function init(){
+        var ok=await checkAdmin();
+        if(!ok) return;
+        initNav();
+        initMobileMenu();
+    }
+
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
+</body>
+</html>
