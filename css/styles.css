@@ -2181,33 +2181,65 @@ a:hover {
 }
 
 /* ========================================
-   "Como Funciona" Section
+   "Como Funciona na Prática" — Premium
    ======================================== */
 .how-it-works {
-    background: var(--color-white);
+    background: linear-gradient(160deg, #0a0614 0%, #12092e 25%, #1a1045 55%, #0f0b20 100%);
     padding-top: 5rem;
     padding-bottom: 5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative orbs */
+.how-it-works__orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.how-it-works__orb--1 {
+    top: -80px;
+    right: 5%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.05) 0%, transparent 65%);
+    animation: orbFloat2 20s ease-in-out infinite;
+}
+
+.how-it-works__orb--2 {
+    bottom: -50px;
+    left: -60px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.04) 0%, transparent 60%);
+    animation: orbFloat1 18s ease-in-out infinite;
 }
 
 .how-it-works__header {
     text-align: center;
     margin-bottom: var(--space-12);
+    position: relative;
+    z-index: 1;
 }
 
 .how-it-works__title {
-    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
     font-weight: 800;
-    color: var(--color-gray-900);
+    color: var(--color-white);
     letter-spacing: -0.03em;
     margin-bottom: var(--space-3);
+    animation: fadeInUp 0.5s ease-out both;
 }
 
 .how-it-works__subtitle {
     font-size: 1.05rem;
-    color: var(--color-gray-500);
-    max-width: 480px;
+    color: #94a3b8;
+    max-width: 520px;
     margin: 0 auto;
     line-height: 1.6;
+    animation: fadeInUp 0.5s ease-out 0.1s both;
 }
 
 .how-it-works__grid {
@@ -2216,22 +2248,71 @@ a:hover {
     gap: var(--space-6);
     max-width: 1100px;
     margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+/* Progress connector line — desktop horizontal */
+@media (min-width: 1101px) {
+    .how-it-works__grid::before {
+        content: '';
+        position: absolute;
+        top: 48px;
+        left: 14%;
+        right: 14%;
+        height: 2px;
+        background: linear-gradient(90deg,
+            rgba(99,102,241,0.03),
+            rgba(99,102,241,0.2) 25%,
+            rgba(99,102,241,0.25) 50%,
+            rgba(99,102,241,0.2) 75%,
+            rgba(99,102,241,0.03)
+        );
+        pointer-events: none;
+        z-index: 0;
+    }
 }
 
 .how-it-works__step {
     position: relative;
-    background: var(--color-white);
-    border: 1px solid var(--color-gray-100);
-    border-radius: var(--radius-xl);
+    background: rgba(15, 18, 35, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.08);
+    border-radius: var(--radius-2xl);
     padding: var(--space-8) var(--space-6);
     text-align: center;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation: fadeInUp 0.5s ease-out both;
+    z-index: 1;
 }
+
+.how-it-works__step:nth-child(1) { animation-delay: 0.1s; }
+.how-it-works__step:nth-child(2) { animation-delay: 0.2s; }
+.how-it-works__step:nth-child(3) { animation-delay: 0.3s; }
+.how-it-works__step:nth-child(4) { animation-delay: 0.4s; }
 
 .how-it-works__step:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.03);
-    border-color: var(--color-gray-200);
+    border-color: rgba(99, 102, 241, 0.15);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.06), 0 0 60px rgba(99, 102, 241, 0.03);
+}
+
+.how-it-works__step::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    border-radius: 0 0 var(--radius-2xl) var(--radius-2xl);
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.how-it-works__step:hover::after {
+    opacity: 1;
 }
 
 .how-it-works__number {
@@ -2244,27 +2325,10 @@ a:hover {
     font-size: 20px;
     font-weight: 800;
     margin-bottom: var(--space-5);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.12));
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.15);
     position: relative;
-}
-
-.how-it-works__number--1 {
-    background: rgba(99, 102, 241, 0.08);
-    color: #6366f1;
-}
-
-.how-it-works__number--2 {
-    background: rgba(139, 92, 246, 0.08);
-    color: #8b5cf6;
-}
-
-.how-it-works__number--3 {
-    background: rgba(16, 185, 129, 0.08);
-    color: #10b981;
-}
-
-.how-it-works__number--4 {
-    background: rgba(245, 158, 11, 0.08);
-    color: #f59e0b;
 }
 
 .how-it-works__icon {
@@ -2274,7 +2338,7 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-gray-400);
+    color: #818cf8;
 }
 
 .how-it-works__icon svg {
@@ -2285,49 +2349,19 @@ a:hover {
 .how-it-works__step-title {
     font-size: var(--font-size-base);
     font-weight: 700;
-    color: var(--color-gray-800);
+    color: var(--color-white);
     margin-bottom: var(--space-2);
 }
 
 .how-it-works__step-desc {
     font-size: var(--font-size-sm);
-    color: var(--color-gray-500);
+    color: #94a3b8;
     line-height: 1.6;
-}
-
-/* Connector arrow between steps */
-.how-it-works__step:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    top: 42px;
-    right: -20px;
-    width: 16px;
-    height: 2px;
-    background: var(--color-gray-200);
-}
-
-.how-it-works__step:not(:last-child)::before {
-    content: '';
-    position: absolute;
-    top: 38px;
-    right: -26px;
-    width: 0;
-    height: 0;
-    border-top: 5px solid transparent;
-    border-bottom: 5px solid transparent;
-    border-left: 6px solid var(--color-gray-300);
 }
 
 /* ========================================
    Demo & How-it-works — Responsive
    ======================================== */
-@media (max-width: 1280px) {
-    .how-it-works__step::after,
-    .how-it-works__step::before {
-        display: none;
-    }
-}
-
 @media (max-width: 1100px) {
     .demo__body {
         grid-template-columns: 1fr 260px;
@@ -2347,7 +2381,6 @@ a:hover {
     }
     
     .how-it-works__step {
-        min-height: 260px;
         padding: var(--space-6) var(--space-5);
     }
 }
@@ -2396,13 +2429,17 @@ a:hover {
         padding: 10px var(--space-4);
     }
     
+    .how-it-works__orb {
+        display: none;
+    }
+    
     .how-it-works__grid {
         grid-template-columns: 1fr;
-        max-width: 400px;
+        max-width: 480px;
     }
     
     .how-it-works__step {
-        padding: var(--space-6) var(--space-5);
+        padding: var(--space-6);
     }
     
     .pricing__card {
