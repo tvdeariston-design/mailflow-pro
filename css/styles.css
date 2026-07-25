@@ -1161,6 +1161,15 @@ a:hover {
     flex-shrink: 0;
 }
 
+.pricing__cta-btn {
+    width: 100%;
+}
+
+.pricing__cta-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* ========================================
    FAQ
    ======================================== */

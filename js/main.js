@@ -101,11 +101,18 @@
        Stripe CTA Placeholder
        ======================================== */
     function initStripeCTA() {
-        var statusEl = document.getElementById('stripe-cta-status');
-        if (!statusEl) return;
+        var cta = document.getElementById('stripe-cta');
+        if (!cta) return;
+
+        var btn = cta.querySelector('.pricing__cta-btn');
+        var statusEl = cta.querySelector('#stripe-cta-status');
 
         if (!STRIPE_ACTIVE) {
-            statusEl.textContent = 'Em breve ativo. Conta Stripe a ser validada.';
+            if (statusEl) statusEl.textContent = 'Pagamentos serão ativados quando a conta Stripe estiver validada.';
+            if (btn) btn.disabled = true;
+        } else {
+            if (statusEl) statusEl.style.display = 'none';
+            if (btn) btn.disabled = false;
         }
     }
 
