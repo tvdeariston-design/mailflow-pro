@@ -310,6 +310,49 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
             updates.locale = body.locale;
         }
 
+        // SMTP fields
+        if (body.smtp_host !== undefined) {
+            updates.smtp_host = body.smtp_host.trim();
+        }
+        if (body.smtp_port !== undefined) {
+            const port = parseInt(body.smtp_port, 10);
+            if (!isNaN(port) && port > 0 && port <= 65535) {
+                updates.smtp_port = port;
+            } else {
+                return res.status(400).json({ success: false, error: 'Porta SMTP inválida' });
+            }
+        }
+        if (body.smtp_username !== undefined) {
+            updates.smtp_username = body.smtp_username.trim();
+        }
+        if (body.smtp_password !== undefined) {
+            updates.smtp_password = body.smtp_password;
+        }
+        if (body.smtp_secure !== undefined) {
+            updates.smtp_secure = Boolean(body.smtp_secure);
+        }
+        if (body.smtp_from_email !== undefined) {
+            updates.smtp_from_email = body.smtp_from_email.trim();
+        }
+        if (body.smtp_from_name !== undefined) {
+            updates.smtp_from_name = body.smtp_from_name.trim();
+        }
+
+        // Update smtp_status when SMTP fields are saved
+        var smtpFieldsProvided = body.smtp_host !== undefined && body.smtp_port !== undefined &&
+                                  body.smtp_username !== undefined && body.smtp_password !== undefined;
+        if (smtpFieldsProvided) {
+            var hasHost = body.smtp_host && body.smtp_host.trim();
+            var hasPort = body.smtp_port !== undefined && !isNaN(parseInt(body.smtp_port, 10)) && parseInt(body.smtp_port, 10) > 0;
+            var hasUser = body.smtp_username && body.smtp_username.trim();
+            var hasPass = body.smtp_password !== undefined && body.smtp_password !== '';
+            if (hasHost && hasPort && hasUser && hasPass) {
+                updates.smtp_status = 'configured';
+            } else {
+                updates.smtp_status = 'not_configured';
+            }
+        }
+
         updates.updated_at = new Date().toISOString();
 
         const { data, error } = await req.supabase
@@ -332,6 +375,135 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, error: 'Erro ao processar alterações' });
     }
 });
+// ============================================
+// SMTP TEST ENDPOINT
+// ============================================
+app.post('/api/smtp/test', authMiddleware, async (req, res) => {
+    try {
+        const body = req.body;
+        
+        // Validate required fields
+        if (!body.smtp_host || !body.smtp_host.trim()) {
+            return res.status(400).json({ success: false, error: 'Host SMTP é obrigatório' });
+        }
+        const port = parseInt(body.smtp_port, 10);
+        if (isNaN(port) || port < 1 || port > 65535) {
+            return res.status(400).json({ success: false, error: 'Porta SMTP inválida' });
+        }
+        if (!body.smtp_username || !body.smtp_username.trim()) {
+            return res.status(400).json({ success: false, error: 'Username SMTP é obrigatório' });
+        }
+        if (!body.smtp_password) {
+            return res.status(400).json({ success: false, error: 'Password SMTP é obrigatória' });
+        }
+
+        // Create temporary transporter
+        const testTransporter = nodemailer.createTransport({
+            host: body.smtp_host.trim(),
+            port: port,
+            secure: Boolean(body.smtp_secure),
+            auth: {
+                user: body.smtp_username.trim(),
+                pass: body.smtp_password
+            },
+            tls: {
+                // Allow self-signed certificates for testing
+                rejectUnauthorized: false
+            }
+        });
+
+        // Verify connection only - do NOT send email
+        await testTransporter.verify();
+
+        // Update smtp_status to verified
+        await req.supabase
+            .from('profiles')
+            .update({ smtp_status: 'verified', smtp_verified_at: new Date().toISOString() })
+            .eq('id', req.user.id);
+
+        logger.info('SMTP test successful - User: ' + req.user.id, 'SMTP');
+        res.json({ success: true, message: 'Ligação SMTP bem-sucedida!' });
+
+    } catch (error) {
+        logger.error('SMTP test failed - User: ' + req.user.id + ' - ' + error.message, 'SMTP');
+        res.status(400).json({ success: false, error: error.message || 'Erro ao testar ligação SMTP' });
+    }
+});
+
+// ============================================
+// SMTP SEND TEST EMAIL ENDPOINT
+// ============================================
+app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
+    try {
+        const body = req.body;
+        
+        // Validate required fields
+        if (!body.smtp_host || !body.smtp_host.trim()) {
+            return res.status(400).json({ success: false, error: 'Host SMTP é obrigatório' });
+        }
+        const port = parseInt(body.smtp_port, 10);
+        if (isNaN(port) || port < 1 || port > 65535) {
+            return res.status(400).json({ success: false, error: 'Porta SMTP inválida' });
+        }
+        if (!body.smtp_username || !body.smtp_username.trim()) {
+            return res.status(400).json({ success: false, error: 'Username SMTP é obrigatório' });
+        }
+        if (!body.smtp_password) {
+            return res.status(400).json({ success: false, error: 'Password SMTP é obrigatória' });
+        }
+        if (!body.to || !body.to.trim()) {
+            return res.status(400).json({ success: false, error: 'Email de destino é obrigatório' });
+        }
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(body.to.trim())) {
+            return res.status(400).json({ success: false, error: 'Email de destino inválido' });
+        }
+
+        // Create temporary transporter
+        const testTransporter = nodemailer.createTransport({
+            host: body.smtp_host.trim(),
+            port: port,
+            secure: Boolean(body.smtp_secure),
+            auth: {
+                user: body.smtp_username.trim(),
+                pass: body.smtp_password
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
+
+        // Verify connection first
+        await testTransporter.verify();
+
+        // Send test email
+        const fromEmail = (body.smtp_from_email && body.smtp_from_email.trim()) ? body.smtp_from_email.trim() : body.smtp_username.trim();
+        const fromName = (body.smtp_from_name && body.smtp_from_name.trim()) ? body.smtp_from_name.trim() : 'MailFlow Pro';
+        
+        await testTransporter.sendMail({
+            from: '"' + fromName + '" <' + fromEmail + '>',
+            to: body.to.trim(),
+            subject: 'MailFlow Pro - Teste SMTP',
+            html: '<h2>Ligação SMTP bem-sucedida</h2><p>Este é um email de teste enviado pelo MailFlow Pro.</p>'
+        });
+
+        // Update smtp_status to verified
+        await req.supabase
+            .from('profiles')
+            .update({ smtp_status: 'verified', smtp_verified_at: new Date().toISOString() })
+            .eq('id', req.user.id);
+
+        logger.info('SMTP test email sent - User: ' + req.user.id + ', To: ' + body.to, 'SMTP');
+        res.json({ success: true });
+
+    } catch (error) {
+        logger.error('SMTP test email failed - User: ' + req.user.id + ' - ' + error.message, 'SMTP');
+        res.status(400).json({ success: false, error: error.message || 'Erro ao enviar email de teste' });
+    }
+});
+
+
 
 
 
@@ -404,10 +576,10 @@ app.get('/api/contacts', authMiddleware, async (req, res) => {
 });
 
 
-// GET /api/contacts/export - Exportar contactos para CSV
+// GET /api/contacts/export - Exportar contactos para CSV ou XLSX
 app.get('/api/contacts/export', authMiddleware, async (req, res) => {
     try {
-        const { search = '', empresa = '', telefone = '' } = req.query;
+        const { search = '', empresa = '', telefone = '', format = 'csv' } = req.query;
 
         let query = req.supabase
             .from('contacts')
@@ -432,7 +604,6 @@ app.get('/api/contacts/export', authMiddleware, async (req, res) => {
             return res.status(500).json({ success: false, error: 'Erro ao exportar contactos' });
         }
 
-        // Gerar CSV
         const headers = ['Nome', 'Email', 'Telefone', 'Empresa', 'Tags', 'Data de Criação'];
         const rows = (data || []).map(c => [
             c.nome || '',
@@ -443,11 +614,49 @@ app.get('/api/contacts/export', authMiddleware, async (req, res) => {
             c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT') : ''
         ]);
 
-        const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\n');
+        const filename = 'contactos-' + new Date().toISOString().split('T')[0];
 
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="contactos-' + new Date().toISOString().split('T')[0] + '.csv"');
-        res.send(csv);
+        if (format === 'xlsx') {
+            // XLSX export using SheetJS
+            const XLSX = require('xlsx');
+            const wb = XLSX.utils.book_new();
+            const wsData = [headers, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Make first row bold
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+                if (!ws[cellAddress]) ws[cellAddress] = { v: headers[C] };
+                ws[cellAddress].s = { font: { bold: true } };
+            }
+
+            // Auto column width
+            const colWidths = headers.map((h, i) => {
+                const maxLen = Math.max(
+                    h.length,
+                    ...rows.map(r => String(r[i] || '').length)
+                );
+                return { wch: Math.min(maxLen + 2, 50) };
+            });
+            ws['!cols'] = colWidths;
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Contactos');
+
+            const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '.xlsx"');
+            res.send(buf);
+        } else {
+            // CSV export with UTF-8 BOM
+            const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\n');
+            const bom = '\uFEFF'; // UTF-8 BOM
+
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '.csv"');
+            res.send(bom + csv);
+        }
 
     } catch (error) {
         logger.error('Erro inesperado ao exportar contactos: ' + error.message, 'Contacts');
@@ -524,6 +733,36 @@ app.post('/api/contacts', authMiddleware, async (req, res) => {
         }
 
         logger.info('Contacto criado - ID: ' + data.id + ', User: ' + req.user.id, 'Contacts');
+
+        // Create automation jobs for active automations with contact_created trigger
+        try {
+            const { data: automations } = await req.supabase
+                .from('automation_rules')
+                .select('id, campaign_id, delay_minutes')
+                .eq('user_id', req.user.id)
+                .eq('enabled', true)
+                .eq('trigger_type', 'contact_created');
+
+            if (automations && automations.length > 0) {
+                const jobs = automations.map(a => ({
+                    automation_id: a.id,
+                    contact_id: data.id,
+                    campaign_id: a.campaign_id,
+                    status: 'pending'
+                }));
+                const { error: jobsError } = await req.supabase
+                    .from('automation_jobs')
+                    .insert(jobs);
+                if (jobsError) {
+                    logger.error('Erro ao criar jobs de automação: ' + jobsError.message, 'Automations');
+                } else {
+                    logger.info('Jobs de automação criados - Contact: ' + data.id + ', Count: ' + jobs.length, 'Automations');
+                }
+            }
+        } catch (autoErr) {
+            logger.error('Erro ao processar automações: ' + autoErr.message, 'Automations');
+        }
+
         res.status(201).json({ success: true, contact: data });
 
     } catch (error) {
@@ -533,75 +772,294 @@ app.post('/api/contacts', authMiddleware, async (req, res) => {
 });
 
 
-// POST /api/contacts/import - Importar contactos de CSV
-app.post('/api/contacts/import', authMiddleware, async (req, res) => {
+// POST /api/contacts/import/preview - Preview CSV/XLSX file
+app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
     try {
-        const { csv } = req.body;
+        const { content, filename, mapping } = req.body;
 
-        if (!csv || typeof csv !== 'string') {
-            return res.status(400).json({ success: false, error: 'CSV em falta ou inválido' });
+        if (!content || !filename) {
+            return res.status(400).json({ success: false, error: 'Ficheiro em falta' });
         }
 
-        // Parse CSV simples (suporta vírgula como separador, aspas para escape)
-        const lines = csv.trim().split('\n');
-        if (lines.length < 2) {
-            return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
-        }
+        const ext = filename.split('.').pop().toLowerCase();
+        let headers = [];
+        let rows = [];
 
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
-        const emailIdx = headers.indexOf('email');
-        const nomeIdx = headers.indexOf('nome');
-        const telefoneIdx = headers.indexOf('telefone');
-        const empresaIdx = headers.indexOf('empresa');
-        const tagsIdx = headers.indexOf('tags');
+        if (ext === 'csv') {
+            const lines = content.trim().split('\n');
+            if (lines.length < 2) {
+                return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
+            }
 
-        if (emailIdx === -1) {
-            return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória no CSV' });
-        }
-
-        const contactsToInsert = [];
-        const errors = [];
-
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-
-            // Parse CSV line com suporte a aspas
-            const cells = [];
-            let current = '';
-            let inQuotes = false;
-            for (let j = 0; j < line.length; j++) {
-                const char = line[j];
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    cells.push(current.trim().replace(/""/g, '"'));
-                    current = '';
-                } else {
-                    current += char;
+            // Auto-detect separator
+            const separators = [',', ';', '\t'];
+            let bestSep = ',';
+            let maxCols = 0;
+            for (const sep of separators) {
+                const cols = lines[0].split(sep).length;
+                if (cols > maxCols) {
+                    maxCols = cols;
+                    bestSep = sep;
                 }
             }
-            cells.push(current.trim().replace(/""/g, '"'));
 
-            if (cells.length <= emailIdx) {
-                errors.push({ line: i + 1, error: 'Linha incompleta' });
+            headers = lines[0].split(bestSep).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+            rows = lines.slice(1).map(line => {
+                const cells = [];
+                let current = '';
+                let inQuotes = false;
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"') inQuotes = !inQuotes;
+                    else if (char === bestSep && !inQuotes) {
+                        cells.push(current.trim().replace(/""/g, '"'));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                cells.push(current.trim().replace(/""/g, '"'));
+                return cells;
+            });
+        } else if (ext === 'xlsx' || ext === 'xls') {
+            const XLSX = require('xlsx');
+            const buffer = Buffer.from(content, 'base64');
+            const workbook = XLSX.read(buffer, { type: 'buffer' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            if (json.length < 2) {
+                return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
+            }
+
+            headers = json[0].map(h => String(h).trim().toLowerCase());
+            rows = json.slice(1);
+        } else {
+            return res.status(400).json({ success: false, error: 'Formato não suportado. Use CSV ou XLSX' });
+        }
+
+        // Apply column mapping if provided
+        const requiredFields = ['nome', 'email', 'telefone', 'empresa', 'tags'];
+        const finalHeaders = {};
+        for (const field of requiredFields) {
+            const mappedIdx = mapping && mapping[field] !== undefined ? mapping[field] : headers.indexOf(field);
+            finalHeaders[field] = mappedIdx >= 0 ? mappedIdx : -1;
+        }
+
+        if (finalHeaders.email === -1) {
+            return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória (mapeie uma coluna do ficheiro)' });
+        }
+
+        // Preview first 10 rows with validation
+        const preview = [];
+        let validCount = 0;
+        let invalidCount = 0;
+        let emptyEmailCount = 0;
+        const seenEmails = new Set();
+        let duplicateCount = 0;
+
+        for (let i = 0; i < Math.min(rows.length, 10); i++) {
+            const row = rows[i];
+            const email = finalHeaders.email >= 0 ? row[finalHeaders.email] : '';
+            const nome = finalHeaders.nome >= 0 ? row[finalHeaders.nome] : '';
+            const telefone = finalHeaders.telefone >= 0 ? row[finalHeaders.telefone] : '';
+            const empresa = finalHeaders.empresa >= 0 ? row[finalHeaders.empresa] : '';
+            const tags = finalHeaders.tags >= 0 && row[finalHeaders.tags] ? 
+                String(row[finalHeaders.tags]).split(';').map(t => t.trim()).filter(t => t) : [];
+
+            const emailStr = String(email).toLowerCase().trim();
+            const isEmpty = !emailStr;
+            const emailValid = emailStr && validateEmail(emailStr);
+            const isDuplicate = emailStr && seenEmails.has(emailStr);
+            
+            let status = 'valid';
+            if (isEmpty) { status = 'empty'; emptyEmailCount++; }
+            else if (!emailValid) { status = 'invalid_email'; invalidCount++; }
+            else if (isDuplicate) { status = 'duplicate'; duplicateCount++; }
+            else { status = 'valid'; validCount++; seenEmails.add(emailStr); }
+
+            preview.push({
+                rowIndex: i + 1,
+                email: emailStr,
+                nome: String(nome).trim(),
+                telefone: String(telefone).trim(),
+                empresa: String(empresa).trim(),
+                tags: tags,
+                status,
+                statusLabel: status === 'valid' ? 'Válido' : 
+                            status === 'empty' ? 'Email vazio' : 
+                            status === 'invalid_email' ? 'Email inválido' : 'Duplicado no ficheiro'
+            });
+        }
+
+        // Count total stats for all rows
+        for (let i = 10; i < rows.length; i++) {
+            const row = rows[i];
+            const emailStr = String(finalHeaders.email >= 0 ? row[finalHeaders.email] : '').toLowerCase().trim();
+            const isEmpty = !emailStr;
+            const emailValid = emailStr && validateEmail(emailStr);
+            const isDuplicate = emailStr && seenEmails.has(emailStr);
+            
+            if (isEmpty) emptyEmailCount++;
+            else if (!emailValid) invalidCount++;
+            else if (isDuplicate) duplicateCount++;
+            else { validCount++; seenEmails.add(emailStr); }
+        }
+
+        // Check DB duplicates for preview rows
+        if (validCount > 0) {
+            const previewEmails = preview.filter(p => p.status === 'valid').map(p => p.email);
+            if (previewEmails.length > 0) {
+                const { data: existing } = await req.supabase
+                    .from('contacts')
+                    .select('email')
+                    .eq('user_id', req.user.id)
+                    .in('email', previewEmails);
+                
+                if (existing && existing.length > 0) {
+                    const existingSet = new Set(existing.map(e => e.email));
+                    preview.forEach(p => {
+                        if (p.status === 'valid' && existingSet.has(p.email)) {
+                            p.status = 'db_duplicate';
+                            p.statusLabel = 'Já existe na base de dados';
+                            duplicateCount++;
+                            validCount--;
+                        }
+                    });
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            preview,
+            totalRows: rows.length,
+            headers,
+            validCount,
+            invalidCount,
+            emptyEmailCount,
+            duplicateCount,
+            finalHeaders
+        });
+
+    } catch (error) {
+        logger.error('Erro ao pré-visualizar importação: ' + error.message, 'Contacts');
+        res.status(500).json({ success: false, error: 'Erro ao processar ficheiro' });
+    }
+});
+
+
+// POST /api/contacts/import - Importar contactos de CSV/XLSX
+app.post('/api/contacts/import', authMiddleware, async (req, res) => {
+    try {
+        const { content, filename, mapping, duplicateMode } = req.body;
+
+        if (!content || !filename) {
+            return res.status(400).json({ success: false, error: 'Ficheiro em falta' });
+        }
+
+        const ext = filename.split('.').pop().toLowerCase();
+        let headers = [];
+        let rows = [];
+
+        if (ext === 'csv') {
+            const lines = content.trim().split('\n');
+            if (lines.length < 2) {
+                return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
+            }
+
+            // Auto-detect separator
+            const separators = [',', ';', '\t'];
+            let bestSep = ',';
+            let maxCols = 0;
+            for (const sep of separators) {
+                const cols = lines[0].split(sep).length;
+                if (cols > maxCols) {
+                    maxCols = cols;
+                    bestSep = sep;
+                }
+            }
+
+            headers = lines[0].split(bestSep).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+            rows = lines.slice(1).map(line => {
+                const cells = [];
+                let current = '';
+                let inQuotes = false;
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    if (char === '"') inQuotes = !inQuotes;
+                    else if (char === bestSep && !inQuotes) {
+                        cells.push(current.trim().replace(/""/g, '"'));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                cells.push(current.trim().replace(/""/g, '"'));
+                return cells;
+            });
+        } else if (ext === 'xlsx' || ext === 'xls') {
+            const XLSX = require('xlsx');
+            const buffer = Buffer.from(content, 'base64');
+            const workbook = XLSX.read(buffer, { type: 'buffer' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            
+            if (json.length < 2) {
+                return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
+            }
+            
+            headers = json[0].map(h => String(h).trim().toLowerCase());
+            rows = json.slice(1);
+        } else {
+            return res.status(400).json({ success: false, error: 'Formato não suportado. Use CSV ou XLSX' });
+        }
+
+        // Apply column mapping
+        const requiredFields = ['nome', 'email', 'telefone', 'empresa', 'tags'];
+        const finalHeaders = {};
+        for (const field of requiredFields) {
+            const mappedIdx = mapping && mapping[field] !== undefined ? mapping[field] : headers.indexOf(field);
+            finalHeaders[field] = mappedIdx >= 0 ? mappedIdx : -1;
+        }
+
+        if (finalHeaders.email === -1) {
+            return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória' });
+        }
+
+        // Parse and validate all rows
+        const contactsToInsert = [];
+        const errors = [];
+        const existingEmails = new Set();
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const email = finalHeaders.email >= 0 ? String(row[finalHeaders.email] || '').toLowerCase().trim() : '';
+            const nome = finalHeaders.nome >= 0 ? String(row[finalHeaders.nome] || '').trim() : '';
+            const telefone = finalHeaders.telefone >= 0 ? String(row[finalHeaders.telefone] || '').trim() : '';
+            const empresa = finalHeaders.empresa >= 0 ? String(row[finalHeaders.empresa] || '').trim() : '';
+            const tags = finalHeaders.tags >= 0 && row[finalHeaders.tags] ? 
+                String(row[finalHeaders.tags]).split(';').map(t => t.trim()).filter(t => t) : [];
+
+            if (!email) {
+                errors.push({ line: i + 2, error: 'Email vazio', type: 'empty' });
                 continue;
             }
 
-            const email = cells[emailIdx].toLowerCase().trim();
             if (!validateEmail(email)) {
-                errors.push({ line: i + 1, error: 'Email inválido: ' + email });
+                errors.push({ line: i + 2, error: 'Email inválido: ' + email, type: 'invalid_email' });
                 continue;
             }
 
-            const nome = nomeIdx >= 0 && cells[nomeIdx] ? cells[nomeIdx].trim() : email.split('@')[0];
-            const telefone = telefoneIdx >= 0 ? cells[telefoneIdx].trim() : '';
-            const empresa = empresaIdx >= 0 ? cells[empresaIdx].trim() : '';
-            const tags = tagsIdx >= 0 && cells[tagsIdx] ? cells[tagsIdx].split(';').map(t => t.trim()).filter(t => t) : [];
+            if (existingEmails.has(email)) {
+                errors.push({ line: i + 2, error: 'Email duplicado no ficheiro: ' + email, type: 'duplicate_in_file' });
+                continue;
+            }
 
+            existingEmails.add(email);
             contactsToInsert.push({
                 user_id: req.user.id,
-                nome,
+                nome: nome || email.split('@')[0],
                 email,
                 telefone,
                 empresa,
@@ -613,27 +1071,58 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Nenhum contacto válido para importar', errors });
         }
 
-        // Inserir contactos (upsert — duplicados por email são ignorados)
-        let imported = 0;
-        let skipped = 0;
+        // Check for existing contacts in DB
+        const emailsToCheck = contactsToInsert.map(c => c.email);
+        const { data: existingContacts, error: checkError } = await req.supabase
+            .from('contacts')
+            .select('email')
+            .eq('user_id', req.user.id)
+            .in('email', emailsToCheck);
 
-        for (const contact of contactsToInsert) {
-            const { error } = await req.supabase
-                .from('contacts')
-                .upsert(contact, { onConflict: 'user_id,email', ignoreDuplicates: true });
+        const existingInDb = new Set((existingContacts || []).map(c => c.email));
+
+        // Handle duplicates based on mode
+        let imported = 0;
+        let updated = 0;
+        let skipped = 0;
+        const batchSize = 100;
+
+        for (let i = 0; i < contactsToInsert.length; i += batchSize) {
+            const batch = contactsToInsert.slice(i, i + batchSize);
             
-            if (error) {
-                errors.push({ email: contact.email, error: error.message });
-            } else {
-                imported++;
+            for (const contact of batch) {
+                const isDuplicate = existingInDb.has(contact.email);
+                
+                if (isDuplicate) {
+                    if (duplicateMode === 'update') {
+                        const { error } = await req.supabase
+                            .from('contacts')
+                            .update({ nome: contact.nome, telefone: contact.telefone, empresa: contact.empresa, tags: contact.tags, updated_at: new Date().toISOString() })
+                            .eq('user_id', req.user.id)
+                            .eq('email', contact.email);
+                        if (!error) updated++;
+                        else errors.push({ email: contact.email, error: error.message });
+                    } else if (duplicateMode === 'skip') {
+                        skipped++;
+                    }
+                    // For 'create-only' (default), we just don't insert
+                } else {
+                    const { error } = await req.supabase
+                        .from('contacts')
+                        .insert(contact);
+                    if (!error) imported++;
+                    else errors.push({ email: contact.email, error: error.message });
+                }
             }
         }
 
-        logger.info('Importação CSV - User: ' + req.user.id + ', Importados: ' + imported + ', Ignorados: ' + skipped, 'Contacts');
+        logger.info(`Importação ${ext.toUpperCase()} - User: ${req.user.id}, Importados: ${imported}, Atualizados: ${updated}, Ignorados: ${skipped}, Erros: ${errors.length}`, 'Contacts');
         res.json({
             success: true,
             imported,
+            updated,
             skipped,
+            totalProcessed: contactsToInsert.length,
             errors: errors.length > 0 ? errors : undefined
         });
 
@@ -642,7 +1131,6 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, error: 'Erro ao processar importação' });
     }
 });
-
 
 // PUT /api/contacts/:id - Atualizar contacto
 app.put('/api/contacts/:id', authMiddleware, async (req, res) => {
@@ -1938,6 +2426,265 @@ app.post('/api/email/send', async (req, res) => {
         res.status(500).json({ success: false, error: 'Erro ao enviar e-mail. Tente novamente mais tarde.' });
     }
 });
+
+// ============================================
+// AUTOMATIONS API
+// ============================================
+
+// GET /api/automations - Listar automações
+app.get('/api/automations', authMiddleware, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, search = '' } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const offset = (pageNum - 1) * limitNum;
+
+        let query = req.supabase
+            .from('automation_rules')
+            .select('*, campaign:campaigns(id,name)', { count: 'exact' })
+            .eq('user_id', req.user.id)
+            .order('created_at', { ascending: false });
+
+        if (search) {
+            query = query.ilike('name', `%${search}%`);
+        }
+
+        query = query.range(offset, offset + limitNum - 1);
+
+        const { data, error, count } = await query;
+
+        if (error) {
+            logger.error('Erro ao listar automações: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar automações' });
+        }
+
+        const totalPages = Math.ceil((count || 0) / limitNum);
+
+        logger.info('Automações listadas - User: ' + req.user.id + ', Página: ' + pageNum, 'Automations');
+        res.json({
+            automations: data || [],
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: count || 0,
+                totalPages: totalPages
+            }
+        });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao listar automações: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// POST /api/automations - Criar automação
+app.post('/api/automations', authMiddleware, async (req, res) => {
+    try {
+        const { name, trigger_type, delay_minutes, campaign_id, enabled } = req.body;
+
+        if (!name || !name.trim()) {
+            return res.status(400).json({ success: false, error: 'Nome é obrigatório' });
+        }
+        if (!trigger_type) {
+            return res.status(400).json({ success: false, error: 'Trigger é obrigatório' });
+        }
+        if (!['contact_created'].includes(trigger_type)) {
+            return res.status(400).json({ success: false, error: 'Trigger inválido' });
+        }
+
+        const delay = parseInt(delay_minutes, 10) || 0;
+        if (delay < 0 || delay > 10080) {
+            return res.status(400).json({ success: false, error: 'Delay inválido (máx. 7 dias)' });
+        }
+
+        // Verify campaign belongs to user
+        if (campaign_id) {
+            const { data: campaign, error: campError } = await req.supabase
+                .from('campaigns')
+                .select('id')
+                .eq('id', campaign_id)
+                .eq('user_id', req.user.id)
+                .single();
+            if (campError || !campaign) {
+                return res.status(400).json({ success: false, error: 'Campanha não encontrada' });
+            }
+        }
+
+        const { data, error } = await req.supabase
+            .from('automation_rules')
+            .insert({
+                user_id: req.user.id,
+                name: name.trim(),
+                trigger_type: trigger_type,
+                delay_minutes: delay,
+                campaign_id: campaign_id || null,
+                enabled: Boolean(enabled)
+            })
+            .select()
+            .single();
+
+        if (error) {
+            logger.error('Erro ao criar automação: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao criar automação' });
+        }
+
+        logger.info('Automação criada - User: ' + req.user.id + ', ID: ' + data.id, 'Automations');
+        res.status(201).json({ automation: data });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao criar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// PUT /api/automations/:id - Atualizar automação
+app.put('/api/automations/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, trigger_type, delay_minutes, campaign_id, enabled } = req.body;
+
+        const updates = {};
+        if (name !== undefined) {
+            if (!name.trim()) {
+                return res.status(400).json({ success: false, error: 'Nome é obrigatório' });
+            }
+            updates.name = name.trim();
+        }
+        if (trigger_type !== undefined) {
+            if (!['contact_created'].includes(trigger_type)) {
+                return res.status(400).json({ success: false, error: 'Trigger inválido' });
+            }
+            updates.trigger_type = trigger_type;
+        }
+        if (delay_minutes !== undefined) {
+            const delay = parseInt(delay_minutes, 10);
+            if (isNaN(delay) || delay < 0 || delay > 10080) {
+                return res.status(400).json({ success: false, error: 'Delay inválido (máx. 7 dias)' });
+            }
+            updates.delay_minutes = delay;
+        }
+        if (campaign_id !== undefined) {
+            if (campaign_id) {
+                const { data: campaign, error: campError } = await req.supabase
+                    .from('campaigns')
+                    .select('id')
+                    .eq('id', campaign_id)
+                    .eq('user_id', req.user.id)
+                    .single();
+                if (campError || !campaign) {
+                    return res.status(400).json({ success: false, error: 'Campanha não encontrada' });
+                }
+            }
+            updates.campaign_id = campaign_id || null;
+        }
+        if (enabled !== undefined) {
+            updates.enabled = Boolean(enabled);
+        }
+
+        updates.updated_at = new Date().toISOString();
+
+        const { data, error } = await req.supabase
+            .from('automation_rules')
+            .update(updates)
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .select()
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                return res.status(404).json({ success: false, error: 'Automação não encontrada' });
+            }
+            logger.error('Erro ao atualizar automação: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao atualizar automação' });
+        }
+
+        logger.info('Automação atualizada - User: ' + req.user.id + ', ID: ' + id, 'Automations');
+        res.json({ automation: data });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao atualizar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// DELETE /api/automations/:id - Eliminar automação
+app.delete('/api/automations/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { error } = await req.supabase
+            .from('automation_rules')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', req.user.id);
+
+        if (error) {
+            logger.error('Erro ao eliminar automação: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao eliminar automação' });
+        }
+
+        logger.info('Automação eliminada - User: ' + req.user.id + ', ID: ' + id, 'Automations');
+        res.json({ success: true });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao eliminar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
+// GET /api/automations/jobs - Listar jobs de automação
+app.get('/api/automations/jobs', authMiddleware, async (req, res) => {
+    try {
+        const { page = 1, limit = 20, automation_id = '', status = '', search = '' } = req.query;
+        const pageNum = Math.max(1, parseInt(page));
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+        const offset = (pageNum - 1) * limitNum;
+
+        let query = req.supabase
+            .from('automation_jobs')
+            .select('*, automation:automation_rules(id,name), contact:contacts(id,nome,email), campaign:campaigns(id,nome)', { count: 'exact' })
+            .eq('automation.user_id', req.user.id)
+            .order('created_at', { ascending: false });
+
+        if (automation_id) {
+            query = query.eq('automation_id', automation_id);
+        }
+        if (status) {
+            query = query.eq('status', status);
+        }
+        if (search) {
+            query = query.or('contact.nome.ilike.%' + search + '%,contact.email.ilike.%' + search + '%,automation.name.ilike.%' + search + '%,campaign.nome.ilike.%' + search + '%');
+        }
+
+        query = query.range(offset, offset + limitNum - 1);
+
+        const { data, error, count } = await query;
+
+        if (error) {
+            logger.error('Erro ao listar jobs de automação: ' + error.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar jobs' });
+        }
+
+        const totalPages = Math.ceil((count || 0) / limitNum);
+
+        logger.info('Jobs de automação listados - User: ' + req.user.id + ', Página: ' + pageNum, 'Automations');
+        res.json({
+            jobs: data || [],
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: count || 0,
+                totalPages: totalPages
+            }
+        });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao listar jobs: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
+
 
 // ============================================
 // Start server

@@ -3210,3 +3210,12 @@ h1, h2, h3, h4, h5, h6 {
     .an-kpi-grid--3 { grid-template-columns: 1fr; }
     .an-skeleton-grid { grid-template-columns: 1fr; }
 }
+
+/* Spinner animation for loading states */
+.tl-spinner {
+    animation: tl-spin 1s linear infinite;
+}
+@keyframes tl-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
