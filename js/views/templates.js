@@ -296,6 +296,8 @@ var TemplatesView = (function() {
     async function setDefault(id) {
         if (!sb || !user) return;
         try {
+            var { error: resetErr } = await sb.from('templates').update({ is_default: false }).eq('is_default', true).eq('user_id', user.id);
+            if (resetErr) throw resetErr;
             var { error } = await sb.from('templates').update({ is_default: true }).eq('id', id).eq('user_id', user.id);
             if (error) throw error;
             MailFlowToast.success('Template definido como predefinido.');
@@ -364,7 +366,7 @@ var TemplatesView = (function() {
             if (existingId) {
                 result = await sb.from('templates').update(payload).eq('id', existingId).eq('user_id', user.id);
             } else {
-                result = await sb.from('templates').insert({ user_id: user.id, ...payload });
+                result = await sb.from('templates').insert({ user_id: user.id, is_default: false, ...payload });
             }
             if (result.error) throw result.error;
             MailFlowToast.success(existingId ? 'Template atualizado.' : 'Template criado.');

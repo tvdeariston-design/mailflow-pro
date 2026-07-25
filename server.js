@@ -1372,6 +1372,10 @@ app.put('/api/templates/:id', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
         }
 
+        if (updates.is_default === true) {
+            await req.supabase.from('templates').update({ is_default: false }).eq('user_id', req.user.id).neq('id', id).eq('is_default', true);
+        }
+
         const { data, error } = await req.supabase
             .from('templates')
             .update(updates)
