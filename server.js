@@ -11,6 +11,7 @@ const { createClient } = require('@supabase/supabase-js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require('nodemailer');
 const campaignEngine = require('./services/campaign-engine');
+const contactsParser = require('./services/contacts-parser');
 
 const app = express();
 const path = require('path');
@@ -711,9 +712,9 @@ app.get('/api/contacts/export', authMiddleware, async (req, res) => {
             res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '.xlsx"');
             res.send(buf);
         } else {
-            // CSV export with UTF-8 BOM
-            const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\n');
-            const bom = '\uFEFF'; // UTF-8 BOM
+            // CSV export with UTF-8 BOM + CRLF (Windows compatibility)
+            const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\r\n');
+            const bom = '\uFEFF';
 
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '.csv"');
@@ -844,70 +845,19 @@ app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
         }
 
         const ext = filename.split('.').pop().toLowerCase();
-        let headers = [];
-        let rows = [];
-
-        if (ext === 'csv') {
-            const lines = content.trim().split('\n');
-            if (lines.length < 2) {
-                return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
-            }
-
-            // Auto-detect separator
-            const separators = [',', ';', '\t'];
-            let bestSep = ',';
-            let maxCols = 0;
-            for (const sep of separators) {
-                const cols = lines[0].split(sep).length;
-                if (cols > maxCols) {
-                    maxCols = cols;
-                    bestSep = sep;
-                }
-            }
-
-            headers = lines[0].split(bestSep).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
-            rows = lines.slice(1).map(line => {
-                const cells = [];
-                let current = '';
-                let inQuotes = false;
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"') inQuotes = !inQuotes;
-                    else if (char === bestSep && !inQuotes) {
-                        cells.push(current.trim().replace(/""/g, '"'));
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                cells.push(current.trim().replace(/""/g, '"'));
-                return cells;
-            });
-        } else if (ext === 'xlsx' || ext === 'xls') {
-            const XLSX = require('xlsx');
-            const buffer = Buffer.from(content, 'base64');
-            const workbook = XLSX.read(buffer, { type: 'buffer' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
-            if (json.length < 2) {
-                return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
-            }
-
-            headers = json[0].map(h => String(h).trim().toLowerCase());
-            rows = json.slice(1);
-        } else {
+        if (ext !== 'csv' && ext !== 'xlsx' && ext !== 'xls') {
             return res.status(400).json({ success: false, error: 'Formato não suportado. Use CSV ou XLSX' });
         }
 
-        // Apply column mapping if provided
-        const requiredFields = ['nome', 'email', 'telefone', 'empresa', 'tags'];
-        const finalHeaders = {};
-        for (const field of requiredFields) {
-            const mappedIdx = mapping && mapping[field] !== undefined ? mapping[field] : headers.indexOf(field);
-            finalHeaders[field] = mappedIdx >= 0 ? mappedIdx : -1;
+        const parsed = contactsParser.parseContent(content, filename);
+        if (parsed.headers.length === 0 || parsed.rows.length === 0) {
+            return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
         }
 
+        const headers = parsed.headers;
+        const rows = parsed.rows;
+
+        const finalHeaders = contactsParser.buildColumnMapping(headers, mapping);
         if (finalHeaders.email === -1) {
             return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória (mapeie uma coluna do ficheiro)' });
         }
@@ -922,12 +872,12 @@ app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
 
         for (let i = 0; i < Math.min(rows.length, 10); i++) {
             const row = rows[i];
-            const email = finalHeaders.email >= 0 ? row[finalHeaders.email] : '';
-            const nome = finalHeaders.nome >= 0 ? row[finalHeaders.nome] : '';
-            const telefone = finalHeaders.telefone >= 0 ? row[finalHeaders.telefone] : '';
-            const empresa = finalHeaders.empresa >= 0 ? row[finalHeaders.empresa] : '';
-            const tags = finalHeaders.tags >= 0 && row[finalHeaders.tags] ? 
-                String(row[finalHeaders.tags]).split(';').map(t => t.trim()).filter(t => t) : [];
+            const email = contactsParser.extractField(row, finalHeaders.email);
+            const nome = contactsParser.extractField(row, finalHeaders.nome);
+            const telefone = contactsParser.extractField(row, finalHeaders.telefone);
+            const empresa = contactsParser.extractField(row, finalHeaders.empresa);
+            const tagsRaw = contactsParser.extractField(row, finalHeaders.tags);
+            const tags = tagsRaw ? tagsRaw.split(';').map(t => t.trim()).filter(t => t) : [];
 
             const emailStr = String(email).toLowerCase().trim();
             const isEmpty = !emailStr;
@@ -957,7 +907,7 @@ app.post('/api/contacts/import/preview', authMiddleware, async (req, res) => {
         // Count total stats for all rows
         for (let i = 10; i < rows.length; i++) {
             const row = rows[i];
-            const emailStr = String(finalHeaders.email >= 0 ? row[finalHeaders.email] : '').toLowerCase().trim();
+            const emailStr = contactsParser.extractField(row, finalHeaders.email).toLowerCase().trim();
             const isEmpty = !emailStr;
             const emailValid = emailStr && validateEmail(emailStr);
             const isDuplicate = emailStr && seenEmails.has(emailStr);
@@ -1021,70 +971,19 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
         }
 
         const ext = filename.split('.').pop().toLowerCase();
-        let headers = [];
-        let rows = [];
-
-        if (ext === 'csv') {
-            const lines = content.trim().split('\n');
-            if (lines.length < 2) {
-                return res.status(400).json({ success: false, error: 'CSV deve ter cabeçalho e pelo menos uma linha de dados' });
-            }
-
-            // Auto-detect separator
-            const separators = [',', ';', '\t'];
-            let bestSep = ',';
-            let maxCols = 0;
-            for (const sep of separators) {
-                const cols = lines[0].split(sep).length;
-                if (cols > maxCols) {
-                    maxCols = cols;
-                    bestSep = sep;
-                }
-            }
-
-            headers = lines[0].split(bestSep).map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
-            rows = lines.slice(1).map(line => {
-                const cells = [];
-                let current = '';
-                let inQuotes = false;
-                for (let j = 0; j < line.length; j++) {
-                    const char = line[j];
-                    if (char === '"') inQuotes = !inQuotes;
-                    else if (char === bestSep && !inQuotes) {
-                        cells.push(current.trim().replace(/""/g, '"'));
-                        current = '';
-                    } else {
-                        current += char;
-                    }
-                }
-                cells.push(current.trim().replace(/""/g, '"'));
-                return cells;
-            });
-        } else if (ext === 'xlsx' || ext === 'xls') {
-            const XLSX = require('xlsx');
-            const buffer = Buffer.from(content, 'base64');
-            const workbook = XLSX.read(buffer, { type: 'buffer' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-            
-            if (json.length < 2) {
-                return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
-            }
-            
-            headers = json[0].map(h => String(h).trim().toLowerCase());
-            rows = json.slice(1);
-        } else {
+        if (ext !== 'csv' && ext !== 'xlsx' && ext !== 'xls') {
             return res.status(400).json({ success: false, error: 'Formato não suportado. Use CSV ou XLSX' });
         }
 
-        // Apply column mapping
-        const requiredFields = ['nome', 'email', 'telefone', 'empresa', 'tags'];
-        const finalHeaders = {};
-        for (const field of requiredFields) {
-            const mappedIdx = mapping && mapping[field] !== undefined ? mapping[field] : headers.indexOf(field);
-            finalHeaders[field] = mappedIdx >= 0 ? mappedIdx : -1;
+        const parsed = contactsParser.parseContent(content, filename);
+        if (parsed.headers.length === 0 || parsed.rows.length === 0) {
+            return res.status(400).json({ success: false, error: 'Ficheiro deve ter cabeçalho e pelo menos uma linha de dados' });
         }
 
+        const headers = parsed.headers;
+        const rows = parsed.rows;
+
+        const finalHeaders = contactsParser.buildColumnMapping(headers, mapping);
         if (finalHeaders.email === -1) {
             return res.status(400).json({ success: false, error: 'Coluna "email" é obrigatória' });
         }
@@ -1096,12 +995,12 @@ app.post('/api/contacts/import', authMiddleware, async (req, res) => {
         
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
-            const email = finalHeaders.email >= 0 ? String(row[finalHeaders.email] || '').toLowerCase().trim() : '';
-            const nome = finalHeaders.nome >= 0 ? String(row[finalHeaders.nome] || '').trim() : '';
-            const telefone = finalHeaders.telefone >= 0 ? String(row[finalHeaders.telefone] || '').trim() : '';
-            const empresa = finalHeaders.empresa >= 0 ? String(row[finalHeaders.empresa] || '').trim() : '';
-            const tags = finalHeaders.tags >= 0 && row[finalHeaders.tags] ? 
-                String(row[finalHeaders.tags]).split(';').map(t => t.trim()).filter(t => t) : [];
+            const email = contactsParser.extractField(row, finalHeaders.email).toLowerCase().trim();
+            const nome = contactsParser.extractField(row, finalHeaders.nome).trim();
+            const telefone = contactsParser.extractField(row, finalHeaders.telefone).trim();
+            const empresa = contactsParser.extractField(row, finalHeaders.empresa).trim();
+            const tagsRaw = contactsParser.extractField(row, finalHeaders.tags);
+            const tags = tagsRaw ? tagsRaw.split(';').map(t => t.trim()).filter(t => t) : [];
 
             if (!email) {
                 errors.push({ line: i + 2, error: 'Email vazio', type: 'empty' });
