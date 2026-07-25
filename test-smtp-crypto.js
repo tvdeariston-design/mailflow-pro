@@ -52,7 +52,7 @@ function decrypt(encoded) {
         decrypted += decipher.final('utf8');
         return decrypted;
     } catch (e) {
-        return encoded;
+        return null;
     }
 }
 
@@ -89,22 +89,22 @@ function testDifferentIV() {
 function testInvalidCiphertext() {
     console.log('\n\uD83D\uDD12 3. Invalid ciphertext handling');
 
-    // Tampered ciphertext
+    // Tampered ciphertext (has valid iv:authTag:ciphertext format but data corrupted)
     var password = 'test_password';
     var encrypted = encrypt(password);
     var parts = encrypted.split(':');
     var tampered = parts[0] + ':' + parts[1] + ':0000' + parts[2].substring(4);
     var result = decrypt(tampered);
-    ok(result === tampered, 'decrypt of tampered ciphertext returns raw input (fallback to plaintext)');
+    ok(result === null, 'decrypt of tampered ciphertext returns null (corrupted data)');
 
-    // Missing colon separators
-    var noColon = 'justaplainstring';
-    ok(decrypt(noColon) === noColon, 'decrypt of non-colon string returns raw input');
-
-    // Invalid hex in IV
+    // Corrupted IV (valid format, malformed hex) — decryption will fail → null
     var invalidHex = 'zzzz:' + parts[1] + ':' + parts[2];
     var result2 = decrypt(invalidHex);
-    ok(result2 === invalidHex, 'decrypt of invalid hex returns raw input');
+    ok(result2 === null, 'decrypt of malformed hex in encrypted format returns null');
+
+    // Missing colon separators — legacy plaintext, return as-is
+    var noColon = 'justaplainstring';
+    ok(decrypt(noColon) === noColon, 'decrypt of non-colon string returns original (legacy plaintext)');
 
     // Null/undefined
     ok(decrypt(null) === null, 'decrypt(null) returns null');

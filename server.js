@@ -82,7 +82,9 @@ function decrypt(encoded) {
     if (!encryptionAvailable) return encoded;
     if (!encoded || typeof encoded !== 'string') return encoded;
     var parts = encoded.split(':');
-    if (parts.length !== 3) return encoded;
+    if (parts.length !== 3) {
+        return encoded;
+    }
     try {
         var key = Buffer.from(ENCRYPTION_KEY_HEX, 'hex');
         var iv = Buffer.from(parts[0], 'hex');
@@ -94,8 +96,8 @@ function decrypt(encoded) {
         decrypted += decipher.final('utf8');
         return decrypted;
     } catch (e) {
-        console.warn('[SMTP] Failed to decrypt password — treating as plaintext');
-        return encoded;
+        console.error('[SMTP] Corrupted encrypted password — decryption failed: ' + e.message);
+        return null;
     }
 }
 
