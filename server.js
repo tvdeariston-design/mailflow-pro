@@ -713,7 +713,11 @@ app.get('/api/contacts/export', authMiddleware, async (req, res) => {
             res.send(buf);
         } else {
             // CSV export with UTF-8 BOM + CRLF (Windows compatibility)
-            const csv = [headers.join(','), ...rows.map(r => r.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(','))].join('\r\n');
+            const csv = [headers.join(','), ...rows.map(r => r.map(cell => {
+                var val = String(cell);
+                if (/^[=+\-@]/.test(val)) val = "'" + val;
+                return '"' + val.replace(/"/g, '""') + '"';
+            }).join(','))].join('\r\n');
             const bom = '\uFEFF';
 
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -1236,7 +1240,8 @@ app.get('/api/templates', authMiddleware, async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (search) {
-            query = query.or('nome.ilike.%' + search + '%,subject.ilike.%' + search + '%');
+            var safe = search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
+            query = query.or('nome.ilike.%' + safe + '%,subject.ilike.%' + safe + '%');
         }
 
         query = query.range(offset, offset + limitNum - 1);

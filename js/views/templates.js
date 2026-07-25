@@ -73,7 +73,8 @@ var TemplatesView = (function() {
                 .order('created_at', { ascending: false });
 
             if (state.search) {
-                query = query.or('nome.ilike.%' + state.search + '%,subject.ilike.%' + state.search + '%');
+                var safe = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
+                query = query.or('nome.ilike.%' + safe + '%,subject.ilike.%' + safe + '%');
             }
 
             var from = (state.page - 1) * state.limit;

@@ -90,7 +90,8 @@ var CampanhasView = (function() {
                 .order('created_at', { ascending: false });
 
             if (state.search) {
-                query = query.or('nome.ilike.%' + state.search + '%,assunto.ilike.%' + state.search + '%');
+                var safe = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
+                query = query.or('nome.ilike.%' + safe + '%,assunto.ilike.%' + safe + '%');
             }
             if (state.filterStatus) {
                 query = query.eq('status', state.filterStatus);

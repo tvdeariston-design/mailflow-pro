@@ -72,7 +72,8 @@ var ContactosView = (function() {
                 .order('created_at', { ascending: false });
 
             if (state.search) {
-                query = query.or('nome.ilike.%' + state.search + '%,email.ilike.%' + state.search + '%,empresa.ilike.%' + state.search + '%');
+                var safe = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
+                query = query.or('nome.ilike.%' + safe + '%,email.ilike.%' + safe + '%,empresa.ilike.%' + safe + '%');
             }
 
             var from = (state.page - 1) * state.limit;
