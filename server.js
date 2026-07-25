@@ -6,6 +6,7 @@
  */
 
 const express = require('express');
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const nodemailer = require('nodemailer');
@@ -44,6 +45,59 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
     ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     : null;
+
+// ============================================
+// SMTP Password Encryption (AES-256-GCM)
+// ============================================
+const ENCRYPTION_KEY_HEX = process.env.SMTP_ENCRYPTION_KEY;
+var encryptionAvailable = false;
+
+if (ENCRYPTION_KEY_HEX) {
+    if (ENCRYPTION_KEY_HEX.length === 64) {
+        encryptionAvailable = true;
+    } else {
+        console.error('[SMTP] SMTP_ENCRYPTION_KEY must be a 64-char hex string (32 bytes) — SMTP passwords will be stored in plaintext');
+    }
+} else {
+    console.warn('[SMTP] SMTP_ENCRYPTION_KEY not set — SMTP passwords will be stored in plaintext');
+}
+
+function encrypt(text) {
+    if (!encryptionAvailable) return text;
+    try {
+        var key = Buffer.from(ENCRYPTION_KEY_HEX, 'hex');
+        var iv = crypto.randomBytes(12);
+        var cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+        var encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        var authTag = cipher.getAuthTag().toString('hex');
+        return iv.toString('hex') + ':' + authTag + ':' + encrypted;
+    } catch (e) {
+        console.error('[SMTP] Encryption failed: ' + e.message);
+        return text;
+    }
+}
+
+function decrypt(encoded) {
+    if (!encryptionAvailable) return encoded;
+    if (!encoded || typeof encoded !== 'string') return encoded;
+    var parts = encoded.split(':');
+    if (parts.length !== 3) return encoded;
+    try {
+        var key = Buffer.from(ENCRYPTION_KEY_HEX, 'hex');
+        var iv = Buffer.from(parts[0], 'hex');
+        var authTag = Buffer.from(parts[1], 'hex');
+        var encrypted = parts[2];
+        var decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(authTag);
+        var decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (e) {
+        console.warn('[SMTP] Failed to decrypt password — treating as plaintext');
+        return encoded;
+    }
+}
 
 // ============================================
 // Helpers
@@ -329,7 +383,7 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
             updates.smtp_username = body.smtp_username.trim();
         }
         if (body.smtp_password !== undefined && body.smtp_password !== '') {
-            updates.smtp_password = body.smtp_password;
+            updates.smtp_password = encrypt(body.smtp_password);
         }
         if (body.smtp_secure !== undefined) {
             updates.smtp_secure = Boolean(body.smtp_secure);
