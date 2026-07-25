@@ -451,12 +451,12 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
         if (!body.smtp_password) {
             return res.status(400).json({ success: false, error: 'Password SMTP é obrigatória' });
         }
-        if (!body.to || !body.to.trim()) {
+        if (!body.test_email || !body.test_email.trim()) {
             return res.status(400).json({ success: false, error: 'Email de destino é obrigatório' });
         }
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(body.to.trim())) {
+        if (!emailRegex.test(body.test_email.trim())) {
             return res.status(400).json({ success: false, error: 'Email de destino inválido' });
         }
 
@@ -483,7 +483,7 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
         
         await testTransporter.sendMail({
             from: '"' + fromName + '" <' + fromEmail + '>',
-            to: body.to.trim(),
+            to: body.test_email.trim(),
             subject: 'MailFlow Pro - Teste SMTP',
             html: '<h2>Ligação SMTP bem-sucedida</h2><p>Este é um email de teste enviado pelo MailFlow Pro.</p>'
         });
@@ -494,7 +494,7 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
             .update({ smtp_status: 'verified', smtp_verified_at: new Date().toISOString() })
             .eq('id', req.user.id);
 
-        logger.info('SMTP test email sent - User: ' + req.user.id + ', To: ' + body.to, 'SMTP');
+        logger.info('SMTP test email sent - User: ' + req.user.id + ', To: ' + body.test_email, 'SMTP');
         res.json({ success: true });
 
     } catch (error) {
