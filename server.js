@@ -2747,6 +2747,129 @@ app.get('/api/automations/jobs', authMiddleware, async (req, res) => {
     }
 });
 
+// POST /api/automations/:id/run - Executar automação manualmente
+app.post('/api/automations/:id/run', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const { data: automation, error: autoErr } = await req.supabase
+            .from('automation_rules')
+            .select('*, campaign:campaigns(*)')
+            .eq('id', id)
+            .eq('user_id', req.user.id)
+            .single();
+
+        if (autoErr || !automation) {
+            return res.status(404).json({ success: false, error: 'Automação não encontrada' });
+        }
+
+        if (!automation.campaign) {
+            return res.status(400).json({ success: false, error: 'Automação não tem campanha associada' });
+        }
+
+        const { data: jobs, error: jobsErr } = await req.supabase
+            .from('automation_jobs')
+            .select('*')
+            .eq('automation_id', id)
+            .eq('status', 'pending');
+
+        if (jobsErr) {
+            logger.error('Erro ao buscar jobs pendentes: ' + jobsErr.message, 'Automations');
+            return res.status(500).json({ success: false, error: 'Erro ao buscar jobs' });
+        }
+
+        if (!jobs || jobs.length === 0) {
+            return res.json({ jobs_processed: 0, completed: 0, failed: 0 });
+        }
+
+        const transporter = campaignEngine.getTransporter();
+        if (!transporter) {
+            return res.status(500).json({ success: false, error: 'Serviço de email não configurado' });
+        }
+
+        const { data: template, error: tplErr } = await req.supabase
+            .from('templates')
+            .select('*')
+            .eq('id', automation.campaign.template_id)
+            .eq('user_id', req.user.id)
+            .is('deleted_at', null)
+            .single();
+
+        if (tplErr || !template) {
+            return res.status(500).json({ success: false, error: 'Template não encontrado' });
+        }
+
+        var completed = 0;
+        var failed = 0;
+
+        for (var i = 0; i < jobs.length; i++) {
+            var job = jobs[i];
+
+            try {
+                await req.supabase
+                    .from('automation_jobs')
+                    .update({
+                        status: 'running',
+                        started_at: new Date().toISOString()
+                    })
+                    .eq('id', job.id);
+
+                var { data: contact, error: contactErr } = await req.supabase
+                    .from('contacts')
+                    .select('*')
+                    .eq('id', job.contact_id)
+                    .single();
+
+                if (contactErr || !contact) {
+                    throw new Error(contactErr ? contactErr.message : 'Contacto não encontrado');
+                }
+
+                if (!contact.email) {
+                    throw new Error('Contacto sem email');
+                }
+
+                var messageId = await campaignEngine.sendSingleEmail(
+                    transporter,
+                    automation.campaign,
+                    template,
+                    contact,
+                    null
+                );
+
+                await req.supabase
+                    .from('automation_jobs')
+                    .update({
+                        status: 'completed',
+                        completed_at: new Date().toISOString(),
+                        error_message: null
+                    })
+                    .eq('id', job.id);
+
+                completed++;
+            } catch (sendErr) {
+                logger.error('Erro ao executar job ' + job.id + ': ' + sendErr.message, 'Automations');
+
+                await req.supabase
+                    .from('automation_jobs')
+                    .update({
+                        status: 'failed',
+                        completed_at: new Date().toISOString(),
+                        error_message: sendErr.message || 'Erro ao enviar email'
+                    })
+                    .eq('id', job.id);
+
+                failed++;
+            }
+        }
+
+        logger.info('Automação executada - ID: ' + id + ', Jobs: ' + jobs.length + ', OK: ' + completed + ', Falhas: ' + failed, 'Automations');
+        res.json({ jobs_processed: jobs.length, completed: completed, failed: failed });
+
+    } catch (error) {
+        logger.error('Erro inesperado ao executar automação: ' + error.message, 'Automations');
+        res.status(500).json({ success: false, error: 'Erro ao processar pedido' });
+    }
+});
 
 // ============================================
 // Start server

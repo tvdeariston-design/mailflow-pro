@@ -635,6 +635,8 @@ module.exports = {
     getActiveCampaigns,
     isActive,
     recoverStuckCampaigns,
+    sendSingleEmail,
+    getTransporter,
     // Exportados para testes
     BATCH_SIZE,
     BATCH_DELAY_MS,
