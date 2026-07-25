@@ -173,59 +173,392 @@ var AdminView = (function() {
     async function loadUsers() {
         var section = document.getElementById('section-users');
         if (!section) return;
-        var table = section.querySelector('#admin-users-table tbody');
-        var countEl = section.querySelector('#admin-user-count');
-        if (!table) return;
+        var card = section.querySelector('.admin-card');
+        if (!card) return;
 
-        table.innerHTML = '<tr><td colspan="6"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line" style="margin-top:8px"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></td></tr>';
+        var state = {
+            data: [],
+            filtered: [],
+            search: '',
+            filterPlan: 'all',
+            filterStatus: 'all',
+            sortBy: 'created_at',
+            sortDir: 'desc',
+            page: 1,
+            limit: 10,
+            loading: true
+        };
 
-        try {
-            if (sb) {
-                var result = await sb.from('profiles').select('*').order('created_at', { ascending: false }).limit(50);
-                var data = result.data || [];
-                if (countEl) countEl.textContent = data.length + ' utilizadores';
+        function renderSkeleton() {
+            var cards = '';
+            for (var i = 0; i < 4; i++) {
+                cards += '<div class="admin-kpi skeleton-card"></div>';
+            }
+            return cards;
+        }
 
-                if (data.length === 0) {
-                    table.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="empty__icon"><svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div><p class="empty__title">Nenhum utilizador</p></div></td></tr>';
-                    return;
+        function renderEmpty() {
+            return '<div class="empty">' +
+                '<div class="empty__icon"><svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg></div>' +
+                '<p class="empty__title">Nenhum utilizador encontrado</p>' +
+                '<p class="empty__desc">Tente alterar os filtros ou a pesquisa.</p>' +
+            '</div>';
+        }
+
+        function getUserBadge(plan, enabled) {
+            if (enabled === false) return '<span class="badge badge--red">Suspenso</span>';
+            if (plan === 'premium') return '<span class="badge badge--green">Premium</span>';
+            if (plan === 'trial') return '<span class="badge badge--yellow">Trial</span>';
+            return '<span class="badge badge--gray">Free</span>';
+        }
+
+        function getUserStatus(enabled) {
+            return enabled !== false ? 'Ativo' : 'Suspenso';
+        }
+
+        function getPlanBadgeClass(plan) {
+            if (plan === 'premium') return 'badge--green';
+            if (plan === 'trial') return 'badge--yellow';
+            return 'badge--gray';
+        }
+
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            var filtered = state.data.filter(function(u) {
+                var name = (u.full_name || u.email || '').toLowerCase();
+                var email = (u.email || '').toLowerCase();
+                if (q && name.indexOf(q) < 0 && email.indexOf(q) < 0) return false;
+                if (state.filterPlan !== 'all' && u.plan !== state.filterPlan) return false;
+                if (state.filterStatus !== 'all') {
+                    var active = u.enabled !== false;
+                    if (state.filterStatus === 'active' && !active) return false;
+                    if (state.filterStatus === 'suspended' && active) return false;
                 }
+                return true;
+            });
 
-                var html = '';
-                data.forEach(function(u) {
+            filtered.sort(function(a, b) {
+                var aVal, bVal;
+                switch (state.sortBy) {
+                    case 'name': aVal = (a.full_name || a.email || '').toLowerCase(); bVal = (b.full_name || b.email || '').toLowerCase(); break;
+                    case 'email': aVal = (a.email || '').toLowerCase(); bVal = (b.email || '').toLowerCase(); break;
+                    case 'plan': aVal = (a.plan || 'free'); bVal = (b.plan || 'free'); break;
+                    case 'last_login': aVal = a.last_sign_in_at || ''; bVal = b.last_sign_in_at || ''; break;
+                    case 'created_at':
+                    default: aVal = a.created_at || ''; bVal = b.created_at || ''; break;
+                }
+                if (state.sortDir === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+            });
+
+            state.filtered = filtered;
+            state.page = 1;
+        }
+
+        function formatLastLogin(dateStr) {
+            if (!dateStr) return '—';
+            var d = new Date(dateStr);
+            var now = new Date();
+            var diff = now - d;
+            var mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'Agora';
+            if (mins < 60) return mins + ' min';
+            var hours = Math.floor(mins / 60);
+            if (hours < 24) return hours + 'h';
+            var days = Math.floor(hours / 24);
+            if (days < 30) return days + 'd';
+            return d.toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' });
+        }
+
+        function showUserModal(user) {
+            var overlay = document.createElement('div');
+            overlay.className = 'tl-modal-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.45);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center;';
+
+            var modal = document.createElement('div');
+            modal.className = 'tl-modal__content';
+            modal.style.cssText = 'max-width:520px;width:90%;max-height:85vh;overflow-y:auto;background:white;border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,0.15);animation:tl-modalIn 0.25s ease both;';
+
+            modal.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0;">' +
+                '<div><h3 style="font-size:1.125rem;font-weight:700;color:#0f172a;margin:0;">' + esc(user.full_name || user.email || 'Utilizador') + '</h3>' +
+                '<span class="badge ' + getPlanBadgeClass(user.plan) + '" style="margin-top:4px;">' + esc(user.plan || 'free') + '</span></div>' +
+                '<button class="tl-modal__close" id="um-close" style="width:36px;height:36px;border:none;background:#f1f5f9;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;transition:all 0.2s;">✕</button>' +
+            '</div>' +
+            '<div style="padding:20px 24px 24px;">' +
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">' +
+                    '<div><label style="font-size:0.6875rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Email</label><p style="font-size:0.8125rem;margin:4px 0 0;word-break:break-all;">' + esc(user.email || '—') + '</p></div>' +
+                    '<div><label style="font-size:0.6875rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Estado</label><p style="font-size:0.8125rem;margin:4px 0 0;">' + getUserStatus(user.enabled) + '</p></div>' +
+                '</div>' +
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">' +
+                    '<div><label style="font-size:0.6875rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Último login</label><p style="font-size:0.8125rem;margin:4px 0 0;">' + formatLastLogin(user.last_sign_in_at) + '</p></div>' +
+                    '<div><label style="font-size:0.6875rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Membro desde</label><p style="font-size:0.8125rem;margin:4px 0 0;">' + (user.created_at ? new Date(user.created_at).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' }) : '—') + '</p></div>' +
+                '</div>' +
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">' +
+                    '<div><label style="font-size:0.6875rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Timezone</label><p style="font-size:0.8125rem;margin:4px 0 0;">' + esc(user.timezone || '—') + '</p></div>' +
+                    '<div><label style="font-size:0.6875rem;color:#94a3b8;font-weight:600;text-transform:uppercase;">Idioma</label><p style="font-size:0.8125rem;margin:4px 0 0;">' + esc(user.locale || '—') + '</p></div>' +
+                '</div>' +
+                '<div style="display:flex;gap:8px;padding-top:16px;border-top:1px solid #f1f5f9;">' +
+                    '<button class="btn btn--primary btn--sm" id="um-edit" data-uid="' + esc(user.id) + '">Editar</button>' +
+                    '<button class="btn btn--ghost btn--sm" id="um-toggle" data-uid="' + esc(user.id) + '" data-enabled="' + (user.enabled !== false) + '">' + (user.enabled !== false ? 'Suspender' : 'Reativar') + '</button>' +
+                    '<button class="btn btn--danger btn--sm" id="um-delete" data-uid="' + esc(user.id) + '">Eliminar</button>' +
+                '</div>' +
+            '</div>';
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+            overlay.querySelector('#um-close').addEventListener('click', close);
+            overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+            overlay.querySelector('#um-edit').addEventListener('click', function() { editUser(user.id); close(); });
+            overlay.querySelector('#um-toggle').addEventListener('click', function() { toggleUser(user.id); close(); });
+            overlay.querySelector('#um-delete').addEventListener('click', function() { deleteUser(user.id); close(); });
+        }
+
+        async function editUser(id) {
+            var newName = prompt('Novo nome do utilizador:');
+            if (newName === null) return;
+            try {
+                await sb.from('profiles').update({ full_name: newName.trim() }).eq('id', id);
+                state.loading = true;
+                await loadUsersData();
+                state.loading = false;
+                render();
+            } catch (e) { console.error('[Admin] Erro ao editar utilizador:', e); }
+        }
+
+        async function toggleUser(id) {
+            var user = state.data.find(function(u) { return u.id === id; });
+            if (!user) return;
+            try {
+                await sb.from('profiles').update({ enabled: user.enabled === false }).eq('id', id);
+                state.loading = true;
+                await loadUsersData();
+                state.loading = false;
+                render();
+            } catch (e) { console.error('[Admin] Erro ao alterar estado:', e); }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Tem a certeza que deseja eliminar este utilizador? Esta ação é irreversível.')) return;
+            try {
+                await sb.from('profiles').delete().eq('id', id);
+                state.loading = true;
+                await loadUsersData();
+                state.loading = false;
+                render();
+            } catch (e) { console.error('[Admin] Erro ao eliminar utilizador:', e); }
+        }
+
+        async function loadUsersData() {
+            if (!sb) { state.data = []; return; }
+            try {
+                var result = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+                state.data = result.data || [];
+                applyFilters();
+            } catch (e) {
+                state.data = [];
+                state.filtered = [];
+            }
+        }
+
+        function render() {
+            if (!card) return;
+            var countEl = section.querySelector('#admin-user-count');
+
+            var filtered = state.filtered;
+            var totalPages = Math.ceil(filtered.length / state.limit) || 1;
+            var start = (state.page - 1) * state.limit;
+            var pageUsers = filtered.slice(start, start + state.limit);
+            var totalUsers = state.data.length;
+            var premiumCount = state.data.filter(function(u) { return u.plan === 'premium'; }).length;
+
+            if (countEl) countEl.textContent = filtered.length + ' de ' + totalUsers + ' utilizadores';
+
+            var html = '';
+
+            // Premium KPI mini cards
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">';
+            html += '<div class="admin-kpi"><div class="admin-kpi__label">Total</div><div class="admin-kpi__value">' + totalUsers + '</div></div>';
+            html += '<div class="admin-kpi"><div class="admin-kpi__label">Premium</div><div class="admin-kpi__value" style="color:#10b981;">' + premiumCount + '</div></div>';
+            html += '<div class="admin-kpi"><div class="admin-kpi__label">Trial</div><div class="admin-kpi__value" style="color:#d97706;">' + state.data.filter(function(u){return u.plan==="trial";}).length + '</div></div>';
+            html += '<div class="admin-kpi"><div class="admin-kpi__label">Ativos</div><div class="admin-kpi__value" style="color:#2563eb;">' + state.data.filter(function(u){return u.enabled!==false;}).length + '</div></div>';
+            html += '</div>';
+
+            // Cards grid
+            html += '<div class="tl-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">';
+
+            if (pageUsers.length === 0) {
+                html += renderEmpty();
+            } else {
+                pageUsers.forEach(function(u, idx) {
                     var plan = u.plan || 'free';
-                    var planBadge = plan === 'premium' ? 'badge--green' : (plan === 'trial' ? 'badge--yellow' : 'badge--gray');
+                    var planBadge = getPlanBadgeClass(plan);
                     var statusBadge = u.enabled !== false ? 'badge--green' : 'badge--red';
-                    var lastLogin = u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' }) : '—';
-                    html += '<tr>' +
-                        '<td><strong>' + esc(u.full_name || u.email || '—') + '</strong></td>' +
-                        '<td>' + esc(u.email || '—') + '</td>' +
-                        '<td><span class="badge ' + planBadge + '">' + esc(plan) + '</span></td>' +
-                        '<td>' + lastLogin + '</td>' +
-                        '<td><span class="badge ' + statusBadge + '">' + (u.enabled !== false ? 'Ativo' : 'Suspenso') + '</span></td>' +
-                        '<td><div style="display:flex;gap:4px;flex-wrap:wrap;">' +
-                            '<button class="btn btn--ghost btn--sm" data-action="view" data-id="' + esc(u.id) + '">Ver</button>' +
-                            '<button class="btn btn--ghost btn--sm" data-action="edit" data-id="' + esc(u.id) + '">Editar</button>' +
-                            '<button class="btn btn--danger btn--sm" data-action="delete" data-id="' + esc(u.id) + '">Eliminar</button>' +
-                        '</div></td>' +
-                    '</tr>';
-                });
-                table.innerHTML = html;
+                    var lastLogin = formatLastLogin(u.last_sign_in_at);
+                    var createdAt = u.created_at ? new Date(u.created_at).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' }) : '—';
 
-                table.addEventListener('click', function(e) {
-                    var btn = e.target.closest('button');
-                    if (!btn) return;
-                    var action = btn.getAttribute('data-action');
-                    var id = btn.getAttribute('data-id');
-                    if (action === 'view') { console.log('View user:', id); }
-                    else if (action === 'edit') { console.log('Edit user:', id); }
-                    else if (action === 'delete') {
-                        if (confirm('Eliminar este utilizador?')) { console.log('Delete user:', id); }
-                    }
+                    html += '<div class="tl-card" style="animation-delay:' + (idx * 0.04) + 's">';
+                    html += '<div class="tl-card__top-line"></div>';
+                    html += '<div class="tl-card__header">';
+                    html += '<div class="tl-card__header-left">';
+                    html += '<h3 class="tl-card__title">' + esc(u.full_name || u.email || '—') + '</h3>';
+                    html += getUserBadge(plan, u.enabled);
+                    html += '</div>';
+                    html += '<span class="badge ' + planBadge + '" style="font-size:0.625rem;">' + esc(plan) + '</span>';
+                    html += '</div>';
+                    html += '<div class="tl-card__body">';
+                    html += '<div class="tl-card__row">';
+                    html += '<div class="tl-card__stat"><span class="tl-card__stat-label">Email</span><span class="tl-card__stat-value" style="font-size:0.75rem;word-break:break-all;">' + esc(u.email || '—') + '</span></div>';
+                    html += '<div class="tl-card__stat"><span class="tl-card__stat-label">Estado</span><span class="tl-card__stat-value"><span class="badge ' + statusBadge + '">' + getUserStatus(u.enabled) + '</span></span></div>';
+                    html += '</div>';
+                    html += '<div class="tl-card__row">';
+                    html += '<div class="tl-card__stat"><span class="tl-card__stat-label">Último login</span><span class="tl-card__stat-value">' + lastLogin + '</span></div>';
+                    html += '<div class="tl-card__stat"><span class="tl-card__stat-label">Membro desde</span><span class="tl-card__stat-value">' + createdAt + '</span></div>';
+                    html += '</div>';
+                    html += '</div>';
+                    html += '<div class="tl-card__actions">';
+                    html += '<button class="tl-btn tl-btn--ghost tl-btn--sm" data-action="view" data-uid="' + esc(u.id) + '">Ver</button>';
+                    html += '<button class="tl-btn tl-btn--ghost tl-btn--sm" data-action="edit" data-uid="' + esc(u.id) + '">Editar</button>';
+                    html += '<button class="tl-btn tl-btn--ghost tl-btn--sm" data-action="toggle" data-uid="' + esc(u.id) + '" data-enabled="' + (u.enabled !== false) + '">' + (u.enabled !== false ? 'Suspender' : 'Reativar') + '</button>';
+                    html += '<button class="tl-btn tl-btn--ghost tl-btn--sm tl-btn--danger" data-action="delete" data-uid="' + esc(u.id) + '">Eliminar</button>';
+                    html += '</div>';
+                    html += '</div>';
                 });
             }
-        } catch (e) {
-            table.innerHTML = '<tr><td colspan="6"><div class="empty"><p class="empty__title">Erro ao carregar utilizadores</p></div></td></tr>';
+            html += '</div>';
+
+            // Pagination
+            if (filtered.length > state.limit) {
+                var totalPages = Math.ceil(filtered.length / state.limit);
+                html += '<div class="tl-pagination" style="margin-top:20px;">';
+                html += '<span class="tl-pagination__info">Página ' + state.page + ' de ' + totalPages + '</span>';
+                html += '<div class="tl-pagination__btns">';
+                html += '<button class="tl-btn tl-btn--ghost tl-btn--sm" data-page="' + (state.page - 1) + '"' + (state.page <= 1 ? ' disabled' : '') + '>&larr; Anterior</button>';
+                html += '<button class="tl-btn tl-btn--ghost tl-btn--sm" data-page="' + (state.page + 1) + '"' + (state.page >= totalPages ? ' disabled' : '') + '>Próxima &rarr;</button>';
+                html += '</div></div>';
+            }
+
+            card.innerHTML = html;
+
+            // Bind card actions
+            card.querySelectorAll('button[data-action]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var action = btn.getAttribute('data-action');
+                    var uid = btn.getAttribute('data-uid');
+                    if (action === 'view') showUserModal(state.data.find(function(u) { return u.id === uid; }));
+                    else if (action === 'edit') editUser(uid);
+                    else if (action === 'toggle') toggleUser(uid);
+                    else if (action === 'delete') deleteUser(uid);
+                });
+            });
+
+            // Bind pagination
+            card.querySelectorAll('[data-page]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var p = parseInt(btn.getAttribute('data-page'), 10);
+                    if (!isNaN(p) && p >= 1 && p <= totalPages) {
+                        state.page = p;
+                        render();
+                    }
+                });
+            });
         }
+
+        function renderToolbar() {
+            var searchEl = section.querySelector('#admin-user-search');
+            var planFilter = section.querySelector('#admin-user-plan');
+            var statusFilter = section.querySelector('#admin-user-status');
+            var sortEl = section.querySelector('#admin-user-sort');
+
+            if (searchEl) {
+                var dt;
+                searchEl.value = state.search;
+                searchEl.addEventListener('input', function() {
+                    clearTimeout(dt);
+                    dt = setTimeout(function() {
+                        state.search = searchEl.value;
+                        applyFilters();
+                        render();
+                    }, 200);
+                });
+            }
+            if (planFilter) {
+                planFilter.value = state.filterPlan;
+                planFilter.addEventListener('change', function() {
+                    state.filterPlan = planFilter.value;
+                    applyFilters();
+                    render();
+                });
+            }
+            if (statusFilter) {
+                statusFilter.value = state.filterStatus;
+                statusFilter.addEventListener('change', function() {
+                    state.filterStatus = statusFilter.value;
+                    applyFilters();
+                    render();
+                });
+            }
+            if (sortEl) {
+                sortEl.value = state.sortBy + '-' + state.sortDir;
+                sortEl.addEventListener('change', function() {
+                    var parts = sortEl.value.split('-');
+                    state.sortBy = parts[0];
+                    state.sortDir = parts[1] || 'desc';
+                    applyFilters();
+                    render();
+                });
+            }
+        }
+
+        async function init() {
+            card.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">' +
+                '<div class="admin-kpi skeleton-card"></div>' +
+                '<div class="admin-kpi skeleton-card"></div>' +
+                '<div class="admin-kpi skeleton-card"></div>' +
+                '<div class="admin-kpi skeleton-card"></div>' +
+            '</div>' +
+            '<div style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">' +
+                '<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div>' +
+                '<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div>' +
+            '</div>';
+
+            await loadUsersData();
+            state.loading = false;
+
+            // Recreate toolbar if not exists
+            var existingToolbar = section.querySelector('.admin-user-toolbar');
+            if (!existingToolbar) {
+                var toolbar = document.createElement('div');
+                toolbar.className = 'admin-user-toolbar';
+                toolbar.style.cssText = 'display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;';
+                toolbar.innerHTML =
+                    '<div style="position:relative;flex:1;min-width:180px;max-width:300px;">' +
+                        '<svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#94a3b8;pointer-events:none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
+                        '<input type="text" id="admin-user-search" placeholder="Pesquisar utilizadores..." style="width:100%;padding:8px 12px 8px 34px;border:1px solid #e2e8f0;border-radius:10px;font-size:0.8125rem;font-family:inherit;background:white;">' +
+                    '</div>' +
+                    '<select id="admin-user-plan" style="padding:8px 32px 8px 10px;border:1px solid #e2e8f0;border-radius:10px;font-size:0.8125rem;font-family:inherit;background:white;appearance:none;cursor:pointer;">' +
+                        '<option value="all">Todos os planos</option><option value="premium">Premium</option><option value="trial">Trial</option><option value="free">Free</option>' +
+                    '</select>' +
+                    '<select id="admin-user-status" style="padding:8px 32px 8px 10px;border:1px solid #e2e8f0;border-radius:10px;font-size:0.8125rem;font-family:inherit;background:white;appearance:none;cursor:pointer;">' +
+                        '<option value="all">Todos os estados</option><option value="active">Ativos</option><option value="suspended">Suspensos</option>' +
+                    '</select>' +
+                    '<select id="admin-user-sort" style="padding:8px 32px 8px 10px;border:1px solid #e2e8f0;border-radius:10px;font-size:0.8125rem;font-family:inherit;background:white;appearance:none;cursor:pointer;">' +
+                        '<option value="created_at-desc">Mais recentes</option><option value="created_at-asc">Mais antigos</option><option value="name-asc">Nome A-Z</option><option value="name-desc">Nome Z-A</option><option value="plan-asc">Plano</option><option value="last_login-desc">Último login</option>' +
+                    '</select>';
+
+                card.parentNode.insertBefore(toolbar, card);
+                renderToolbar();
+            }
+
+            render();
+        }
+
+        // Debounce search
+        var searchTimer = null;
+        var origInit = init;
+
+        return init();
     }
 
     async function loadCampaigns() {
