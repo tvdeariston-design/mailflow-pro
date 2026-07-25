@@ -1,93 +1,470 @@
-/**
- * MailFlow Pro — Visão Geral (Overview)
- *
- * Objetivo:
- *   Dashboard principal com KPIs, banner, benefícios,
- *   como funciona, ações rápidas e atividade.
- *   Primeira coisa que o utilizador vê ao entrar.
- *
- * Benefício para o cliente:
- *   Vista instantânea do estado do negócio. Em segundos
- *   sabe quantos contactos tem, campanhas enviadas, e
- *   taxa de abertura. Sem precisar de navegar em vários sítios.
- *
- * Inputs:
- *   - Profile do utilizador (Supabase)
- *   - Contagens de contactos, campanhas, templates (Supabase)
- *
- * Outputs:
- *   - Banner hero
- *   - KPIs com dados reais ou empty states elegantes
- *   - Secção "Porque utilizar"
- *   - Secção "Como funciona"
- *   - Ações rápidas para começar a usar o produto
- *   - Feed de atividade recente
- *
- * Erros possíveis:
- *   - Fallback para zeros se queries falharem
- *
- * Dependências:
- *   - supabase-client.js
- *   - auth.js
- */
-
 var OverviewView = (function() {
     'use strict';
 
-    // ========================================
-    // Init
-    // ========================================
     var sb = null;
+    var user = null;
+    var currentContainer = null;
+    var resizeHandler = null;
 
-    function init() {
-        sb = window.supabaseClient;
+    function init() { sb = window.supabaseClient; }
+
+    function esc(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function formatNum(n) {
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+        return String(n);
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function formatShortDate(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+    }
+
+    function formatPct(num, den) {
+        if (!den) return '0%';
+        return Math.round((num / den) * 100) + '%';
+    }
+
+    function timeAgo(dateStr) {
+        if (!dateStr) return '';
+        var now = new Date();
+        var d = new Date(dateStr);
+        var diff = Math.floor((now - d) / 1000);
+        if (diff < 60) return 'agora';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+        if (diff < 2592000) return Math.floor(diff / 86400) + 'd';
+        return formatDate(dateStr);
+    }
+
+    function svgIcon(name) {
+        var icons = {
+            users: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>',
+            campaign: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>',
+            sent: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>',
+            open: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>',
+            click: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/>',
+            contact: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>',
+            automation: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>',
+            clock: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+            activity: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>'
+        };
+        return '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">' + (icons[name] || icons.activity) + '</svg>';
+    }
+
+    function statusBadge(status) {
+        var map = {
+            draft: 'dp-badge--gray', scheduled: 'dp-badge--blue',
+            sending: 'dp-badge--yellow', sent: 'dp-badge--green',
+            paused: 'dp-badge--orange', cancelled: 'dp-badge--red', failed: 'dp-badge--red'
+        };
+        var labels = {
+            draft: 'Rascunho', scheduled: 'Agendada', sending: 'A enviar',
+            sent: 'Enviada', paused: 'Pausada', cancelled: 'Cancelada', failed: 'Falhou'
+        };
+        return '<span class="dp-badge ' + (map[status] || 'dp-badge--gray') + '">' + (labels[status] || esc(status)) + '</span>';
+    }
+
+    function updateBadge(id, count) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = count;
     }
 
     // ========================================
-    // Helpers
+    // Data
     // ========================================
 
-    async function fetchStats(userId) {
-        if (!sb) return { campanhas: 0, contactos: 0, templates: 0, emails: 0 };
-
+    async function fetchDashboardData(userId) {
+        if (!sb) return null;
         try {
             var results = await Promise.all([
-                sb.from('campaigns').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+                sb.from('campaigns')
+                    .select('id, nome, assunto, status, total_recipients, total_sent, total_opened, total_clicked, total_failed, created_at')
+                    .eq('user_id', userId).is('deleted_at', null).order('created_at', { ascending: false }),
                 sb.from('contacts').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-                sb.from('templates').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-                sb.from('campaigns').select('total_sent').eq('user_id', userId).eq('status', 'sent')
+                sb.from('contacts').select('id, nome, email, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5),
+                sb.from('automations').select('id, name, trigger_type, trigger_config, status, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
+                sb.from('campaigns')
+                    .select('id, nome, status, total_recipients, total_sent, created_at')
+                    .eq('user_id', userId).is('deleted_at', null).in('status', ['sent']).order('created_at', { ascending: false }).limit(5)
             ]);
 
-            var totalEmails = 0;
-            if (results[3].data) {
-                results[3].data.forEach(function(c) { totalEmails += (c.total_sent || 0); });
-            }
-
             return {
-                campanhas: results[0].count || 0,
-                contactos: results[1].count || 0,
-                templates: results[2].count || 0,
-                emails: totalEmails
+                campaigns: results[0].data || [],
+                contactsCount: results[1].count || 0,
+                recentContacts: results[2].data || [],
+                automations: results[3].data || [],
+                recentSends: results[4].data || []
             };
         } catch (err) {
-            console.error('[Overview] Erro ao buscar stats:', err);
-            return { campanhas: 0, contactos: 0, templates: 0, emails: 0 };
+            console.error('[Overview] Erro ao buscar dados:', err);
+            return null;
         }
     }
 
-    function getInitials(nome) {
-        if (!nome) return '—';
-        return nome.split(' ').map(function(w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
+    function computeKPIs(data) {
+        if (!data) return { contacts: 0, campaigns: 0, emailsSent: 0, openRate: 0, clickRate: 0 };
+        var sent = 0, opened = 0, clicked = 0;
+        data.campaigns.forEach(function(c) {
+            sent += c.total_sent || 0;
+            opened += c.total_opened || 0;
+            clicked += c.total_clicked || 0;
+        });
+        return {
+            contacts: data.contactsCount,
+            campaigns: data.campaigns.length,
+            emailsSent: sent,
+            openRate: sent > 0 ? Math.round((opened / sent) * 100) : 0,
+            clickRate: sent > 0 ? Math.round((clicked / sent) * 100) : 0
+        };
+    }
+
+    function generateDailyData(campaigns) {
+        var map = {};
+        var now = new Date();
+        for (var i = 29; i >= 0; i--) {
+            var d = new Date(now);
+            d.setDate(d.getDate() - i);
+            var key = d.toISOString().split('T')[0];
+            map[key] = { date: key, sent: 0, opened: 0, clicked: 0 };
+        }
+        campaigns.forEach(function(c) {
+            if (!c.created_at) return;
+            var key = c.created_at.split('T')[0];
+            if (map[key]) {
+                map[key].sent += c.total_sent || 0;
+                map[key].opened += c.total_opened || 0;
+                map[key].clicked += c.total_clicked || 0;
+            }
+        });
+        return Object.keys(map).sort().map(function(k) { return map[k]; });
+    }
+
+    function getActiveCampaigns(campaigns) {
+        return campaigns.filter(function(c) {
+            return c.status === 'sending' || c.status === 'paused';
+        });
     }
 
     // ========================================
-    // Render
+    // Skeleton
+    // ========================================
+
+    function renderSkeleton() {
+        return '<div class="dp-skeleton">' +
+            '<div class="dp-skeleton-grid">' +
+                '<div class="dp-skeleton-card"></div>'.repeat(5) +
+            '</div>' +
+            '<div class="dp-skeleton-chart"></div>' +
+            '<div class="dp-skeleton-grid dp-skeleton-grid--2">' +
+                '<div class="dp-skeleton-card dp-skeleton-card--tall"></div>'.repeat(2) +
+            '</div>' +
+        '</div>';
+    }
+
+    // ========================================
+    // KPI Cards
+    // ========================================
+
+    function renderKPIs(kpis) {
+        var cards = [
+            { label: 'Contactos', value: formatNum(kpis.contacts), icon: 'users', color: 'indigo' },
+            { label: 'Campanhas', value: formatNum(kpis.campaigns), icon: 'campaign', color: 'green' },
+            { label: 'Emails Enviados', value: formatNum(kpis.emailsSent), icon: 'sent', color: 'amber' },
+            { label: 'Taxa Abertura', value: kpis.openRate + '%', icon: 'open', color: 'rose' },
+            { label: 'Taxa Cliques', value: kpis.clickRate + '%', icon: 'click', color: 'purple' }
+        ];
+
+        var html = '<div class="dp-kpi-grid">';
+        cards.forEach(function(k) {
+            html += '' +
+                '<div class="dp-kpi-card">' +
+                    '<div class="dp-kpi-card__top">' +
+                        '<div class="dp-kpi-card__icon dp-kpi-card__icon--' + k.color + '">' + svgIcon(k.icon) + '</div>' +
+                    '</div>' +
+                    '<div class="dp-kpi-card__value">' + k.value + '</div>' +
+                    '<div class="dp-kpi-card__label">' + k.label + '</div>' +
+                '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
+    // ========================================
+    // Chart
+    // ========================================
+
+    function renderChart(dailyData) {
+        var hasData = dailyData.some(function(d) { return d.sent > 0 || d.opened > 0 || d.clicked > 0; });
+        if (!hasData) return '';
+
+        var html = '<div class="section-header">' +
+            '<h2 class="section-header__title">Evolução (Últimos 30 Dias)</h2>' +
+            '<div class="dp-chart-legend">' +
+                '<span class="dp-legend-item"><span class="dp-legend-dot" style="background:#6366f1;"></span>Enviados</span>' +
+                '<span class="dp-legend-item"><span class="dp-legend-dot" style="background:#10b981;"></span>Aberturas</span>' +
+                '<span class="dp-legend-item"><span class="dp-legend-dot" style="background:#f59e0b;"></span>Cliques</span>' +
+            '</div>' +
+        '</div>' +
+        '<div class="dp-chart-wrapper">' +
+            '<canvas id="dp-chart" width="800" height="220"></canvas>' +
+        '</div>';
+        return html;
+    }
+
+    function drawChart(canvas, dailyData) {
+        if (!canvas || !dailyData || dailyData.length === 0) return;
+        var ctx = canvas.getContext('2d');
+        var dpr = window.devicePixelRatio || 1;
+        var rect = canvas.parentElement.getBoundingClientRect();
+        var W = Math.max(rect.width, 200);
+        var H = 220;
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        ctx.scale(dpr, dpr);
+
+        var pad = { top: 16, right: 16, bottom: 32, left: 44 };
+        var gW = W - pad.left - pad.right;
+        var gH = H - pad.top - pad.bottom;
+
+        var maxVal = 1;
+        dailyData.forEach(function(d) {
+            if (d.sent > maxVal) maxVal = d.sent;
+            if (d.opened > maxVal) maxVal = d.opened;
+            if (d.clicked > maxVal) maxVal = d.clicked;
+        });
+        maxVal = Math.ceil(maxVal * 1.15) || 1;
+
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+        var gridLines = 4;
+        for (var i = 0; i <= gridLines; i++) {
+            var y = pad.top + (gH / gridLines) * i;
+            ctx.beginPath();
+            ctx.moveTo(pad.left, y);
+            ctx.lineTo(W - pad.right, y);
+            ctx.stroke();
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '10px Inter, system-ui, sans-serif';
+            ctx.textAlign = 'right';
+            var val = Math.round(maxVal - (maxVal / gridLines) * i);
+            ctx.fillText(formatNum(val), pad.left - 8, y + 3);
+        }
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        var step = Math.max(1, Math.ceil(dailyData.length / 8));
+        for (var j = 0; j < dailyData.length; j += step) {
+            var xPos = pad.left + (gW / (dailyData.length - 1 || 1)) * j;
+            ctx.fillText(formatShortDate(dailyData[j].date), xPos, H - 6);
+        }
+
+        function drawSeries(data, key, color, alpha) {
+            if (data.length === 0) return;
+            ctx.beginPath();
+            ctx.moveTo(pad.left, pad.top + gH);
+            data.forEach(function(d, idx) {
+                var x = pad.left + (gW / (data.length - 1 || 1)) * idx;
+                var y = pad.top + gH - ((d[key] / maxVal) * gH);
+                ctx.lineTo(x, y);
+            });
+            ctx.lineTo(pad.left + gW, pad.top + gH);
+            ctx.closePath();
+            ctx.fillStyle = color.replace(')', ', ' + alpha + ')').replace('rgb', 'rgba');
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            data.forEach(function(d, idx) {
+                var x = pad.left + (gW / (data.length - 1 || 1)) * idx;
+                var y = pad.top + gH - ((d[key] / maxVal) * gH);
+                if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            data.forEach(function(d, idx) {
+                var x = pad.left + (gW / (data.length - 1 || 1)) * idx;
+                var y = pad.top + gH - ((d[key] / maxVal) * gH);
+                ctx.beginPath();
+                ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            });
+        }
+
+        drawSeries(dailyData, 'sent', 'rgb(99, 102, 241)', 0.06);
+        drawSeries(dailyData, 'opened', 'rgb(16, 185, 129)', 0.05);
+        drawSeries(dailyData, 'clicked', 'rgb(245, 158, 11)', 0.04);
+    }
+
+    // ========================================
+    // Recent Activity
+    // ========================================
+
+    function renderRecentActivity(data) {
+        var html = '<div class="section-header"><h2 class="section-header__title">Atividade Recente</h2></div>';
+
+        var totalItems = (data.recentContacts.length || 0) + (data.recentSends.length || 0);
+        if (totalItems === 0) {
+            html += '<div class="dp-card dp-card--empty">' +
+                '<div class="dp-empty-icon">' + svgIcon('activity') + '</div>' +
+                '<p class="dp-empty-text">Ainda não existe atividade. Comece por criar uma campanha.</p>' +
+                '<a href="#/campanhas" class="dp-empty-btn">Criar Campanha</a>' +
+            '</div>';
+            return html;
+        }
+
+        html += '<div class="dp-activity-grid">';
+
+        if (data.recentContacts.length > 0) {
+            html += '<div class="dp-activity-group">' +
+                '<div class="dp-activity-group__title">Últimos Contactos</div>';
+            data.recentContacts.forEach(function(c) {
+                html += '<div class="dp-activity-item">' +
+                    '<div class="dp-activity-item__icon dp-activity-item__icon--indigo">' + svgIcon('contact') + '</div>' +
+                    '<div class="dp-activity-item__info">' +
+                        '<div class="dp-activity-item__title">' + esc(c.nome || c.email || 'Sem nome') + '</div>' +
+                        '<div class="dp-activity-item__sub">' + esc(c.email || '') + '</div>' +
+                    '</div>' +
+                    '<div class="dp-activity-item__time">' + timeAgo(c.created_at) + '</div>' +
+                '</div>';
+            });
+            html += '</div>';
+        }
+
+        if (data.recentSends.length > 0) {
+            html += '<div class="dp-activity-group">' +
+                '<div class="dp-activity-group__title">Últimos Envios</div>';
+            data.recentSends.forEach(function(c) {
+                html += '<div class="dp-activity-item">' +
+                    '<div class="dp-activity-item__icon dp-activity-item__icon--green">' + svgIcon('sent') + '</div>' +
+                    '<div class="dp-activity-item__info">' +
+                        '<div class="dp-activity-item__title">' + esc(c.nome || c.assunto || 'Sem nome') + '</div>' +
+                        '<div class="dp-activity-item__sub">' + (c.total_sent || 0) + ' enviados</div>' +
+                    '</div>' +
+                    '<div class="dp-activity-item__time">' + timeAgo(c.created_at) + '</div>' +
+                '</div>';
+            });
+            html += '</div>';
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    // ========================================
+    // Active Campaigns
+    // ========================================
+
+    function renderActiveCampaigns(active) {
+        if (active.length === 0) return '';
+
+        var html = '<div class="dp-section-card">' +
+            '<div class="section-header" style="margin-bottom:16px;">' +
+                '<h2 class="section-header__title">Campanhas em Execução</h2>' +
+            '</div>';
+
+        active.forEach(function(c) {
+            var pct = c.total_recipients > 0 ? Math.round(((c.total_sent || 0) / c.total_recipients) * 100) : 0;
+            html += '<div class="dp-campaign-progress">' +
+                '<div class="dp-campaign-progress__header">' +
+                    '<span class="dp-campaign-progress__name">' + esc(c.nome || c.assunto || 'Sem nome') + '</span>' +
+                    statusBadge(c.status) +
+                '</div>' +
+                '<div class="dp-campaign-progress__bar-wrap">' +
+                    '<div class="dp-campaign-progress__bar" style="width:' + pct + '%;"></div>' +
+                '</div>' +
+                '<div class="dp-campaign-progress__stats">' +
+                    '<span>' + (c.total_sent || 0) + ' / ' + (c.total_recipients || 0) + ' enviados</span>' +
+                    '<span>' + pct + '%</span>' +
+                '</div>' +
+            '</div>';
+        });
+
+        html += '</div>';
+        return html;
+    }
+
+    // ========================================
+    // Upcoming Automations
+    // ========================================
+
+    function renderAutomations(automations) {
+        var active = automations.filter(function(a) { return a.status === 'active'; });
+        if (active.length === 0) return '';
+
+        var html = '<div class="dp-section-card">' +
+            '<div class="section-header" style="margin-bottom:16px;">' +
+                '<h2 class="section-header__title">Automações Ativas</h2>' +
+            '</div>';
+
+        active.forEach(function(a) {
+            var triggerLabel = 'Automático';
+            if (a.trigger_type === 'immediate') triggerLabel = 'Imediato';
+            else if (a.trigger_type === 'scheduled') triggerLabel = 'Agendado';
+            else if (a.trigger_type === 'contact_created') triggerLabel = 'Novo Contacto';
+
+            var timeLeft = '';
+            if (a.trigger_type === 'scheduled' && a.trigger_config) {
+                try {
+                    var cfg = typeof a.trigger_config === 'string' ? JSON.parse(a.trigger_config) : a.trigger_config;
+                    if (cfg && cfg.scheduled_at) {
+                        var diff = new Date(cfg.scheduled_at) - new Date();
+                        if (diff > 0) {
+                            var days = Math.floor(diff / 86400000);
+                            var hours = Math.floor((diff % 86400000) / 3600000);
+                            timeLeft = days + 'd ' + hours + 'h restante' + (days > 1 ? 's' : '');
+                        } else {
+                            timeLeft = 'Pendente';
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            html += '<div class="dp-automation-item">' +
+                '<div class="dp-automation-item__icon">' + svgIcon('automation') + '</div>' +
+                '<div class="dp-automation-item__info">' +
+                    '<div class="dp-automation-item__name">' + esc(a.name || 'Sem nome') + '</div>' +
+                    '<div class="dp-automation-item__trigger">' + triggerLabel + '</div>' +
+                '</div>' +
+                (timeLeft ? '<div class="dp-automation-item__time">' + svgIcon('clock') + '<span>' + timeLeft + '</span></div>' : '') +
+            '</div>';
+        });
+
+        html += '</div>';
+        return html;
+    }
+
+    // ========================================
+    // Render Entry
     // ========================================
 
     async function render(container) {
+        currentContainer = container;
         init();
 
-        var user = await MailFlowAuth.getUser();
+        user = await MailFlowAuth.getUser();
         if (!user) return;
 
         var profile = null;
@@ -98,9 +475,7 @@ var OverviewView = (function() {
 
         var nome = (profile && profile.nome) ? profile.nome : user.email.split('@')[0];
         var email = user.email;
-        var stats = await fetchStats(user.id);
 
-        // Atualizar sidebar
         var nameEl = document.getElementById('user-name');
         var emailEl = document.getElementById('user-email');
         var avatarEl = document.getElementById('user-avatar');
@@ -108,369 +483,57 @@ var OverviewView = (function() {
         if (emailEl) emailEl.textContent = email;
         if (avatarEl) avatarEl.textContent = getInitials(nome);
 
-        // Atualizar badges
-        updateBadge('badge-campanhas', stats.campanhas);
-        updateBadge('badge-contactos', stats.contactos);
-        updateBadge('badge-templates', stats.templates);
+        container.innerHTML = renderSkeleton();
 
-        var isNewUser = stats.campanhas === 0 && stats.contactos === 0 && stats.templates === 0;
-
-        var html = '';
-
-        // Banner hero
-        html += renderHero();
-
-        // Help video card
-        html += renderHelpCard();
-
-        if (isNewUser) {
-            html += renderOnboarding();
+        var data = await fetchDashboardData(user.id);
+        if (!data) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state__icon empty-state__icon--indigo">' + svgIcon('activity') + '</div><h3 class="empty-state__title">Erro ao carregar dados</h3><p class="empty-state__desc">Tente recarregar a página.</p></div>';
+            return;
         }
 
-        html += renderKPIs(stats);
-        html += renderBenefits();
-        html += renderHowItWorks();
-        html += renderQuickActions();
-        html += renderActivity(stats);
+        var kpis = computeKPIs(data);
+        updateBadge('badge-campanhas', kpis.campaigns);
+        updateBadge('badge-contactos', kpis.contacts);
+        updateBadge('badge-templates', 0);
+
+        var dailyData = generateDailyData(data.campaigns);
+        var activeCampaigns = getActiveCampaigns(data.campaigns);
+
+        var html = renderKPIs(kpis);
+
+        var chartHtml = renderChart(dailyData);
+        if (chartHtml) html += '<div class="dp-chart-section">' + chartHtml + '</div>';
+
+        html += '<div class="dp-bottom-grid">' +
+            '<div class="dp-bottom-left">';
+        html += renderRecentActivity(data);
+        html += renderActiveCampaigns(activeCampaigns);
+        html += '</div><div class="dp-bottom-right">';
+        html += renderAutomations(data.automations);
+        html += '</div></div>';
 
         container.innerHTML = html;
-        
-        // Bind help video button
-        var helpBtn = document.getElementById('help-video-btn');
-        if (helpBtn) {
-            helpBtn.addEventListener('click', function() {
-                showHelpVideo({
-                    title: 'Tutorial: Primeiros Passos no MailFlow Pro',
-                    description: 'Veja este vídeo de 45 segundos e aprenda rapidamente a utilizar a plataforma.',
-                    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-                });
-            });
-        }
-    }
 
-    function renderHero() {
-        return '' +
-            '<div class="dashboard-hero" role="region" aria-label="Bem-vindo ao MailFlow Pro">' +
-                '<div class="dashboard-hero__content">' +
-                    '<h1 class="dashboard-hero__title">Transforme os seus contactos em clientes com campanhas profissionais de email marketing.</h1>' +
-                    '<a href="#/campanhas" class="dashboard-hero__btn" role="button">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' +
-                        'Criar a minha primeira campanha' +
-                    '</a>' +
-                '</div>' +
-            '</div>';
-    }
-
-    function renderHelpCard() {
-        return '' +
-            '<div class="help-card" style="margin-bottom:24px;">' +
-                '<div class="help-card__icon" aria-hidden="true">🎥</div>' +
-                '<div class="help-card__content">' +
-                    '<h3 class="help-card__title">Aprenda o MailFlow Pro</h3>' +
-                    '<p class="help-card__desc">Veja este vídeo de 45 segundos e aprenda rapidamente a utilizar a plataforma.</p>' +
-                '</div>' +
-                '<button class="help-card__btn" id="help-video-btn" type="button" aria-label="Ver vídeo tutorial">' +
-                    '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>' +
-                    'Ver vídeo' +
-                '</button>' +
-            '</div>';
-    }
-
-    function renderOnboarding() {
-        return '' +
-            '<div class="onboarding">' +
-                '<div class="onboarding__title">Bem-vindo ao MailFlow Pro</div>' +
-                '<div class="onboarding__desc">Comece por criar o seu primeiro template e adicionando contactos. Em poucos minutos está pronto para enviar a sua primeira campanha.</div>' +
-                '<div class="onboarding__steps">' +
-                    '<a href="#/templates" class="onboarding__step">' +
-                        '<span class="onboarding__step-num">1</span>' +
-                        'Criar Template' +
-                    '</a>' +
-                    '<a href="#/contactos" class="onboarding__step">' +
-                        '<span class="onboarding__step-num">2</span>' +
-                        'Adicionar Contactos' +
-                    '</a>' +
-                '</div>' +
-            '</div>';
-    }
-
-    function renderKPIs(stats) {
-        return '' +
-            '<div class="section-header">' +
-                '<h2 class="section-header__title">Visão Geral</h2>' +
-            '</div>' +
-            '<div class="kpi-grid">' +
-                '<div class="kpi-card">' +
-                    '<div class="kpi-card__top">' +
-                        '<div class="kpi-card__icon kpi-card__icon--green">' +
-                            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="kpi-card__value">' + stats.campanhas + '</div>' +
-                    '<div class="kpi-card__label">Campanhas</div>' +
-                '</div>' +
-                '<div class="kpi-card">' +
-                    '<div class="kpi-card__top">' +
-                        '<div class="kpi-card__icon kpi-card__icon--amber">' +
-                            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="kpi-card__value">' + stats.emails.toLocaleString('pt-PT') + '</div>' +
-                    '<div class="kpi-card__label">Emails Enviados</div>' +
-                '</div>' +
-                '<div class="kpi-card">' +
-                    '<div class="kpi-card__top">' +
-                        '<div class="kpi-card__icon kpi-card__icon--indigo">' +
-                            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="kpi-card__value">' + stats.contactos + '</div>' +
-                    '<div class="kpi-card__label">Contactos</div>' +
-                '</div>' +
-                '<div class="kpi-card">' +
-                    '<div class="kpi-card__top">' +
-                        '<div class="kpi-card__icon kpi-card__icon--rose">' +
-                            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z"/></svg>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="kpi-card__value">' + stats.templates + '</div>' +
-                    '<div class="kpi-card__label">Templates</div>' +
-                '</div>' +
-            '</div>';
-    }
-
-    function renderBenefits() {
-        return '' +
-            '<div class="section-header section-header--centered">' +
-                '<h2 class="section-header__title">Porque utilizar o MailFlow Pro?</h2>' +
-                '<p class="section-header__subtitle">Tudo o que precisa para transformar contactos em clientes.</p>' +
-            '</div>' +
-            '<div class="benefits-grid">' +
-                '<div class="benefit-card" style="animation-delay: 0ms">' +
-                    '<div class="benefit-card__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' +
-                    '</div>' +
-                    '<h3 class="benefit-card__title">Poupe Horas de Trabalho</h3>' +
-                    '<p class="benefit-card__desc">Automatize o envio de emails e campanhas em poucos minutos.</p>' +
-                '</div>' +
-                '<div class="benefit-card" style="animation-delay: 100ms">' +
-                    '<div class="benefit-card__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>' +
-                    '</div>' +
-                    '<h3 class="benefit-card__title">Aumente as Vendas</h3>' +
-                    '<p class="benefit-card__desc">Comunique com os seus clientes no momento certo e aumente as conversões.</p>' +
-                '</div>' +
-                '<div class="benefit-card" style="animation-delay: 200ms">' +
-                    '<div class="benefit-card__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2M9 19V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14"/></svg>' +
-                    '</div>' +
-                    '<h3 class="benefit-card__title">Tudo num Só Local</h3>' +
-                    '<p class="benefit-card__desc">Contactos, templates, campanhas, estatísticas e emails organizados num único painel.</p>' +
-                '</div>' +
-                '<div class="benefit-card" style="animation-delay: 300ms">' +
-                    '<div class="benefit-card__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2M9 19V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>' +
-                    '</div>' +
-                    '<h3 class="benefit-card__title">Estatísticas em Tempo Real</h3>' +
-                    '<p class="benefit-card__desc">Acompanhe envios, aberturas, cliques e desempenho das campanhas.</p>' +
-                '</div>' +
-                '<div class="benefit-card" style="animation-delay: 400ms">' +
-                    '<div class="benefit-card__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z"/></svg>' +
-                    '</div>' +
-                    '<h3 class="benefit-card__title">Simples e Intuitivo</h3>' +
-                    '<p class="benefit-card__desc">Interface moderna, rápida e fácil de utilizar, sem conhecimentos técnicos.</p>' +
-                '</div>' +
-                '<div class="benefit-card" style="animation-delay: 500ms">' +
-                    '<div class="benefit-card__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>' +
-                    '</div>' +
-                    '<h3 class="benefit-card__title">Seguro e Profissional</h3>' +
-                    '<p class="benefit-card__desc">Os seus dados são protegidos e a plataforma está preparada para crescer com o seu negócio.</p>' +
-                '</div>' +
-            '</div>';
-    }
-
-    function renderHowItWorks() {
-        return '' +
-            '<div class="section-header section-header--centered">' +
-                '<h2 class="section-header__title">Como funciona?</h2>' +
-                '<p class="section-header__subtitle">Quatro passos simples para começar a enviar campanhas profissionais.</p>' +
-            '</div>' +
-            '<div class="how-grid">' +
-                '<div class="how-step">' +
-                    '<div class="how-step__number">1</div>' +
-                    '<div class="how-step__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>' +
-                    '</div>' +
-                    '<h3 class="how-step__title">Importe os seus contactos</h3>' +
-                    '<p class="how-step__desc">Carregue a sua lista de contactos via CSV ou adicione manualmente.</p>' +
-                '</div>' +
-                '<div class="how-connector" aria-hidden="true"></div>' +
-                '<div class="how-step">' +
-                    '<div class="how-step__number">2</div>' +
-                    '<div class="how-step__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z"/></svg>' +
-                    '</div>' +
-                    '<h3 class="how-step__title">Crie ou escolha um template</h3>' +
-                    '<p class="how-step__desc">Use o editor visual para criar emails bonitos ou escolha um template pré-feito.</p>' +
-                '</div>' +
-                '<div class="how-connector" aria-hidden="true"></div>' +
-                '<div class="how-step">' +
-                    '<div class="how-step__number">3</div>' +
-                    '<div class="how-step__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>' +
-                    '</div>' +
-                    '<h3 class="how-step__title">Envie ou agende a campanha</h3>' +
-                    '<p class="how-step__desc">Envie imediatamente ou agende para o melhor horário.</p>' +
-                '</div>' +
-                '<div class="how-connector" aria-hidden="true"></div>' +
-                '<div class="how-step">' +
-                    '<div class="how-step__number">4</div>' +
-                    '<div class="how-step__icon">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2M9 19V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>' +
-                    '</div>' +
-                    '<h3 class="how-step__title">Analise os resultados</h3>' +
-                    '<p class="how-step__desc">Acompanhe aberturas, cliques e melhore as próximas campanhas.</p>' +
-                '</div>' +
-            '</div>';
-    }
-
-    function renderQuickActions() {
-        return '' +
-            '<div class="section-header">' +
-                '<h2 class="section-header__title">Ações Rápidas</h2>' +
-            '</div>' +
-            '<div class="quick-grid">' +
-                '<a href="#/campanhas" class="quick-card">' +
-                    '<div class="quick-card__icon kpi-card__icon--green">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' +
-                    '</div>' +
-                    '<div class="quick-card__title">Nova Campanha</div>' +
-                    '<div class="quick-card__desc">Crie e envie uma campanha de email marketing para os seus contactos.</div>' +
-                '</a>' +
-                '<a href="#/contactos" class="quick-card">' +
-                    '<div class="quick-card__icon kpi-card__icon--indigo">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>' +
-                    '</div>' +
-                    '<div class="quick-card__title">Adicionar Contacto</div>' +
-                    '<div class="quick-card__desc">Adicione novos contactos manualmente ou importe uma lista CSV.</div>' +
-                '</a>' +
-                '<a href="#/templates" class="quick-card">' +
-                    '<div class="quick-card__icon kpi-card__icon--amber">' +
-                        '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z"/></svg>' +
-                    '</div>' +
-                    '<div class="quick-card__title">Criar Template</div>' +
-                    '<div class="quick-card__desc">Crie templates reutilizáveis para manter consistência nas suas campanhas.</div>' +
-                '</a>' +
-            '</div>';
-    }
-
-    function renderActivity(stats) {
-        return '' +
-            '<div class="section-header">' +
-                '<h2 class="section-header__title">Atividade Recente</h2>' +
-            '</div>' +
-            '<div class="activity-feed">' +
-                (stats.campanhas === 0 && stats.contactos === 0
-                    ? '<div class="activity-feed__empty">Ainda não existe atividade. Comece por criar um template ou adicionar contactos.</div>'
-                    : '<div class="activity-feed__empty">A atividade aparecerá aqui à medida que usar o MailFlow Pro.</div>'
-                ) +
-            '</div>';
-    }
-
-    function updateBadge(id, count) {
-        var el = document.getElementById(id);
-        if (el) el.textContent = count;
-    }
-
-    // ========================================
-    // Help Modal (generic video player)
-    // ========================================
-    function showHelpVideo(options) {
-        var title = options && options.title ? options.title : 'Tutorial';
-        var description = options && options.description ? options.description : '';
-        var videoUrl = options && options.videoUrl ? options.videoUrl : null;
-
-        var modalHtml = '' +
-            '<div class="tl-modal" id="help-video-modal" role="dialog" aria-modal="true" aria-labelledby="help-modal-title">' +
-                '<div class="tl-modal__overlay"></div>' +
-                '<div class="tl-modal__content" style="max-width:720px;">' +
-                    '<div class="tl-modal__header">' +
-                        '<h3 class="tl-modal__title" id="help-modal-title">' + esc(title) + '</h3>' +
-                        '<button class="tl-modal__close" id="help-modal-close" aria-label="Fechar"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>' +
-                    '</div>' +
-                    '<div class="tl-modal__body" style="padding:0;">';
-
-        if (videoUrl) {
-            // Extract video ID from YouTube URL if needed
-            var embedUrl = videoUrl;
-            if (videoUrl.includes('youtube.com/watch?v=')) {
-                var videoId = videoUrl.split('v=')[1].split('&')[0];
-                embedUrl = 'https://www.youtube.com/embed/' + videoId;
-            } else if (videoUrl.includes('youtu.be/')) {
-                var videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
-                embedUrl = 'https://www.youtube.com/embed/' + videoId;
-            }
-            modalHtml +=
-                '<div class="video-container" style="position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#000;">' +
-                    '<iframe src="' + esc(embedUrl) + '" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:12px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>' +
-                '</div>';
-            if (description) {
-                modalHtml += '<p style="margin-top:16px;font-size:0.875rem;color:#64748b;text-align:left;">' + esc(description) + '</p>';
-            }
-        } else {
-            modalHtml +=
-                '<div class="video-placeholder" style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:16px;padding:60px 40px;">' +
-                    '<svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#94a3b8;margin-bottom:16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' +
-                    '<p style="font-size:1.125rem;color:#334155;font-weight:500;margin-bottom:8px;">' + esc(description || 'Em breve: vídeo tutorial') + '</p>' +
-                    '<p style="color:#64748b;font-size:0.875rem;">O tutorial em vídeo está a ser preparado. Volte em breve!</p>' +
-                '</div>';
-        }
-
-        modalHtml +=
-                    '</div>' +
-                '</div>' +
-            '</div>';
-
-        var wrapper = document.createElement('div');
-        wrapper.innerHTML = modalHtml;
-        document.body.appendChild(wrapper.firstElementChild);
-
-        // Bind close events
-        var modal = document.getElementById('help-video-modal');
-        var closeBtn = document.getElementById('help-modal-close');
-        var overlay = modal ? modal.querySelector('.tl-modal__overlay') : null;
-
-        function closeModal() {
-            if (modal) modal.remove();
-            document.removeEventListener('keydown', onKeydown);
-        }
-
-        if (closeBtn) closeBtn.addEventListener('click', closeModal);
-        if (overlay) overlay.addEventListener('click', closeModal);
-
-        function onKeydown(e) {
-            if (e.key === 'Escape') closeModal();
-        }
-        document.addEventListener('keydown', onKeydown);
-
-        // Focus trap
-        setTimeout(function() { if (closeBtn) closeBtn.focus(); }, 50);
-    }
-
-    // Legacy wrapper for backward compatibility
-    function openHelpModal() {
-        showHelpVideo({
-            title: 'Tutorial: Primeiros Passos no MailFlow Pro',
-            description: 'Veja este vídeo de 45 segundos e aprenda rapidamente a utilizar a plataforma.',
-            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+        requestAnimationFrame(function() {
+            var canvas = document.getElementById('dp-chart');
+            if (canvas) drawChart(canvas, dailyData);
         });
+
+        if (resizeHandler) window.removeEventListener('resize', resizeHandler);
+        resizeHandler = function() {
+            clearTimeout(resizeHandler._timer);
+            resizeHandler._timer = setTimeout(function() {
+                var canvas = document.getElementById('dp-chart');
+                if (canvas) drawChart(canvas, dailyData);
+            }, 200);
+        };
+        window.addEventListener('resize', resizeHandler);
     }
 
-    // ========================================
-    // Export
-    // ========================================
-    return { render: render };
+    function getInitials(n) {
+        if (!n) return '—';
+        return n.split(' ').map(function(w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
+    }
 
+    return { render: render };
 })();
