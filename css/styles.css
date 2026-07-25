@@ -748,6 +748,12 @@ a:hover {
     transform: perspective(1400px) rotateY(0deg) rotateX(0deg);
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .mockup {
+        transform: none !important;
+    }
+}
+
 .mockup::before {
     content: '';
     position: absolute;
@@ -1414,6 +1420,21 @@ a:hover {
     }
 }
 
+@media (max-width: 768px) {
+    .hero__orb {
+        display: none;
+    }
+    
+    .hero__title {
+        font-size: 2.25rem;
+    }
+    
+    .hero__visual {
+        max-width: 100%;
+        transform: none;
+    }
+}
+
 @media (max-width: 640px) {
     .section {
         padding-top: var(--space-10);
@@ -1424,10 +1445,6 @@ a:hover {
         padding-top: calc(56px + var(--space-4));
         padding-bottom: 0;
         min-height: 0;
-    }
-    
-    .hero__orb {
-        display: none;
     }
     
     .hero__grid-dots {
