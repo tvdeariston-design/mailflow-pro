@@ -1,9 +1,17 @@
 /**
- * MailFlow Pro — View: Templates
+ * MailFlow Pro — View: Templates (Premium)
  *
  * Gestao de templates de email reutilizaveis.
  * CRUD completo com soft delete, duplicar, default, pesquisa, paginacao,
  * preview (Desktop/Mobile/Text) e envio de teste.
+ *
+ * UI Premium: Glass cards, backdrop blur, hover glow, indigo accents,
+ * skeleton loading, modern toolbar, premium empty state.
+ *
+ * Dependencias:
+ *   - supabase-client.js
+ *   - auth.js
+ *   - toast.js
  */
 
 var TemplatesView = (function() {
@@ -21,7 +29,9 @@ var TemplatesView = (function() {
         page: 1,
         limit: 20,
         search: '',
-        loading: false
+        loading: false,
+        category: 'all',
+        sort: 'newest'
     };
 
     function init() {
@@ -44,6 +54,18 @@ var TemplatesView = (function() {
         return d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
     }
 
+    function formatShortDate(dateStr) {
+        if (!dateStr) return '—';
+        var d = new Date(dateStr);
+        return d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+    }
+
+    function truncate(str, len) {
+        if (!str) return '';
+        if (str.length <= len) return str;
+        return str.substring(0, len) + '...';
+    }
+
     function getAPIBase() {
         var cfg = window.MailFlowAPI;
         if (cfg && cfg.email && cfg.email.send !== undefined) {
@@ -61,6 +83,9 @@ var TemplatesView = (function() {
         return null;
     }
 
+    // ========================================
+    // Data
+    // ========================================
     async function fetchTemplates() {
         if (!sb || !user) return { data: [], count: 0 };
         state.loading = true;
@@ -75,6 +100,48 @@ var TemplatesView = (function() {
             if (state.search) {
                 var safe = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
                 query = query.or('nome.ilike.%' + safe + '%,subject.ilike.%' + safe + '%');
+            }
+
+            if (state.category !== 'all') {
+                query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
+            }
+
+            if (state.sort === 'oldest') {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: true });
+                if (state.search) {
+                    var safe2 = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
+                    query = query.or('nome.ilike.%' + safe2 + '%,subject.ilike.%' + safe2 + '%');
+                }
+                if (state.category !== 'all') {
+                    query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
+                }
+            } else if (state.sort === 'name-asc') {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('nome', { ascending: true });
+                if (state.search) {
+                    var safe3 = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
+                    query = query.or('nome.ilike.%' + safe3 + '%,subject.ilike.%' + safe3 + '%');
+                }
+                if (state.category !== 'all') {
+                    query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
+                }
+            } else if (state.sort === 'name-desc') {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('nome', { ascending: false });
+                if (state.search) {
+                    var safe4 = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
+                    query = query.or('nome.ilike.%' + safe4 + '%,subject.ilike.%' + safe4 + '%');
+                }
+                if (state.category !== 'all') {
+                    query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
+                }
+            } else if (state.sort === 'most-used') {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('usage_count', { ascending: false });
+                if (state.search) {
+                    var safe5 = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
+                    query = query.or('nome.ilike.%' + safe5 + '%,subject.ilike.%' + safe5 + '%');
+                }
+                if (state.category !== 'all') {
+                    query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
+                }
             }
 
             var from = (state.page - 1) * state.limit;
@@ -104,6 +171,8 @@ var TemplatesView = (function() {
 
         state.page = 1;
         state.search = '';
+        state.category = 'all';
+        state.sort = 'newest';
 
         var result = await fetchTemplates();
         container.innerHTML = buildHTML(result.data, result.count);
@@ -111,18 +180,59 @@ var TemplatesView = (function() {
     }
 
     function buildHTML(templates, total) {
+        if (state.loading) {
+            return renderToolbar(total) + renderSkeleton();
+        }
         return renderToolbar(total) +
             (templates.length === 0 && !state.search ? renderEmpty() : renderGrid(templates, total));
     }
 
+    // ========================================
+    // Skeleton Loading
+    // ========================================
+    function renderSkeleton() {
+        var cards = '';
+        for (var i = 0; i < 6; i++) {
+            cards += '' +
+                '<div class="tl-card tl-card--skeleton">' +
+                    '<div class="tl-skeleton tl-skeleton--title"></div>' +
+                    '<div class="tl-skeleton tl-skeleton--text"></div>' +
+                    '<div class="tl-skeleton tl-skeleton--text tl-skeleton--short"></div>' +
+                    '<div class="tl-skeleton tl-skeleton--line"></div>' +
+                '</div>';
+        }
+        return '<div class="tl-grid">' + cards + '</div>';
+    }
+
+    // ========================================
+    // Toolbar Premium
+    // ========================================
     function renderToolbar(total) {
-        var totalPages = Math.ceil(total / state.limit);
         return '' +
             '<div class="tl-toolbar">' +
                 '<div class="tl-toolbar__left">' +
-                    '<h2 class="tl-toolbar__title">Templates <span class="tl-toolbar__count">(' + total + ')</span></h2>' +
+                    '<h2 class="tl-toolbar__title">Templates</h2>' +
+                    '<span class="tl-toolbar__count">(' + total + ')</span>' +
                 '</div>' +
                 '<div class="tl-toolbar__right">' +
+                    '<div class="tl-filters">' +
+                        '<select class="tl-select" id="tl-filter-category">' +
+                            '<option value="all">Todos</option>' +
+                            '<option value="marketing">Marketing</option>' +
+                            '<option value="newsletter">Newsletter</option>' +
+                            '<option value="promocao">Promocao</option>' +
+                            '<option value="boas-vindas">Boas-vindas</option>' +
+                            '<option value="automacao">Automação</option>' +
+                            '<option value="personalizado">Personalizado</option>' +
+                        '</select>' +
+                        '<select class="tl-select" id="tl-sort">' +
+                            '<option value="newest">Mais recentes</option>' +
+                            '<option value="oldest">Mais antigos</option>' +
+                            '<option value="name-asc">Nome A-Z</option>' +
+                            '<option value="name-desc">Nome Z-A</option>' +
+                            '<option value="most-used">Mais utilizados</option>' +
+                        '</select>' +
+                    '</div>' +
                     '<div class="tl-search">' +
                         '<svg class="tl-search__icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
                         '<input type="text" class="tl-search__input" id="tl-search" placeholder="Pesquisar template..." value="' + esc(state.search) + '">' +
@@ -135,25 +245,30 @@ var TemplatesView = (function() {
             '</div>';
     }
 
+    // ========================================
+    // Grid Premium
+    // ========================================
     function renderGrid(templates, total) {
-        var totalPages = Math.ceil(total / state.limit);
-
         var cards = templates.map(function(t) {
-            var defaultBadge = t.is_default ? '<span class="tl-badge tl-badge--green">Predefinido</span>' : '';
-            var usageBadge = t.usage_count > 0 ? '<span class="tl-badge tl-badge--gray">Usado ' + t.usage_count + 'x</span>' : '';
+            var defaultBadge = t.is_default ? '<span class="tl-badge tl-badge--indigo">Padrao</span>' : '';
+            var usageBadge = t.usage_count > 0 ? '<span class="tl-badge tl-badge--gray">' + t.usage_count + ' uso' + (t.usage_count !== 1 ? 's' : '') + '</span>' : '';
+
+            var categoryLabel = getCategoryLabel(t);
+            var categoryBadge = categoryLabel ? '<span class="tl-badge tl-badge--blue">' + esc(categoryLabel) + '</span>' : '';
 
             return '' +
-                '<div class="tl-card">' +
+                '<div class="tl-card" data-id="' + t.id + '">' +
+                    '<div class="tl-card__glow"></div>' +
                     '<div class="tl-card__header">' +
                         '<div class="tl-card__title">' + esc(t.nome || 'Sem Nome') + '</div>' +
-                        '<div class="tl-card__badges">' + defaultBadge + usageBadge + '</div>' +
+                        '<div class="tl-card__badges">' + defaultBadge + usageBadge + categoryBadge + '</div>' +
                     '</div>' +
-                    '<div class="tl-card__subject">' + esc(t.subject || 'Sem assunto') + '</div>' +
-                    '<div class="tl-card__preview">' + esc((t.html || '').substring(0, 120)) + (t.html && t.html.length > 120 ? '...' : '') + '</div>' +
+                    '<div class="tl-card__subject">' + esc(truncate(t.subject || 'Sem assunto', 80)) + '</div>' +
+                    '<div class="tl-card__preview">' + esc(truncate(stripHtml(t.html || ''), 100)) + '</div>' +
                     '<div class="tl-card__footer">' +
                         '<div class="tl-card__meta">' +
-                            '<span>' + formatDate(t.created_at) + '</span>' +
-                            (t.last_used_at ? '<span>Usado: ' + formatDate(t.last_used_at) + '</span>' : '') +
+                            '<span class="tl-card__date">' + formatDate(t.updated_at || t.created_at) + '</span>' +
+                            (t.last_used_at ? '<span class="tl-card__used">Usado: ' + formatShortDate(t.last_used_at) + '</span>' : '') +
                         '</div>' +
                         '<div class="tl-card__actions">' +
                             '<button class="tl-action tl-action--preview" data-id="' + t.id + '" title="Pre-visualizar">' +
@@ -179,16 +294,17 @@ var TemplatesView = (function() {
                 '</div>';
         }).join('');
 
+        var totalPages = Math.ceil(total / state.limit);
         var pagination = '';
         if (totalPages > 1) {
             var prevDisabled = state.page <= 1 ? ' disabled' : '';
             var nextDisabled = state.page >= totalPages ? ' disabled' : '';
             pagination = '' +
                 '<div class="tl-pagination">' +
-                    '<span class="tl-pagination__info">Pagina ' + state.page + ' de ' + totalPages + '</span>' +
+                    '<span class="tl-pagination__info">Página ' + state.page + ' de ' + totalPages + '</span>' +
                     '<div class="tl-pagination__btns">' +
                         '<button class="tl-btn tl-btn--ghost tl-btn--sm" id="tl-page-prev"' + prevDisabled + '>&larr; Anterior</button>' +
-                        '<button class="tl-btn tl-btn--ghost tl-btn--sm" id="tl-page-next"' + nextDisabled + '>Proxima &rarr;</button>' +
+                        '<button class="tl-btn tl-btn--ghost tl-btn--sm" id="tl-page-next"' + nextDisabled + '>Próxima &rarr;</button>' +
                     '</div>' +
                 '</div>';
         }
@@ -196,15 +312,41 @@ var TemplatesView = (function() {
         return '<div class="tl-grid">' + cards + '</div>' + pagination;
     }
 
+    function getCategoryLabel(template) {
+        var name = (template.nome || '').toLowerCase();
+        var subject = (template.subject || '').toLowerCase();
+        var html = (template.html || '').toLowerCase();
+        var combined = name + ' ' + subject + ' ' + html;
+
+        if (/boas.vindas|bienvenue|welcome|ola|olá/.test(combined)) return 'boas-vindas';
+        if (/promocao|promoção|desconto|coupon|oferta/.test(combined)) return 'promocao';
+        if (/newsletter|newsletter|bulletin|atualização|atualizacao/.test(combined)) return 'newsletter';
+        if (/automacao|automação|workflow|trigger|gatilho|sequencia|sequência/.test(combined)) return 'automacao';
+        if (/marketing|venda|vendas|proposta|campanha|email marketing/.test(combined)) return 'marketing';
+        return null;
+    }
+
+    function stripHtml(html) {
+        if (!html) return '';
+        return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    // ========================================
+    // Empty State Premium
+    // ========================================
     function renderEmpty() {
         return '' +
             '<div class="tl-empty">' +
-                '<div class="tl-empty__icon">' +
-                    '<svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>' +
+                '<div class="tl-empty__illustration">' +
+                    '<svg width="80" height="80" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="tl-empty__icon">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>' +
+                    '</svg>' +
+                    '<div class="tl-empty__orb tl-empty__orb--1"></div>' +
+                    '<div class="tl-empty__orb tl-empty__orb--2"></div>' +
                 '</div>' +
-                '<h3 class="tl-empty__title">Ainda nao tem templates</h3>' +
-                '<p class="tl-empty__desc">Crie o seu primeiro template para reutilizar em campanhas.</p>' +
-                '<button class="tl-btn tl-btn--primary" id="tl-btn-add-empty">' +
+                '<h3 class="tl-empty__title">Ainda não tem templates</h3>' +
+                '<p class="tl-empty__desc">Crie o seu primeiro template e comece a enviar campanhas profissionais em segundos.</p>' +
+                '<button class="tl-btn tl-btn--primary tl-empty__cta" id="tl-btn-add-empty">' +
                     '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' +
                     'Criar Primeiro Template' +
                 '</button>' +
@@ -232,6 +374,24 @@ var TemplatesView = (function() {
                     state.page = 1;
                     refresh();
                 }, 300);
+            });
+        }
+
+        var filterCategory = document.getElementById('tl-filter-category');
+        if (filterCategory) {
+            filterCategory.addEventListener('change', function() {
+                state.category = this.value;
+                state.page = 1;
+                refresh();
+            });
+        }
+
+        var sortSelect = document.getElementById('tl-sort');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function() {
+                state.sort = this.value;
+                state.page = 1;
+                refresh();
             });
         }
 
@@ -291,7 +451,7 @@ var TemplatesView = (function() {
     }
 
     // ========================================
-    // CRUD
+    // CRUD — PRESERVED EXACTLY
     // ========================================
     async function setDefault(id) {
         if (!sb || !user) return;
@@ -379,7 +539,7 @@ var TemplatesView = (function() {
     }
 
     // ========================================
-    // Modal: Create / Edit Template
+    // Modal Premium — Create / Edit
     // ========================================
     function showTemplateModal(template) {
         var isEdit = !!template;
@@ -409,19 +569,42 @@ var TemplatesView = (function() {
                             '<input type="text" class="tl-input" id="tl-f-preheader" placeholder="Texto de preview no email (max 100 chars)" value="' + esc(template ? template.preheader : '') + '" maxlength="100">' +
                             '<span class="tl-field__hint">Texto exibido apos o assunto nos clientes de email</span>' +
                         '</div>' +
-                        '<div class="tl-field">' +
-                            '<label class="tl-label">Corpo HTML *</label>' +
-                            '<textarea class="tl-textarea tl-textarea--code" id="tl-f-html" rows="12" placeholder="<h1>Ola {{nome}}</h1>...">' + esc(template ? template.html : '') + '</textarea>' +
-                        '</div>' +
-                        '<div class="tl-field">' +
-                            '<label class="tl-label">Corpo Texto</label>' +
-                            '<textarea class="tl-textarea" id="tl-f-text" rows="4" placeholder="Versao em texto plano (fallback)">' + esc(template ? template.text_version : '') + '</textarea>' +
+                        '<div class="tl-editor-layout">' +
+                            '<div class="tl-editor-main">' +
+                                '<div class="tl-field">' +
+                                    '<label class="tl-label">Corpo HTML *</label>' +
+                                    '<textarea class="tl-textarea tl-textarea--code" id="tl-f-html" rows="14" placeholder="<h1>Ola {{nome}}</h1>...">' + esc(template ? template.html : '') + '</textarea>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="tl-editor-sidebar">' +
+                                '<div class="tl-field">' +
+                                    '<label class="tl-label">Visualizacao</label>' +
+                                    '<div class="tl-preview-mini" id="tl-editor-preview">' +
+                                        '<div class="tl-preview-mini__frame" id="tl-editor-preview-frame"></div>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="tl-field">' +
+                                    '<label class="tl-label">Merge Tags</label>' +
+                                    '<div class="tl-tags-panel" id="tl-merge-tags">' +
+                                        '<button class="tl-tag-btn" data-tag="{{nome}}" title="Inserir tag de nome">Nome</button>' +
+                                        '<button class="tl-tag-btn" data-tag="{{email}}" title="Inserir tag de email">Email</button>' +
+                                        '<button class="tl-tag-btn" data-tag="{{empresa}}" title="Inserir tag de empresa">Empresa</button>' +
+                                        '<button class="tl-tag-btn" data-tag="{{telefone}}" title="Inserir tag de telefone">Telefone</button>' +
+                                        '<button class="tl-tag-btn" data-tag="{{data}}" title="Inserir tag de data">Data</button>' +
+                                        '<button class="tl-tag-btn" data-tag="{{unsubscribe}}" title="Inserir link de cancelamento">Unsubscribe</button>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="tl-field">' +
+                                    '<label class="tl-label">Corpo Texto</label>' +
+                                    '<textarea class="tl-textarea" id="tl-f-text" rows="3" placeholder="Versao em texto plano (fallback)">' + esc(template ? template.text_version : '') + '</textarea>' +
+                                '</div>' +
+                            '</div>' +
                         '</div>' +
                     '</div>' +
                     '<div class="tl-modal__footer">' +
                         '<button class="tl-btn tl-btn--ghost" id="tl-modal-cancel">Cancelar</button>' +
                         '<button class="tl-btn tl-btn--primary" id="tl-modal-save">' +
-                            (isEdit ? 'Guardar Alteracoes' : 'Criar Template') +
+                            (isEdit ? 'Guardar Alterações' : 'Criar Template') +
                         '</button>' +
                     '</div>' +
                 '</div>' +
@@ -433,11 +616,41 @@ var TemplatesView = (function() {
         var closeBtn = document.getElementById('tl-modal-close');
         var cancelBtn = document.getElementById('tl-modal-cancel');
         var saveBtn = document.getElementById('tl-modal-save');
+        var htmlEditor = document.getElementById('tl-f-html');
+        var previewFrame = document.getElementById('tl-editor-preview-frame');
 
         function closeModal() { overlay.remove(); }
         closeBtn.addEventListener('click', closeModal);
         cancelBtn.addEventListener('click', closeModal);
         overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
+
+        // Live preview
+        if (htmlEditor && previewFrame) {
+            function updatePreview() {
+                var html = htmlEditor.value;
+                previewFrame.innerHTML = html || '<p style="color:#94a3b8;text-align:center;padding:20px;">Pré-visualização em tempo real</p>';
+            }
+            htmlEditor.addEventListener('input', updatePreview);
+            // Initial preview
+            updatePreview();
+        }
+
+        // Merge tag insertion
+        document.querySelectorAll('.tl-tag-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var tag = this.getAttribute('data-tag');
+                if (htmlEditor) {
+                    var start = htmlEditor.selectionStart;
+                    var end = htmlEditor.selectionEnd;
+                    var before = htmlEditor.value.substring(0, start);
+                    var after = htmlEditor.value.substring(end);
+                    htmlEditor.value = before + tag + after;
+                    htmlEditor.selectionStart = htmlEditor.selectionEnd = start + tag.length;
+                    htmlEditor.focus();
+                    htmlEditor.dispatchEvent(new Event('input'));
+                }
+            });
+        });
 
         saveBtn.addEventListener('click', async function() {
             var data = {
@@ -457,13 +670,13 @@ var TemplatesView = (function() {
                 refresh();
             } else {
                 this.disabled = false;
-                this.textContent = isEdit ? 'Guardar Alteracoes' : 'Criar Template';
+                this.textContent = isEdit ? 'Guardar Alterações' : 'Criar Template';
             }
         });
     }
 
     // ========================================
-    // Modal: Preview
+    // Preview Modal — PRESERVED LOGIC
     // ========================================
     function showPreviewModal(template) {
         var html = '' +
@@ -485,6 +698,7 @@ var TemplatesView = (function() {
                         '</div>' +
                         '<div class="tl-preview-tabs">' +
                             '<button class="tl-preview-tab tl-preview-tab--active" data-view="desktop">Desktop</button>' +
+                            '<button class="tl-preview-tab" data-view="tablet">Tablet</button>' +
                             '<button class="tl-preview-tab" data-view="mobile">Mobile</button>' +
                             '<button class="tl-preview-tab" data-view="text">Texto</button>' +
                         '</div>' +
@@ -520,34 +734,23 @@ var TemplatesView = (function() {
                 tab.classList.toggle('tl-preview-tab--active', tab.getAttribute('data-view') === view);
             });
 
-            if (view === 'desktop') {
-                container.innerHTML = '<div class="tl-preview-frame tl-preview-frame--desktop">' +
+            var frameClass = 'tl-preview-frame--' + view;
+            if (view === 'text') {
+                var textContent = data.text || data.html || '';
+                textContent = textContent.replace(/<[^>]*>/g, ' ');
+                textContent = textContent.replace(/&nbsp;/g, ' ');
+                textContent = textContent.replace(/&amp;/g, '&');
+                textContent = textContent.replace(/&lt;/g, '<');
+                textContent = textContent.replace(/&gt;/g, '>');
+                container.innerHTML = '<div class="tl-preview-text"><pre>' + esc(textContent) + '</pre></div>';
+            } else {
+                container.innerHTML = '<div class="tl-preview-frame ' + frameClass + '">' +
                     '<div class="tl-preview-subject-bar">' +
                         '<div class="tl-preview-subject-from">De: ' + esc(template.from_name || 'MailFlow Pro') + ' &lt;' + esc(template.from_email || 'noreply@mailflowpro.com') + '&gt;</div>' +
                         '<div class="tl-preview-subject-line"><strong>' + esc(data.subject) + '</strong></div>' +
                         (data.preheader ? '<div class="tl-preview-subject-preheader">' + esc(data.preheader) + '</div>' : '') +
                     '</div>' +
                     '<iframe class="tl-preview-iframe" srcdoc="' + esc(data.html).replace(/"/g, '&quot;') + '" sandbox="allow-same-origin"></iframe>' +
-                '</div>';
-            } else if (view === 'mobile') {
-                container.innerHTML = '<div class="tl-preview-frame tl-preview-frame--mobile">' +
-                    '<div class="tl-preview-mobile-notch"></div>' +
-                    '<div class="tl-preview-subject-bar">' +
-                        '<div class="tl-preview-subject-from">De: ' + esc(template.from_name || 'MailFlow Pro') + '</div>' +
-                        '<div class="tl-preview-subject-line"><strong>' + esc(data.subject) + '</strong></div>' +
-                        (data.preheader ? '<div class="tl-preview-subject-preheader">' + esc(data.preheader) + '</div>' : '') +
-                    '</div>' +
-                    '<iframe class="tl-preview-iframe" srcdoc="' + esc(data.html).replace(/"/g, '&quot;') + '" sandbox="allow-same-origin"></iframe>' +
-                '</div>';
-            } else if (view === 'text') {
-                var textContent = data.text || data.html || '';
-                textContent = textContent.replace(/<[^>]*>/g, '');
-                textContent = textContent.replace(/&nbsp;/g, ' ');
-                textContent = textContent.replace(/&amp;/g, '&');
-                textContent = textContent.replace(/&lt;/g, '<');
-                textContent = textContent.replace(/&gt;/g, '>');
-                container.innerHTML = '<div class="tl-preview-text">' +
-                    '<pre>' + esc(textContent) + '</pre>' +
                 '</div>';
             }
         }
@@ -601,7 +804,7 @@ var TemplatesView = (function() {
     }
 
     // ========================================
-    // Modal: Test Send
+    // Test Send Modal — PRESERVED LOGIC
     // ========================================
     function showTestSendModal(template) {
         var html = '' +
@@ -614,7 +817,7 @@ var TemplatesView = (function() {
                         '</button>' +
                     '</div>' +
                     '<div class="tl-modal__body">' +
-                        '<p style="color:#6b7280;font-size:0.8125rem;margin-bottom:16px;">Envie um email de teste com o template <strong>' + esc(template.nome) + '</strong> para verificar como aparece.</p>' +
+                        '<p style="color:#64748b;font-size:0.8125rem;margin-bottom:16px;line-height:1.6;">Envie um email de teste com o template <strong>' + esc(template.nome) + '</strong> para verificar como aparece no destinatario.</p>' +
                         '<div class="tl-field">' +
                             '<label class="tl-label">Email de destino *</label>' +
                             '<input type="email" class="tl-input" id="tl-testsend-email" placeholder="exemplo@email.com">' +
@@ -657,7 +860,7 @@ var TemplatesView = (function() {
 
             emailInput.style.borderColor = '';
             this.disabled = true;
-            this.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="tl-spin"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> A enviar...';
+            this.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="tl-spin"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> A enviar...';
 
             var token = await getAccessToken();
             if (!token) {
