@@ -258,13 +258,16 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
     try {
         const { data, error } = await req.supabase
             .from('profiles')
-            .select('*')
+            .select('id, nome, empresa, telefone, timezone, locale, created_at, plan, smtp_host, smtp_port, smtp_username, smtp_password, smtp_secure, smtp_from_email, smtp_from_name, smtp_status, smtp_verified_at, updated_at')
             .eq('id', req.user.id)
             .single();
 
         if (error || !data) {
             return res.status(404).json({ success: false, error: 'Profile não encontrado' });
         }
+
+        data.smtp_has_password = !!(data.smtp_password);
+        delete data.smtp_password;
 
         res.json({ profile: data });
 
@@ -325,7 +328,7 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
         if (body.smtp_username !== undefined) {
             updates.smtp_username = body.smtp_username.trim();
         }
-        if (body.smtp_password !== undefined) {
+        if (body.smtp_password !== undefined && body.smtp_password !== '') {
             updates.smtp_password = body.smtp_password;
         }
         if (body.smtp_secure !== undefined) {
@@ -340,14 +343,17 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
 
         // Update smtp_status when SMTP fields are saved
         var smtpFieldsProvided = body.smtp_host !== undefined && body.smtp_port !== undefined &&
-                                  body.smtp_username !== undefined && body.smtp_password !== undefined;
+                                  body.smtp_username !== undefined;
         if (smtpFieldsProvided) {
             var hasHost = body.smtp_host && body.smtp_host.trim();
             var hasPort = body.smtp_port !== undefined && !isNaN(parseInt(body.smtp_port, 10)) && parseInt(body.smtp_port, 10) > 0;
             var hasUser = body.smtp_username && body.smtp_username.trim();
+            // Only require password if explicitly sending a new one (not empty string preserving existing)
             var hasPass = body.smtp_password !== undefined && body.smtp_password !== '';
             if (hasHost && hasPort && hasUser && hasPass) {
                 updates.smtp_status = 'configured';
+            } else if (!hasPass && hasHost && hasPort && hasUser) {
+                // Password was empty — keep current status (already configured)
             } else {
                 updates.smtp_status = 'not_configured';
             }
