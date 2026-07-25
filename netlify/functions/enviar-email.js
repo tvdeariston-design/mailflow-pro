@@ -1,3 +1,4 @@
+const { createClient } = require('@supabase/supabase-js');
 const nodemailer = require('nodemailer');
 const { config } = require('./config');
 const logger = require('./logger');
@@ -30,6 +31,30 @@ exports.handler = async (event, context) => {
 
     if (event.httpMethod !== 'POST') {
         return createErrorResponse(405, 'Method not allowed');
+    }
+
+    // Verificar autenticação
+    const authHeader = event.headers.authorization || event.headers.Authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return createErrorResponse(401, 'Não autenticado');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const anonKey = process.env.SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !anonKey) {
+        logger.error('Variáveis Supabase em falta', 'Email');
+        return createErrorResponse(500, 'Serviço indisponível');
+    }
+
+    const supabase = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: 'Bearer ' + token } }
+    });
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+        return createErrorResponse(401, 'Sessão inválida');
     }
 
     let body;

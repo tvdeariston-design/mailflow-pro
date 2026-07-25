@@ -140,10 +140,10 @@ function validateStringLength(value, min, max) {
 
 function sanitizeHtml(text) {
     return text
-        .replace(/&/g, '&')
-        .replace(/</g, '<')
-        .replace(/>/g, '>')
-        .replace(/"/g, '"')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;')
         .replace(/\//g, '&#47;');
 }
@@ -2064,7 +2064,7 @@ app.get('/api/campaigns/:id/stats', authMiddleware, async (req, res) => {
 
 // 6. CRIAR CHECKOUT STRIPE (equivalente a criar-checkout)
 // ============================================
-app.post('/api/checkout/create', async (req, res) => {
+app.post('/api/checkout/create', authMiddleware, async (req, res) => {
     try {
         const { email } = req.body;
 
@@ -2300,7 +2300,7 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-app.post('/api/email/send', async (req, res) => {
+app.post('/api/email/send', authMiddleware, async (req, res) => {
     try {
         const { email, nome } = req.body;
 

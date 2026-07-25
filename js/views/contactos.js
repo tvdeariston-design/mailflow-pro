@@ -321,7 +321,7 @@ var ContactosView = (function() {
     async function deleteContact(id) {
         if (!sb) return;
         try {
-            var { error } = await sb.from('contacts').delete().eq('id', id);
+            var { error } = await sb.from('contacts').delete().eq('id', id).eq('user_id', user.id);
             if (error) throw error;
             MailFlowToast.success('Contacto eliminado.');
             refresh();
