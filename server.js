@@ -2489,7 +2489,7 @@ app.post('/api/automations', authMiddleware, async (req, res) => {
         }
 
         logger.info('Automação criada - User: ' + req.user.id + ', ID: ' + data.id, 'Automations');
-        res.status(201).json({ automation: data });
+        res.status(201).json({ success: true, automation: data });
 
     } catch (error) {
         logger.error('Erro inesperado ao criar automação: ' + error.message, 'Automations');
@@ -2560,7 +2560,7 @@ app.put('/api/automations/:id', authMiddleware, async (req, res) => {
         }
 
         logger.info('Automação atualizada - User: ' + req.user.id + ', ID: ' + id, 'Automations');
-        res.json({ automation: data });
+        res.json({ success: true, automation: data });
 
     } catch (error) {
         logger.error('Erro inesperado ao atualizar automação: ' + error.message, 'Automations');
