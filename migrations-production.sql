@@ -1,6 +1,148 @@
 -- ============================================
+-- Migration 001: Profiles Table
+-- ============================================
+CREATE TABLE IF NOT EXISTS profiles (
+    id              UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email           TEXT NOT NULL,
+    nome            TEXT NOT NULL DEFAULT '',
+    empresa         TEXT DEFAULT '',
+    telefone        TEXT DEFAULT '',
+    avatar_url      TEXT DEFAULT '',
+    timezone        TEXT DEFAULT 'Europe/Lisbon',
+    locale          TEXT DEFAULT 'pt-PT',
+    onboarding_done BOOLEAN DEFAULT false,
+    settings        JSONB DEFAULT '{}',
+    created_at      TIMESTAMPTZ DEFAULT now(),
+    updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
+
+-- ============================================
+-- Migration 002: RLS Profiles
+-- ============================================
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "profiles_select_own" ON profiles;
+CREATE POLICY "profiles_select_own" ON profiles FOR SELECT USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
+CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (auth.uid() = id);
+
+-- ============================================
+-- Migration 003: Auto-create Profile on Signup
+-- ============================================
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO profiles (id, email, nome)
+    VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'nome', ''));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- ============================================
+-- Migration 004: Premium Access System
+-- ============================================
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS premium_trial_start TIMESTAMPTZ;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS premium_trial_end TIMESTAMPTZ;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'none';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_permanent_premium BOOLEAN DEFAULT false;
+
+UPDATE profiles
+SET is_permanent_premium = true, subscription_status = 'permanent'
+WHERE email = 'tvdeariston@gmail.com';
+
+CREATE INDEX IF NOT EXISTS idx_profiles_premium_trial_end ON profiles(premium_trial_end);
+CREATE INDEX IF NOT EXISTS idx_profiles_subscription_status ON profiles(subscription_status);
+CREATE INDEX IF NOT EXISTS idx_profiles_is_permanent ON profiles(is_permanent_premium);
+
+CREATE OR REPLACE FUNCTION protect_premium_columns()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF current_setting('role') = 'service_role' THEN RETURN NEW; END IF;
+    IF NEW.is_permanent_premium IS DISTINCT FROM OLD.is_permanent_premium
+       OR NEW.stripe_subscription_id IS DISTINCT FROM OLD.stripe_subscription_id
+       OR NEW.stripe_customer_id IS DISTINCT FROM OLD.stripe_customer_id
+       OR NEW.subscription_status IS DISTINCT FROM OLD.subscription_status
+       OR NEW.premium_trial_start IS DISTINCT FROM OLD.premium_trial_start
+       OR NEW.premium_trial_end IS DISTINCT FROM OLD.premium_trial_end THEN
+        RAISE EXCEPTION 'Acesso negado: não é possível alterar colunas premium';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_protect_premium_columns ON profiles;
+CREATE TRIGGER trg_protect_premium_columns
+    BEFORE UPDATE ON profiles
+    FOR EACH ROW EXECUTE FUNCTION protect_premium_columns();
+
+CREATE OR REPLACE FUNCTION verificar_status_premium(user_id UUID)
+RETURNS TABLE(premium BOOLEAN, reason TEXT, trial_end TIMESTAMPTZ, days_remaining INTEGER) AS $$
+DECLARE
+    profile_rec RECORD;
+    now_time TIMESTAMPTZ := now();
+    remaining_days INTEGER;
+BEGIN
+    SELECT * INTO profile_rec FROM profiles WHERE id = user_id;
+    IF profile_rec IS NULL THEN
+        RETURN QUERY SELECT false, 'none'::TEXT, NULL::TIMESTAMPTZ, NULL::INTEGER;
+        RETURN;
+    END IF;
+    IF profile_rec.is_permanent_premium = true THEN
+        RETURN QUERY SELECT true, 'permanent'::TEXT, NULL::TIMESTAMPTZ, NULL::INTEGER;
+        RETURN;
+    END IF;
+    IF profile_rec.subscription_status = 'active' AND profile_rec.stripe_subscription_id IS NOT NULL THEN
+        RETURN QUERY SELECT true, 'subscription'::TEXT, NULL::TIMESTAMPTZ, NULL::INTEGER;
+        RETURN;
+    END IF;
+    IF profile_rec.premium_trial_end IS NOT NULL THEN
+        remaining_days := floor(EXTRACT(EPOCH FROM (profile_rec.premium_trial_end - now_time)) / 86400)::INTEGER;
+        IF profile_rec.premium_trial_end > now_time THEN
+            RETURN QUERY SELECT true, 'trial'::TEXT, profile_rec.premium_trial_end, remaining_days;
+            RETURN;
+        END IF;
+    END IF;
+    RETURN QUERY SELECT false, 'expired'::TEXT, profile_rec.premium_trial_end, 0::INTEGER;
+    RETURN;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION verificar_status_premium(UUID) TO authenticated;
+
+CREATE OR REPLACE FUNCTION initialize_premium_trial()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.premium_trial_start IS NOT NULL THEN RETURN NEW; END IF;
+    IF NEW.email = 'tvdeariston@gmail.com' THEN
+        NEW.is_permanent_premium := true;
+        NEW.subscription_status := 'permanent';
+        RETURN NEW;
+    END IF;
+    NEW.premium_trial_start := now();
+    NEW.premium_trial_end := now() + INTERVAL '7 days';
+    NEW.subscription_status := 'trial';
+    NEW.is_permanent_premium := false;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_initialize_premium_trial ON profiles;
+CREATE TRIGGER trg_initialize_premium_trial
+    BEFORE INSERT ON profiles
+    FOR EACH ROW EXECUTE FUNCTION initialize_premium_trial();
+
+-- ============================================
 -- Migration 005: Contacts Table
--- MailFlow Pro — Fase 2: Módulo Contactos
 -- ============================================
 CREATE TABLE IF NOT EXISTS contacts (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -50,8 +192,7 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_contacts_updated_at ON contacts;
 CREATE TRIGGER trg_contacts_updated_at
     BEFORE UPDATE ON contacts
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 COMMENT ON TABLE contacts IS 'Contactos dos utilizadores para email marketing';
 COMMENT ON COLUMN contacts.tags IS 'Array de tags para segmentação';
@@ -97,8 +238,7 @@ CREATE POLICY "templates_delete_own" ON templates FOR DELETE USING (auth.uid() =
 DROP TRIGGER IF EXISTS trg_templates_updated_at ON templates;
 CREATE TRIGGER trg_templates_updated_at
     BEFORE UPDATE ON templates
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE OR REPLACE FUNCTION enforce_single_default_template()
 RETURNS TRIGGER AS $$
@@ -106,10 +246,7 @@ BEGIN
     IF NEW.is_default = true THEN
         UPDATE templates
         SET is_default = false
-        WHERE user_id = NEW.user_id
-        AND id != NEW.id
-        AND is_default = true
-        AND deleted_at IS NULL;
+        WHERE user_id = NEW.user_id AND id != NEW.id AND is_default = true AND deleted_at IS NULL;
     END IF;
     RETURN NEW;
 END;
@@ -118,8 +255,7 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_templates_single_default ON templates;
 CREATE TRIGGER trg_templates_single_default
     BEFORE INSERT OR UPDATE ON templates
-    FOR EACH ROW
-    EXECUTE FUNCTION enforce_single_default_template();
+    FOR EACH ROW EXECUTE FUNCTION enforce_single_default_template();
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON templates TO authenticated;
 
@@ -218,14 +354,12 @@ CREATE POLICY "cr_insert_own" ON campaign_recipients FOR INSERT WITH CHECK (EXIS
 DROP TRIGGER IF EXISTS trg_campaigns_updated_at ON campaigns;
 CREATE TRIGGER trg_campaigns_updated_at
     BEFORE UPDATE ON campaigns
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS trg_cr_updated_at ON campaign_recipients;
 CREATE TRIGGER trg_cr_updated_at
     BEFORE UPDATE ON campaign_recipients
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON campaigns TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON campaign_recipients TO authenticated;
@@ -285,8 +419,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS smtp_verified_at TIMESTAMPTZ DEFAU
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chk_smtp_status') THEN
-        ALTER TABLE profiles ADD CONSTRAINT chk_smtp_status
-        CHECK (smtp_status IN ('not_configured', 'configured', 'verified'));
+        ALTER TABLE profiles ADD CONSTRAINT chk_smtp_status CHECK (smtp_status IN ('not_configured', 'configured', 'verified'));
     END IF;
 END $$;
 
@@ -328,8 +461,7 @@ CREATE INDEX IF NOT EXISTS idx_automation_rules_enabled ON automation_rules(enab
 DROP TRIGGER IF EXISTS set_updated_at ON automation_rules;
 CREATE TRIGGER set_updated_at
     BEFORE UPDATE ON automation_rules
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
 -- Migration 012: Automation Jobs
