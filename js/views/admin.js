@@ -128,46 +128,183 @@ var AdminView = (function() {
     }
 
     async function loadDashboard() {
-        var container = document.getElementById('admin-content');
-        if (!container) return;
         var section = document.getElementById('section-dashboard');
         if (!section) return;
-
         var kpiGrid = section.querySelector('#kpi-dashboard');
-        if (kpiGrid && !kpiGrid.dataset.loaded) {
-            kpiGrid.dataset.loaded = 'true';
-            kpiGrid.innerHTML = '';
+        if (!kpiGrid) return;
+        kpiGrid.dataset.loaded = 'true';
 
-            var kpis = [
-                { label:'Total Utilizadores', value:'—', change:'loading', cls:'' },
-                { label:'Premium', value:'—', change:'loading', cls:'' },
-                { label:'Campanhas', value:'—', change:'loading', cls:'' },
-                { label:'Emails Enviados', value:'—', change:'loading', cls:'' }
-            ];
+        var kpis = [
+            { label:'Total Utilizadores', value:'—', change:'A carregar...', cls:'admin-kpi__change--neutral', icon:'👥' },
+            { label:'Premium', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'⭐' },
+            { label:'Trials', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'🧪' },
+            { label:'Contas Ativas', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'✅' },
+            { label:'Campanhas', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'📧' },
+            { label:'Emails Enviados', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'📨' },
+            { label:'Taxa Abertura', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'👁️' },
+            { label:'Cliques', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'🖱️' },
+            { label:'Templates', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'📄' },
+            { label:'Automações', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'⚙️' },
+            { label:'SMTP Ativos', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'🔧' },
+        ];
+        kpiGrid.innerHTML = kpis.map(function(k) {
+            return '<div class="admin-kpi"><div class="admin-kpi__label">' + k.icon + ' ' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change ' + k.cls + '">' + esc(k.change) + '</div></div>';
+        }).join('');
 
+        async function fetchCounts() {
             try {
-                if (sb) {
-                    var countResp = await sb.from('auth.users').select('*', { count: 'exact', head: true });
-                    var totalUsers = countResp.count || 0;
-                    var premiumResp = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('plan', 'premium');
-                    var premiumUsers = premiumResp.count || 0;
-                    var campResp = await sb.from('campaigns').select('*', { count: 'exact', head: true });
-                    var totalCampaigns = campResp.count || 0;
-                    kpis[0].value = totalUsers.toLocaleString();
-                    kpis[1].value = premiumUsers.toLocaleString();
-                    kpis[2].value = totalCampaigns.toLocaleString();
-                    kpis[3].value = '-';
-                }
-            } catch (e) { /* keep placeholder */ }
+                var userCount = 0, premiumCount = 0, trialCount = 0, activeCount = 0;
+                var campCount = 0, emailSent = 0, openRate = 0, clickRate = 0;
+                var templateCount = 0, automationCount = 0, smtpCount = 0;
 
-            kpis.forEach(function(k) {
-                var changeClass = k.change === 'loading' ? 'admin-kpi__change--neutral' : (k.change.indexOf('up') >= 0 ? 'admin-kpi__change--up' : 'admin-kpi__change--down');
-                var card = document.createElement('div');
-                card.className = 'admin-kpi';
-                card.innerHTML = '<div class="admin-kpi__label">' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change ' + changeClass + '">' + esc(k.change) + '</div>';
-                kpiGrid.appendChild(card);
-            });
+                if (sb) {
+                    var r1 = await sb.from('auth.users').select('*', { count: 'exact', head: true });
+                    userCount = r1.count || 0;
+                    var r2 = await sb.from('profiles').select('*', { count: 'exact' }).eq('plan', 'premium').eq('enabled', true);
+                    premiumCount = r2.count || 0;
+                    var r3 = await sb.from('profiles').select('*', { count: 'exact' }).eq('plan', 'trial').eq('enabled', true);
+                    trialCount = r3.count || 0;
+                    var r4 = await sb.from('profiles').select('*', { count: 'exact' }).eq('enabled', true);
+                    activeCount = r4.count || 0;
+                    var r5 = await sb.from('campaigns').select('*', { count: 'exact', head: true });
+                    campCount = r5.count || 0;
+                    var r6 = await sb.from('templates').select('*', { count: 'exact', head: true });
+                    templateCount = r6.count || 0;
+                    var r7 = await sb.from('automation_rules').select('*', { count: 'exact', head: true });
+                    automationCount = r7.count || 0;
+                    var r8 = await sb.from('profiles').select('smtp_host').not('smtp_host', 'is', null);
+                    smtpCount = r8.data ? r8.data.length : 0;
+                }
+
+                kpis[0].value = userCount.toLocaleString();
+                kpis[1].value = premiumCount.toLocaleString();
+                kpis[2].value = trialCount.toLocaleString();
+                kpis[3].value = activeCount.toLocaleString();
+                kpis[4].value = campCount.toLocaleString();
+                kpis[5].value = emailSent.toLocaleString();
+                kpis[6].value = openRate.toFixed(1) + '%';
+                kpis[7].value = clickRate.toFixed(1) + '%';
+                kpis[8].value = templateCount.toLocaleString();
+                kpis[9].value = automationCount.toLocaleString();
+                kpis[10].value = smtpCount.toLocaleString();
+
+                kpiGrid.innerHTML = kpis.map(function(k) {
+                    return '<div class="admin-kpi"><div class="admin-kpi__label">' + k.icon + ' ' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change ' + k.cls + '">' + esc(k.change) + '</div></div>';
+                }).join('');
+            } catch (e) { /* keep placeholders */ }
         }
+
+        fetchCounts();
+
+        // Charts section
+        var existingCharts = section.querySelector('#admin-charts');
+        if (!existingCharts) {
+            var chartsDiv = document.createElement('div');
+            chartsDiv.id = 'admin-charts';
+            chartsDiv.style.cssText = 'margin-top:24px;';
+            chartsDiv.innerHTML =
+                '<div class="admin-card" style="margin-bottom:20px;">' +
+                    '<div class="admin-card__header"><h3 class="admin-card__title">📊 Gráficos</h3></div>' +
+                    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">' +
+                        '<div>' +
+                            '<h4 style="font-size:0.75rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:12px;">Crescimento de Utilizadores</h4>' +
+                            '<div id="chart-users" style="display:flex;align-items:flex-end;gap:6px;height:120px;"></div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<h4 style="font-size:0.75rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:12px;">Campanhas / Dia (30 dias)</h4>' +
+                            '<div id="chart-campaigns" style="display:flex;align-items:flex-end;gap:4px;height:120px;"></div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<h4 style="font-size:0.75rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:12px;">Emails Enviados</h4>' +
+                            '<div id="chart-emails" style="display:flex;align-items:flex-end;gap:6px;height:120px;"></div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<h4 style="font-size:0.75rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:12px;">Engajamento</h4>' +
+                            '<div id="chart-engagement" style="display:flex;gap:24px;align-items:flex-end;height:120px;padding:0 12px;">' +
+                                '<div style="text-align:center;"><div style="width:60px;height:40px;background:linear-gradient(to top,#6366f1,#818cf8);border-radius:6px 6px 0 0;margin:0 auto 6px;"></div><span style="font-size:0.6875rem;color:#94a3b8;">Aberturas</span></div>' +
+                                '<div style="text-align:center;"><div style="width:60px;height:28px;background:linear-gradient(to top,#10b981,#34d399);border-radius:6px 6px 0 0;margin:0 auto 6px;"></div><span style="font-size:0.6875rem;color:#94a3b8;">Cliques</span></div>' +
+                                '<div style="text-align:center;"><div style="width:60px;height:52px;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:6px 6px 0 0;margin:0 auto 6px;"></div><span style="font-size:0.6875rem;color:#94a3b8;">Conversão</span></div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+
+            // Activity + System section
+            var activityDiv = document.createElement('div');
+            activityDiv.id = 'admin-activity';
+            activityDiv.style.cssText = 'margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;';
+            activityDiv.innerHTML =
+                '<div class="admin-card">' +
+                    '<div class="admin-card__header"><h3 class="admin-card__title">📋 Atividade Recente</h3></div>' +
+                    '<div id="activity-feed" style="display:flex;flex-direction:column;gap:10px;"></div>' +
+                '</div>' +
+                '<div class="admin-card">' +
+                    '<div class="admin-card__header"><h3 class="admin-card__title">🔧 Estado do Sistema</h3></div>' +
+                    '<div id="system-status" style="display:flex;flex-direction:column;gap:10px;"></div>' +
+                '</div>';
+
+            chartsDiv.appendChild(activityDiv);
+            section.insertBefore(chartsDiv, section.querySelector('.admin-card'));
+
+            // Draw bar charts
+            drawBarChart('chart-users', [12,19,8,15,22,18,25,30,28,35,42,38]);
+            drawBarChart('chart-campaigns', [4,7,3,5,8,6,9,12,10,7,14,11]);
+            drawBarChart('chart-emails', [120,250,180,310,420,350,510,680,590,720,850,780]);
+
+            // Activity feed
+            var feed = document.getElementById('activity-feed');
+            if (feed) {
+                feed.innerHTML =
+                    '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<div style="width:8px;height:8px;border-radius:50%;background:#10b981;"></div>' +
+                        '<div style="flex:1;"><span style="font-size:0.8125rem;font-weight:600;">Novo utilizador</span><p style="font-size:0.6875rem;color:#94a3b8;margin:2px 0 0;">—</p></div>' +
+                        '<span style="font-size:0.6875rem;color:#94a3b8;">—</span>' +
+                    '</div>' +
+                    '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<div style="width:8px;height:8px;border-radius:50%;background:#6366f1;"></div>' +
+                        '<div style="flex:1;"><span style="font-size:0.8125rem;font-weight:600;">Campanha criada</span><p style="font-size:0.6875rem;color:#94a3b8;margin:2px 0 0;">—</p></div>' +
+                        '<span style="font-size:0.6875rem;color:#94a3b8;">—</span>' +
+                    '</div>' +
+                    '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;"></div>' +
+                        '<div style="flex:1;"><span style="font-size:0.8125rem;font-weight:600;">Template criado</span><p style="font-size:0.6875rem;color:#94a3b8;margin:2px 0 0;">—</p></div>' +
+                        '<span style="font-size:0.6875rem;color:#94a3b8;">—</span>' +
+                    '</div>';
+            }
+
+            // System status
+            var sysStatus = document.getElementById('system-status');
+            if (sysStatus) {
+                sysStatus.innerHTML =
+                    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<span style="font-size:0.8125rem;font-weight:600;">Supabase</span><span class="badge badge--green">Online</span></div>' +
+                    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<span style="font-size:0.8125rem;font-weight:600;">Netlify</span><span class="badge badge--green">Online</span></div>' +
+                    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<span style="font-size:0.8125rem;font-weight:600;">Storage</span><span class="badge badge--green">Online</span></div>' +
+                    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<span style="font-size:0.8125rem;font-weight:600;">SMTP</span><span class="badge badge--yellow">—</span></div>' +
+                    '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<span style="font-size:0.8125rem;font-weight:600;">Background Jobs</span><span class="badge badge--green">Online</span></div>';
+            }
+        }
+    }
+
+    function drawBarChart(containerId, data) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        var max = Math.max.apply(null, data);
+        if (max === 0) max = 1;
+        data.forEach(function(val, i) {
+            var height = Math.max(Math.round((val / max) * 100), 4);
+            var bar = document.createElement('div');
+            bar.style.cssText = 'flex:1;min-width:6px;height:' + height + '%;background:linear-gradient(to top,#6366f1,#818cf8);border-radius:3px 3px 0 0;opacity:0.8;transition:opacity 0.2s;cursor:pointer;position:relative;';
+            bar.title = val;
+            bar.addEventListener('mouseenter', function() { bar.style.opacity = '1'; });
+            bar.addEventListener('mouseleave', function() { bar.style.opacity = '0.8'; });
+            container.appendChild(bar);
+        });
     }
 
     async function loadUsers() {
