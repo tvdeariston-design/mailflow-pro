@@ -17,6 +17,10 @@ var AutomationsView = (function() {
         page: 1,
         limit: 20,
         search: '',
+        statusFilter: 'all',
+        triggerFilter: 'all',
+        sortBy: 'created_at',
+        sortDir: 'desc',
         campaigns: [],
         loading: false,
         activeTab: 'automations',
@@ -38,6 +42,11 @@ var AutomationsView = (function() {
     function formatDate(dateStr) {
         if (!dateStr) return '—';
         return new Date(dateStr).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function formatDateTime(dateStr) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     function triggerLabel(trigger) {
@@ -95,12 +104,20 @@ var AutomationsView = (function() {
         state.loading = true;
         try {
             var query = sb.from('automation_rules')
-                .select('*, campaign:campaigns(id,nome)', { count: 'exact' })
+                .select('*, campaign:campaigns(id,name)', { count: 'exact' })
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (state.search) {
                 query = query.ilike('name', '%' + state.search + '%');
+            }
+
+            if (state.statusFilter !== 'all') {
+                query = query.eq('enabled', state.statusFilter === 'active');
+            }
+
+            if (state.triggerFilter !== 'all') {
+                query = query.eq('trigger_type', state.triggerFilter);
             }
 
             var from = (state.page - 1) * state.limit;
@@ -164,32 +181,116 @@ var AutomationsView = (function() {
             return buildJobsHTML();
         }
 
-        var rows = automations.map(function(a) {
-            var campaignName = (a.campaign && a.campaign.nome) ? esc(a.campaign.nome) : '—';
-            return '' +
-                '<tr>' +
-                    '<td><strong>' + esc(a.name) + '</strong></td>' +
-                    '<td>' + triggerLabel(a.trigger_type) + '</td>' +
-                    '<td>' + delayLabel(a.delay_minutes) + '</td>' +
-                    '<td>' + campaignName + '</td>' +
-                    '<td>' + statusBadge(a.enabled) + '</td>' +
-                    '<td style="width:120px">' +
-                        '<div class="tl-actions">' +
-                            '<button class="tl-btn tl-btn--ghost tl-btn--sm" data-edit="' + a.id + '" title="Editar"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></button>' +
+        var totalPages = Math.ceil(total / state.limit);
+        var count = automations.length;
+
+        var html = '';
+
+        // Header
+        html += '' +
+            '<div class="tl-view-header">' +
+                '<div class="tl-view-header__left">' +
+                    '<span class="tl-badge tl-badge--indigo">Automações</span>' +
+                    '<h1 class="tl-view-header__title">Automações</h1>' +
+                    '<p class="tl-view-header__desc">Automatize o envio de campanhas quando novos contactos são adicionados.</p>' +
+                '</div>' +
+                '<button class="tl-btn tl-btn--primary" id="at-btn-add">' +
+                    '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' +
+                    'Nova Automação' +
+                '</button>' +
+            '</div>';
+
+        // Toolbar
+        html += '' +
+            '<div class="tl-toolbar">' +
+                '<div class="tl-toolbar__search">' +
+                    '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
+                    '<input type="text" id="at-search" placeholder="Pesquisar automação..." value="' + esc(state.search) + '">' +
+                '</div>' +
+                '<select class="tl-input tl-input--select tl-toolbar__filter" id="at-filter-status">' +
+                    '<option value="all"' + (state.statusFilter === 'all' ? ' selected' : '') + '>Todos os estados</option>' +
+                    '<option value="active"' + (state.statusFilter === 'active' ? ' selected' : '') + '>Ativas</option>' +
+                    '<option value="paused"' + (state.statusFilter === 'paused' ? ' selected' : '') + '>Inativas</option>' +
+                '</select>' +
+                '<select class="tl-input tl-input--select tl-toolbar__filter" id="at-filter-trigger">' +
+                    '<option value="all"' + (state.triggerFilter === 'all' ? ' selected' : '') + '>Todos os triggers</option>' +
+                    '<option value="contact_created"' + (state.triggerFilter === 'contact_created' ? ' selected' : '') + '>Novo contacto</option>' +
+                '</select>' +
+                '<select class="tl-input tl-input--select tl-toolbar__sort" id="at-sort">' +
+                    '<option value="created_at-desc"' + (state.sortBy === 'created_at' && state.sortDir === 'desc' ? ' selected' : '') + '>Mais recentes</option>' +
+                    '<option value="created_at-asc"' + (state.sortBy === 'created_at' && state.sortDir === 'asc' ? ' selected' : '') + '>Mais antigas</option>' +
+                    '<option value="name-asc"' + (state.sortBy === 'name' && state.sortDir === 'asc' ? ' selected' : '') + '>Nome A-Z</option>' +
+                    '<option value="name-desc"' + (state.sortBy === 'name' && state.sortDir === 'desc' ? ' selected' : '') + '>Nome Z-A</option>' +
+                '</select>' +
+                '<span class="tl-toolbar__count">' + total + ' regra' + (total !== 1 ? 's' : '') + '</span>' +
+            '</div>';
+
+        // Skeleton or Cards
+        if (state.loading) {
+            html += renderSkeleton();
+        } else if (automations.length === 0) {
+            html += renderEmpty();
+        } else {
+            html += '<div class="tl-cards">';
+            automations.forEach(function(a, idx) {
+                var campaignName = (a.campaign && a.campaign.nome) ? esc(a.campaign.nome) : '—';
+                var lastRun = a.last_run_at ? formatDateTime(a.last_run_at) : '—';
+                var runCount = a.run_count || 0;
+                html += '' +
+                    '<div class="tl-card" style="animation-delay:' + (idx * 0.04) + 's">' +
+                        '<div class="tl-card__top-line"></div>' +
+                        '<div class="tl-card__header">' +
+                            '<div class="tl-card__header-left">' +
+                                '<h3 class="tl-card__title">' + esc(a.name) + '</h3>' +
+                                statusBadge(a.enabled) +
+                            '</div>' +
+                            '<span class="tl-badge tl-badge--indigo">' + triggerLabel(a.trigger_type) + '</span>' +
+                        '</div>' +
+                        '<div class="tl-card__body">' +
+                            '<div class="tl-card__row">' +
+                                '<div class="tl-card__stat">' +
+                                    '<span class="tl-card__stat-label">Campanha</span>' +
+                                    '<span class="tl-card__stat-value">' + esc(campaignName) + '</span>' +
+                                '</div>' +
+                                '<div class="tl-card__stat">' +
+                                    '<span class="tl-card__stat-label">Delay</span>' +
+                                    '<span class="tl-card__stat-value">' + delayLabel(a.delay_minutes) + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="tl-card__row">' +
+                                '<div class="tl-card__stat">' +
+                                    '<span class="tl-card__stat-label">Última execução</span>' +
+                                    '<span class="tl-card__stat-value">' + lastRun + '</span>' +
+                                '</div>' +
+                                '<div class="tl-card__stat">' +
+                                    '<span class="tl-card__stat-label">Execuções</span>' +
+                                    '<span class="tl-card__stat-value">' + runCount + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="tl-card__actions">' +
+                            '<button class="tl-btn tl-btn--ghost tl-btn--sm" data-edit="' + a.id + '" title="Editar">' +
+                                '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>' +
+                                'Editar' +
+                            '</button>' +
                             '<button class="tl-btn tl-btn--ghost tl-btn--sm" data-toggle="' + a.id + '" data-enabled="' + a.enabled + '" title="' + (a.enabled ? 'Desativar' : 'Ativar') + '">' +
                                 (a.enabled
-                                    ? '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
-                                    : '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>') +
+                                    ? '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>'
+                                    : '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.636 18.364a9 9 0 0112.728-12.728M5.636 5.636l12.728 12.728"/></svg>') +
+                                (a.enabled ? 'Pausar' : 'Ativar') +
                             '</button>' +
-                            '<button class="tl-btn tl-btn--ghost tl-btn--sm tl-btn--danger" data-delete="' + a.id + '" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>' +
+                            '<button class="tl-btn tl-btn--ghost tl-btn--sm tl-btn--danger" data-delete="' + a.id + '" title="Eliminar">' +
+                                '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+                                'Eliminar' +
+                            '</button>' +
                         '</div>' +
-                    '</td>' +
-                '</tr>';
-        }).join('');
+                    '</div>';
+            });
+            html += '</div>';
+        }
 
-        var totalPages = Math.ceil(total / state.limit);
-
-        var pagination = '' +
+        // Pagination
+        html += '' +
             '<div class="tl-pagination">' +
                 '<span class="tl-pagination__info">Página ' + state.page + ' de ' + totalPages + '</span>' +
                 '<div class="tl-pagination__btns">' +
@@ -198,14 +299,13 @@ var AutomationsView = (function() {
                 '</div>' +
             '</div>';
 
-        if (automations.length === 0) {
-            return renderEmpty() + pagination;
+        // Jobs panel
+        if (state.activeTab === 'jobs') {
+            html += buildJobsHTML();
         }
 
-        return '' +
-            '<div class="ct-table-wrap"><table class="ct-table"><thead>' +
-                '<tr><th>Nome</th><th>Trigger</th><th>Delay</th><th>Campanha</th><th>Estado</th><th style="width:120px">Ações</th></tr>' +
-            '</thead><tbody>' + rows + '</tbody></table></div>' + pagination;
+        return html;
+    }
 
     function buildJobsHTML() {
         var jobs = state.jobs;
@@ -217,22 +317,44 @@ var AutomationsView = (function() {
             var contactName = (j.contact && j.contact.nome) ? esc(j.contact.nome) : '—';
             var contactEmail = (j.contact && j.contact.email) ? esc(j.contact.email) : '';
             var campaignName = (j.campaign && j.campaign.nome) ? esc(j.campaign.nome) : '—';
-            var statusBadge = '';
-            if (j.status === 'pending') statusBadge = '<span class="tl-badge tl-badge--yellow">Pendente</span>';
-            else if (j.status === 'sent') statusBadge = '<span class="tl-badge tl-badge--green">Enviado</span>';
-            else if (j.status === 'failed') statusBadge = '<span class="tl-badge tl-badge--red">Falhou</span>';
-            else if (j.status === 'skipped') statusBadge = '<span class="tl-badge tl-badge--gray">Ignorado</span>';
-            else statusBadge = '<span class="tl-badge tl-badge--gray">' + j.status + '</span>';
-            var createdAt = j.created_at ? new Date(j.created_at).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+            var jStatusBadge = '';
+            if (j.status === 'pending') jStatusBadge = '<span class="tl-badge tl-badge--yellow">Pendente</span>';
+            else if (j.status === 'sent') jStatusBadge = '<span class="tl-badge tl-badge--green">Enviado</span>';
+            else if (j.status === 'failed') jStatusBadge = '<span class="tl-badge tl-badge--red">Falhou</span>';
+            else if (j.status === 'skipped') jStatusBadge = '<span class="tl-badge tl-badge--gray">Ignorado</span>';
+            else jStatusBadge = '<span class="tl-badge tl-badge--gray">' + j.status + '</span>';
+            var createdAt = j.created_at ? formatDateTime(j.created_at) : '—';
+            var duration = j.duration_ms ? (j.duration_ms / 1000).toFixed(1) + 's' : '—';
 
             return '' +
-                '<tr>' +
-                    '<td>' + createdAt + '</td>' +
-                    '<td>' + automationName + '</td>' +
-                    '<td>' + contactName + (contactEmail ? ' <' + contactEmail + '>' : '') + '</td>' +
-                    '<td>' + campaignName + '</td>' +
-                    '<td>' + statusBadge + '</td>' +
-                '</tr>';
+                '<div class="tl-card" style="animation-delay:0s">' +
+                    '<div class="tl-card__top-line"></div>' +
+                    '<div class="tl-card__header">' +
+                        '<div class="tl-card__header-left">' +
+                            '<h3 class="tl-card__title">' + automationName + '</h3>' +
+                            jStatusBadge +
+                        '</div>' +
+                        '<span class="tl-card__time">' + createdAt + '</span>' +
+                    '</div>' +
+                    '<div class="tl-card__body">' +
+                        '<div class="tl-card__row">' +
+                            '<div class="tl-card__stat">' +
+                                '<span class="tl-card__stat-label">Contacto</span>' +
+                                '<span class="tl-card__stat-value">' + contactName + (contactEmail ? ' &lt;' + contactEmail + '&gt;' : '') + '</span>' +
+                            '</div>' +
+                            '<div class="tl-card__stat">' +
+                                '<span class="tl-card__stat-label">Campanha</span>' +
+                                '<span class="tl-card__stat-value">' + esc(campaignName) + '</span>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="tl-card__row">' +
+                            '<div class="tl-card__stat">' +
+                                '<span class="tl-card__stat-label">Duração</span>' +
+                                '<span class="tl-card__stat-value">' + duration + '</span>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
         }).join('');
 
         var pagination = '' +
@@ -253,21 +375,38 @@ var AutomationsView = (function() {
                 '</div>' + pagination;
         }
 
-        return '' +
-            '<div class="ct-table-wrap"><table class="ct-table"><thead>' +
-                '<tr><th>Data</th><th>Automação</th><th>Contacto</th><th>Campanha</th><th>Estado</th></tr>' +
-            '</thead><tbody>' + rows + '</tbody></table></div>' + pagination;
-    }
+        return '<div class="tl-cards">' + rows + '</div>' + pagination;
     }
 
     function renderEmpty() {
         return '' +
             '<div class="tl-empty">' +
-                '<div class="tl-empty__icon"><svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>' +
+                '<div class="tl-empty__orbs">' +
+                    '<div class="tl-empty__orb tl-empty__orb--1"></div>' +
+                    '<div class="tl-empty__orb tl-empty__orb--2"></div>' +
+                '</div>' +
+                '<span class="tl-badge tl-badge--indigo">Sem automações</span>' +
                 '<h3 class="tl-empty__title">Ainda não tem automações</h3>' +
                 '<p class="tl-empty__desc">Crie regras para enviar campanhas automaticamente quando um contacto é adicionado.</p>' +
-                '<button class="tl-btn tl-btn--primary" id="at-btn-add-empty"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Nova Automação</button>' +
+                '<button class="tl-btn tl-btn--primary" id="at-btn-add-empty">' +
+                    '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' +
+                    'Criar Automação' +
+                '</button>' +
             '</div>';
+    }
+
+    function renderSkeleton() {
+        var cards = '';
+        for (var i = 0; i < 4; i++) {
+            cards += '' +
+                '<div class="tl-card tl-card--skeleton" style="animation-delay:' + (i * 0.06) + 's">' +
+                    '<div class="tl-skeleton tl-skeleton--line tl-skeleton--lg" style="width:60%"></div>' +
+                    '<div class="tl-skeleton tl-skeleton--line tl-skeleton--short" style="margin-top:8px"></div>' +
+                    '<div class="tl-skeleton tl-skeleton--line tl-skeleton--md"></div>' +
+                    '<div class="tl-skeleton tl-skeleton--line tl-skeleton--short" style="margin-top:12px"></div>' +
+                '</div>';
+        }
+        return '<div class="tl-cards">' + cards + '</div>';
     }
 
     function renderEditor(automation) {
@@ -296,10 +435,13 @@ var AutomationsView = (function() {
 
         return '' +
             '<div class="tl-modal" id="at-modal-editor" role="dialog" aria-modal="true">' +
-                '<div class="tl-modal__overlay"></div>' +
+                '<div class="tl-modal-overlay"></div>' +
                 '<div class="tl-modal__content" style="max-width:560px;">' +
                     '<div class="tl-modal__header">' +
-                        '<h3 class="tl-modal__title">' + (isEdit ? 'Editar Automação' : 'Nova Automação') + '</h3>' +
+                        '<div>' +
+                            '<span class="tl-badge tl-badge--indigo">Automação</span>' +
+                            '<h3 class="tl-modal__title">' + (isEdit ? 'Editar Automação' : 'Nova Automação') + '</h3>' +
+                        '</div>' +
                         '<button class="tl-modal__close" id="at-modal-close" aria-label="Fechar"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>' +
                     '</div>' +
                     '<div class="tl-modal__body">' +
@@ -411,7 +553,7 @@ var AutomationsView = (function() {
         var closeBtn = document.getElementById('at-modal-close');
         var cancelBtn = document.getElementById('at-btn-cancel');
         var saveBtn = document.getElementById('at-btn-save');
-        var overlay = document.querySelector('#at-modal-editor .tl-modal__overlay');
+        var overlay = document.querySelector('#at-modal-editor .tl-modal-overlay');
 
         [closeBtn, cancelBtn, overlay].forEach(function(el) {
             if (el) el.addEventListener('click', closeModal);
@@ -458,8 +600,13 @@ var AutomationsView = (function() {
         var addBtn = document.getElementById('at-btn-add');
         var addEmpty = document.getElementById('at-btn-add-empty');
         var searchInput = document.getElementById('at-search');
+        var statusFilter = document.getElementById('at-filter-status');
+        var triggerFilter = document.getElementById('at-filter-trigger');
+        var sortSelect = document.getElementById('at-sort');
         var prevBtn = document.getElementById('at-page-prev');
         var nextBtn = document.getElementById('at-page-next');
+        var prevJobsBtn = document.getElementById('at-jobs-page-prev');
+        var nextJobsBtn = document.getElementById('at-jobs-page-next');
 
         if (addBtn) addBtn.addEventListener('click', function() { openEditor(null); });
         if (addEmpty) addEmpty.addEventListener('click', function() { openEditor(null); });
@@ -471,13 +618,40 @@ var AutomationsView = (function() {
             });
         }
 
+        if (statusFilter) {
+            statusFilter.addEventListener('change', function() {
+                state.statusFilter = this.value;
+                state.page = 1;
+                refresh();
+            });
+        }
+
+        if (triggerFilter) {
+            triggerFilter.addEventListener('change', function() {
+                state.triggerFilter = this.value;
+                state.page = 1;
+                refresh();
+            });
+        }
+
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function() {
+                var parts = this.value.split('-');
+                state.sortBy = parts[0];
+                state.sortDir = parts[1] || 'desc';
+                refresh();
+            });
+        }
+
         if (prevBtn) prevBtn.addEventListener('click', function() { state.page--; refresh(); });
         if (nextBtn) nextBtn.addEventListener('click', function() { state.page++; refresh(); });
+        if (prevJobsBtn) prevJobsBtn.addEventListener('click', function() { state.jobsPage--; refresh(); });
+        if (nextJobsBtn) nextJobsBtn.addEventListener('click', function() { state.jobsPage++; refresh(); });
 
         // Delegate action buttons
-        var tbody = document.querySelector('.ct-table tbody');
-        if (tbody) {
-            tbody.addEventListener('click', function(e) {
+        var cardsContainer = document.querySelector('.tl-cards');
+        if (cardsContainer) {
+            cardsContainer.addEventListener('click', function(e) {
                 var btn = e.target.closest('button');
                 if (!btn) return;
                 var editId = btn.getAttribute('data-edit');
