@@ -8,7 +8,9 @@
 const express = require('express');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY
+    ? require('stripe')(process.env.STRIPE_SECRET_KEY)
+    : null;
 const nodemailer = require('nodemailer');
 const campaignEngine = require('./services/campaign-engine');
 const contactsParser = require('./services/contacts-parser');
