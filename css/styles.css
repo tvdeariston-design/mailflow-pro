@@ -1554,6 +1554,22 @@ a:hover {
         width: 100%;
         justify-content: center;
     }
+    
+    .how-it-works__number {
+        width: 36px;
+        height: 36px;
+        font-size: 15px;
+    }
+    
+    .how-it-works__icon {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .how-it-works__icon svg {
+        width: 22px;
+        height: 22px;
+    }
 }
 
 
@@ -2406,6 +2422,13 @@ a:hover {
 /* ========================================
    Demo & How-it-works — Responsive
    ======================================== */
+@media (max-width: 1280px) {
+    .how-it-works__step::after,
+    .how-it-works__step::before {
+        display: none;
+    }
+}
+
 @media (max-width: 1100px) {
     .demo__body {
         grid-template-columns: 1fr 260px;
@@ -2421,14 +2444,11 @@ a:hover {
     
     .how-it-works__grid {
         grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .how-it-works__step::after,
-    .how-it-works__step::before {
-        display: none;
+        align-items: start;
     }
     
     .how-it-works__step {
+        min-height: 260px;
         padding: var(--space-6) var(--space-5);
     }
 }
