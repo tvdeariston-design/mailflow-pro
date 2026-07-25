@@ -429,17 +429,16 @@ var CampanhasView = (function() {
             var { data: orig } = await sb.from('campaigns').select('*').eq('id', id).eq('user_id', user.id).single();
             if (!orig) throw new Error('Campanha nao encontrada');
 
-            var { error } = await sb.from('campaigns').insert({
+            var { data: newCamp, error } = await sb.from('campaigns').insert({
                 user_id: user.id, created_by: user.id,
                 nome: '(Copia) ' + orig.nome, assunto: orig.assunto,
                 template_id: orig.template_id, from_name: orig.from_name,
                 from_email: orig.from_email, reply_to: orig.reply_to, status: 'draft'
-            });
+            }).select('id').single();
             if (error) throw error;
 
             var { data: recipients } = await sb.from('campaign_recipients').select('contact_id').eq('campaign_id', id);
             if (recipients && recipients.length > 0) {
-                var { data: newCamp } = await sb.from('campaigns').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
                 if (newCamp) {
                     var inserts = recipients.map(function(r) { return { campaign_id: newCamp.id, contact_id: r.contact_id }; });
                     await sb.from('campaign_recipients').insert(inserts);
@@ -484,15 +483,18 @@ var CampanhasView = (function() {
             var result;
             if (existingId) {
                 result = await sb.from('campaigns').update(payload).eq('id', existingId).eq('user_id', user.id);
+                if (result.error) throw result.error;
+                MailFlowToast.success('Campanha atualizada.');
+                return existingId;
             } else {
                 payload.user_id = user.id;
                 payload.created_by = user.id;
                 payload.status = 'draft';
-                result = await sb.from('campaigns').insert(payload);
+                result = await sb.from('campaigns').insert(payload).select('id').single();
+                if (result.error) throw result.error;
+                MailFlowToast.success('Campanha criada.');
+                return result.data.id;
             }
-            if (result.error) throw result.error;
-            MailFlowToast.success(existingId ? 'Campanha atualizada.' : 'Campanha criada.');
-            return true;
         } catch (err) {
             console.error('[Campanhas] Erro ao guardar:', err);
             MailFlowToast.error('Erro ao guardar campanha.');
@@ -662,13 +664,8 @@ var CampanhasView = (function() {
                 step = 3;
             } else if (step === 3) {
                 this.disabled = true; this.textContent = 'A guardar...';
-                var ok = await saveCampaign(campaign, isEdit ? campaign.id : null);
-                if (ok) {
-                    var campId = campaign.id;
-                    if (!campId) {
-                        var { data: last } = await sb.from('campaigns').select('id').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).single();
-                        if (last) campId = last.id;
-                    }
+                var campId = await saveCampaign(campaign, isEdit ? campaign.id : null);
+                if (campId) {
                     if (campId && selectedContacts.length > 0) {
                         if (isEdit) {
                             await sb.from('campaign_recipients').delete().eq('campaign_id', campId);
