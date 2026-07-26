@@ -59,6 +59,14 @@ const config = {
             return raw.split(',').map(e => e.trim().toLowerCase()).filter(e => e.length > 0);
         },
     },
+
+    // CORS allowed origins - configurável via env ALLOWED_ORIGINS (separados por vírgula)
+    cors: {
+        get allowedOrigins() {
+            const raw = process.env.ALLOWED_ORIGINS || '';
+            return raw.split(',').map(o => o.trim()).filter(o => o.length > 0);
+        },
+    },
 };
 
 /**

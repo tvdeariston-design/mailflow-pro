@@ -24,11 +24,20 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 
-// CORS
+// CORS - Whitelist based on ALLOWED_ORIGINS env variable
 // Servir ficheiros estáticos da raiz do projeto
 app.use(express.static(path.join(__dirname)));
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+    const origin = req.headers.origin;
+    const allowedOrigins = config.cors.allowedOrigins;
+
+    if (origin && allowedOrigins.length > 0) {
+        if (allowedOrigins.indexOf(origin) >= 0) {
+            res.header('Access-Control-Allow-Origin', origin);
+        }
+    } else if (origin) {
+        res.header('Access-Control-Allow-Origin', '*');
+    }
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
     if (req.method === 'OPTIONS') {
