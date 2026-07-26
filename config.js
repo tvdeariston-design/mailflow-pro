@@ -51,6 +51,14 @@ const config = {
             return process.env.CANCEL_URL || config.app.siteUrl;
         },
     },
+
+    // Admin emails - configurável via env ADMIN_EMAILS (separados por vírgula)
+    admin: {
+        get emails() {
+            const raw = process.env.ADMIN_EMAILS || '';
+            return raw.split(',').map(e => e.trim().toLowerCase()).filter(e => e.length > 0);
+        },
+    },
 };
 
 /**

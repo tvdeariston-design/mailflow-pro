@@ -21,7 +21,7 @@ const { config } = require('./config');
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 
 // CORS
@@ -107,13 +107,7 @@ function decrypt(encoded) {
 // ============================================
 // Helpers
 // ============================================
-function createResponse(statusCode, body) {
-    return res.status(statusCode).json(body);
-}
 
-function createErrorResponse(statusCode, message) {
-    return res.status(statusCode).json({ success: false, error: message });
-}
 
 function validateEmail(email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -183,6 +177,33 @@ async function authMiddleware(req, res, next) {
     req.supabase = supabase;
     next();
 }
+// ============================================
+// Middleware de autorização admin
+// ============================================
+async function adminMiddleware(req, res, next) {
+    const userEmail = (req.user.email || '').toLowerCase();
+
+    if (config.admin.emails.includes(userEmail)) {
+        logger.info('Acesso admin concedido por email: ' + userEmail, 'AdminMiddleware');
+        return next();
+    }
+
+    if (supabaseAdmin) {
+        const { data: profile, error: profileError } = await req.supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', req.user.id)
+            .single();
+
+        if (!profileError && profile && profile.is_admin === true) {
+            logger.info('Acesso admin concedido via profile.is_admin: ' + userEmail, 'AdminMiddleware');
+            return next();
+        }
+    }
+
+    logger.warn('Acesso admin negado: ' + userEmail, 'AdminMiddleware');
+    return res.status(403).json({ success: false, error: 'Acesso não autorizado' });
+}
 
 // ============================================
 // ROTAS
@@ -191,6 +212,26 @@ async function authMiddleware(req, res, next) {
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ============================================
+// ADMIN CHECK - Verify if user is administrator
+// ============================================
+app.get('/api/admin/check', authMiddleware, adminMiddleware, async (req, res) => {
+    try {
+        logger.info('Admin check - User: ' + req.user.email, 'AdminAPI');
+        res.json({
+            admin: true,
+            user: {
+                id: req.user.id,
+                email: req.user.email,
+                nome: req.user.user_metadata?.nome || req.user.email
+            }
+        });
+    } catch (error) {
+        logger.error('Erro ao verificar admin: ' + error.message, 'AdminAPI');
+        res.status(500).json({ success: false, error: 'Erro ao verificar permissões' });
+    }
 });
 
 // ============================================
@@ -1881,7 +1922,7 @@ app.get('/track/open/:recipientId', async (req, res) => {
 
                 // Atualizar recipient
                 const recipientUpdates = {
-                    open_count: supabaseAdmin.rpc ? 1 : 1, // fallback below
+                    open_count: 1,
                     last_open_ip: ip,
                     last_open_user_agent: userAgent
                 };
@@ -1913,7 +1954,7 @@ app.get('/track/open/:recipientId', async (req, res) => {
                     }).catch(() => {
                         // Fallback: update manual se rpc não existir
                         supabaseAdmin.from('campaigns').update({
-                            total_opened: supabaseAdmin.rpc ? 0 : 1
+                            total_opened: 1
                         }).eq('id', recipient.campaign_id);
                     });
                 } else {
@@ -2117,7 +2158,7 @@ app.post('/api/checkout/create', authMiddleware, async (req, res) => {
 // ============================================
 // 7. WEBHOOK STRIPE (equivalente a webhook-stripe)
 // ============================================
-app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+app.post('/api/webhook/stripe', async (req, res) => {
     if (!process.env.STRIPE_WEBHOOK_SECRET) {
         logger.error('Variáveis Stripe webhook em falta', 'Webhook');
         return res.status(500).json({ success: false, error: 'Webhook não configurado' });
@@ -2128,7 +2169,7 @@ app.post('/api/webhook/stripe', express.raw({ type: 'application/json' }), async
 
     try {
         stripeEvent = stripe.webhooks.constructEvent(
-            req.body,
+            req.rawBody,
             sig,
             process.env.STRIPE_WEBHOOK_SECRET
         );
@@ -2410,7 +2451,7 @@ app.get('/api/automations', authMiddleware, async (req, res) => {
 
         let query = req.supabase
             .from('automation_rules')
-            .select('*, campaign:campaigns(id,name)', { count: 'exact' })
+            .select('*, campaign:campaigns(id,nome)', { count: 'exact' })
             .eq('user_id', req.user.id)
             .order('created_at', { ascending: false });
 
