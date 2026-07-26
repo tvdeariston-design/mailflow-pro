@@ -331,6 +331,20 @@ var TemplatesView = (function() {
         return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     }
 
+    function sanitizePreview(html) {
+        if (!html) return '';
+        // Remove <script> tags and content
+        html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        // Remove event handler attributes (onclick, onerror, onload, etc.)
+        html = html.replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^"'\s>]+)/gi, '');
+        // Remove javascript: URLs in href and src attributes
+        html = html.replace(/\s+(href|src)\s*=\s*["']\s*javascript:[^"']*["']/gi, '');
+        // Remove <iframe>, <object>, <embed> tags
+        html = html.replace(/<(iframe|object|embed)\b[^>]*>/gi, '');
+        html = html.replace(/<\/(iframe|object|embed)>/gi, '');
+        return html;
+    }
+
     // ========================================
     // Empty State Premium
     // ========================================
@@ -580,7 +594,7 @@ var TemplatesView = (function() {
                                 '<div class="tl-field">' +
                                     '<label class="tl-label">Visualizacao</label>' +
                                     '<div class="tl-preview-mini" id="tl-editor-preview">' +
-                                        '<div class="tl-preview-mini__frame" id="tl-editor-preview-frame"></div>' +
+                                        '<iframe class="tl-preview-mini__iframe" id="tl-editor-preview-frame" sandbox="allow-same-origin" style="width:100%;height:100%;border:none;min-height:80px;"></iframe>' +
                                     '</div>' +
                                 '</div>' +
                                 '<div class="tl-field">' +
@@ -628,7 +642,8 @@ var TemplatesView = (function() {
         if (htmlEditor && previewFrame) {
             function updatePreview() {
                 var html = htmlEditor.value;
-                previewFrame.innerHTML = html || '<p style="color:#94a3b8;text-align:center;padding:20px;">Pré-visualização em tempo real</p>';
+                var safeHtml = sanitizePreview(html) || '<p style="color:#94a3b8;text-align:center;padding:20px;">Pré-visualização em tempo real</p>';
+                previewFrame.srcdoc = safeHtml;
             }
             htmlEditor.addEventListener('input', updatePreview);
             // Initial preview
@@ -746,7 +761,7 @@ var TemplatesView = (function() {
             } else {
                 container.innerHTML = '<div class="tl-preview-frame ' + frameClass + '">' +
                     '<div class="tl-preview-subject-bar">' +
-                        '<div class="tl-preview-subject-from">De: ' + esc(template.from_name || 'MailFlow Pro') + ' &lt;' + esc(template.from_email || 'noreply@mailflowpro.com') + '&gt;</div>' +
+                        '<div class="tl-preview-subject-from">De: MailFlow Pro &lt;noreply@mailflowpro.com&gt;</div>' +
                         '<div class="tl-preview-subject-line"><strong>' + esc(data.subject) + '</strong></div>' +
                         (data.preheader ? '<div class="tl-preview-subject-preheader">' + esc(data.preheader) + '</div>' : '') +
                     '</div>' +
