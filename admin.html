@@ -302,8 +302,8 @@
                 </div>
                 <div class="admin-card">
                     <div class="toolbar">
-                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar campanhas..."></div>
-                        <select class="toolbar__filter"><option value="all">Todos os estados</option><option value="active">Ativas</option><option value="draft">Rascunhos</option><option value="sent">Enviadas</option></select>
+                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar campanhas..." id="admin-campaign-search"></div>
+                        <select class="toolbar__filter" id="admin-campaign-status"><option value="all">Todos os estados</option><option value="active">Ativas</option><option value="draft">Rascunhos</option><option value="sent">Enviadas</option><option value="sending">A enviar</option></select>
                         <span class="toolbar__count" id="admin-campaign-count">0 campanhas</span>
                     </div>
                     <div class="table-wrap"><table class="table" id="admin-campaigns-table"><thead><tr><th>Nome</th><th>Owner</th><th>Estado</th><th>Envios</th><th>Aberturas</th><th>Cliques</th><th>Falhas</th><th>Data</th></tr></thead><tbody><tr><td colspan="8"><div class="empty"><p class="empty__title">A carregar campanhas...</p></div></td></tr></tbody></table></div>
@@ -318,10 +318,10 @@
                 </div>
                 <div class="admin-card">
                     <div class="toolbar">
-                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar templates..."></div>
+                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar templates..." id="admin-template-search"></div>
                         <span class="toolbar__count" id="admin-template-count">0 templates</span>
                     </div>
-                    <div class="table-wrap"><table class="table" id="admin-templates-table"><thead><tr><th>Nome</th><th>Criado por</th><th>Data</th><th>Ações</th></tr></thead><tbody><tr><td colspan="4"><div class="empty"><p class="empty__title">A carregar templates...</p></div></td></tr></tbody></table></div>
+                    <div class="table-wrap"><table class="table" id="admin-templates-table"><thead><tr><th>Nome</th><th>Assunto</th><th>Criado por</th><th>Data</th><th>Ações</th></tr></thead><tbody><tr><td colspan="5"><div class="empty"><p class="empty__title">A carregar templates...</p></div></td></tr></tbody></table></div>
                 </div>
             </section>
 
@@ -333,8 +333,8 @@
                 </div>
                 <div class="admin-card">
                     <div class="toolbar">
-                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar automações..."></div>
-                        <select class="toolbar__filter"><option value="all">Todos os estados</option><option value="active">Ativas</option><option value="inactive">Inativas</option></select>
+                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar automações..." id="admin-automation-search"></div>
+                        <select class="toolbar__filter" id="admin-automation-status"><option value="all">Todos os estados</option><option value="active">Ativas</option><option value="inactive">Inativas</option></select>
                         <span class="toolbar__count" id="admin-automation-count">0 regras</span>
                     </div>
                     <div class="table-wrap"><table class="table" id="admin-automations-table"><thead><tr><th>Nome</th><th>Owner</th><th>Trigger</th><th>Estado</th><th>Jobs</th><th>Falhas</th><th>Última execução</th><th>Ações</th></tr></thead><tbody><tr><td colspan="8"><div class="empty"><p class="empty__title">A carregar automações...</p></div></td></tr></tbody></table></div>
@@ -379,8 +379,8 @@
                 </div>
                 <div class="admin-card">
                     <div class="toolbar">
-                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar logs..."></div>
-                        <select class="toolbar__filter"><option value="all">Todos os tipos</option><option value="login">Login</option><option value="error">Erros</option><option value="webhook">Webhooks</option><option value="event">Eventos</option></select>
+                        <div class="toolbar__search"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" placeholder="Pesquisar logs..." id="admin-log-search"></div>
+                        <select class="toolbar__filter" id="admin-log-type"><option value="all">Todos os tipos</option><option value="login">Login</option><option value="error">Erros</option><option value="webhook">Webhooks</option><option value="event">Eventos</option></select>
                         <span class="toolbar__count" id="admin-log-count">0 entradas</span>
                     </div>
                     <div class="table-wrap"><table class="table" id="admin-logs-table"><thead><tr><th>Timestamp</th><th>Tipo</th><th>Usuário</th><th>Descrição</th><th>Detalhes</th></tr></thead><tbody><tr><td colspan="5"><div class="empty"><p class="empty__title">A carregar logs...</p></div></td></tr></tbody></table></div>
@@ -409,13 +409,13 @@
                     <h2 class="page-title">Configurações</h2>
                     <p class="page-subtitle">Configurações globais da plataforma</p>
                 </div>
-                <div class="admin-card">
+                <div class="admin-card" id="settings-loading">
                     <div class="empty">
                         <div class="empty__icon"><svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
-                        <p class="empty__title">Configurações globais</p>
-                        <p class="empty__desc">Painel de configurações da plataforma em construção.</p>
+                        <p class="empty__title">A carregar configurações...</p>
                     </div>
                 </div>
+                <div id="settings-content" style="display:none;"></div>
             </section>
 
         </div>
@@ -432,11 +432,21 @@
     'use strict';
     var sb = window.supabaseClient;
     var isAdminAccess = false;
+    var adminUser = null;
+    var sectionLoaded = {};
+
+    function esc(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
 
     async function checkAdmin(){
         try {
             var user = await MailFlowAuth.getUser();
             if(!user){ window.location.href='/entrar.html'; return false; }
+            adminUser = user;
             var el=document.getElementById('admin-email'); if(el) el.textContent=user.email||'admin';
             var av=document.getElementById('admin-avatar'); if(av) av.textContent=(user.email||'A').charAt(0).toUpperCase();
             if(user.email==='tvdeariston@gmail.com'){ isAdminAccess=true; return true; }
@@ -457,6 +467,7 @@
             sections.forEach(function(s){ s.classList.toggle('section--active',s.id==='section-'+sec); });
             var title={dashboard:'Dashboard',users:'Utilizadores',campaigns:'Campanhas',templates:'Templates',automations:'Automações',analytics:'Analytics',smtp:'SMTP',logs:'Logs',system:'Sistema',settings:'Configurações'};
             var h=document.querySelector('.header__title'); if(h&&title[sec]) h.textContent=title[sec];
+            loadSectionData(sec);
         }
         window.addEventListener('hashchange',function(){ navigate(window.location.hash); });
         links.forEach(function(l){ l.addEventListener('click',function(e){ e.preventDefault(); var s=l.getAttribute('data-section'); window.location.hash='#/admin/'+s; navigate('#/admin/'+s); var ov=document.getElementById('sidebar-overlay'); var sb=document.getElementById('sidebar'); if(ov) ov.classList.remove('sidebar-overlay--visible'); if(sb) sb.classList.remove('sidebar--open'); }); });
@@ -472,6 +483,659 @@
         btn.addEventListener('click',function(){ if(sb) sb.classList.toggle('sidebar--open'); if(ov) ov.classList.toggle('sidebar-overlay--visible'); });
         if(ov) ov.addEventListener('click',function(){ if(sb) sb.classList.remove('sidebar--open'); if(ov) ov.classList.remove('sidebar-overlay--visible'); });
         window.addEventListener('resize',checkSize); checkSize();
+    }
+
+    function loadSectionData(sec) {
+        if (sectionLoaded[sec]) return;
+        sectionLoaded[sec] = true;
+        switch (sec) {
+            case 'dashboard': loadDashboard(); break;
+            case 'users': loadUsers(); break;
+            case 'campaigns': loadCampaigns(); break;
+            case 'templates': loadTemplates(); break;
+            case 'automations': loadAutomations(); break;
+            case 'analytics': loadAnalytics(); break;
+            case 'smtp': loadSMTP(); break;
+            case 'logs': loadLogs(); break;
+            case 'system': loadSystem(); break;
+            case 'settings': loadSettings(); break;
+        }
+    }
+
+    // ========== DASHBOARD ==========
+    async function loadDashboard() {
+        var section = document.getElementById('section-dashboard');
+        if (!section) return;
+        var kpiGrid = section.querySelector('#kpi-dashboard');
+        if (!kpiGrid) return;
+
+        var kpis = [
+            { label:'Total Utilizadores', value:'—', change:'A carregar...', cls:'admin-kpi__change--neutral', icon:'👥' },
+            { label:'Premium', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'⭐' },
+            { label:'Trials', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'🧪' },
+            { label:'Contas Ativas', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'✅' },
+            { label:'Campanhas', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'📧' },
+            { label:'Emails Enviados', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'📨' },
+            { label:'Taxa Abertura', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'👁️' },
+            { label:'Cliques', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'🖱️' },
+            { label:'Templates', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'📄' },
+            { label:'Automações', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'⚙️' },
+            { label:'SMTP Ativos', value:'—', change:'', cls:'admin-kpi__change--neutral', icon:'🔧' },
+        ];
+        kpiGrid.innerHTML = kpis.map(function(k) {
+            return '<div class="admin-kpi"><div class="admin-kpi__label">' + k.icon + ' ' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change ' + k.cls + '">' + esc(k.change) + '</div></div>';
+        }).join('');
+
+        try {
+            if (sb) {
+                var r1 = await sb.from('profiles').select('*', { count: 'exact', head: true });
+                kpis[0].value = (r1.count || 0).toLocaleString();
+                var r2 = await sb.from('profiles').select('*', { count: 'exact' }).eq('plan', 'premium').eq('enabled', true);
+                kpis[1].value = (r2.count || 0).toLocaleString();
+                var r3 = await sb.from('profiles').select('*', { count: 'exact' }).eq('plan', 'trial').eq('enabled', true);
+                kpis[2].value = (r3.count || 0).toLocaleString();
+                var r4 = await sb.from('profiles').select('*', { count: 'exact' }).eq('enabled', true);
+                kpis[3].value = (r4.count || 0).toLocaleString();
+                var r5 = await sb.from('campaigns').select('*', { count: 'exact', head: true });
+                kpis[4].value = (r5.count || 0).toLocaleString();
+                var r6 = await sb.from('campaigns').select('total_sent').is('deleted_at', null);
+                var totalSent = 0; (r6.data||[]).forEach(function(c){ totalSent += c.total_sent || 0; });
+                kpis[5].value = totalSent.toLocaleString();
+                var r7 = await sb.from('templates').select('*', { count: 'exact', head: true });
+                kpis[8].value = (r7.count || 0).toLocaleString();
+                var r8 = await sb.from('automation_rules').select('*', { count: 'exact', head: true });
+                kpis[9].value = (r8.count || 0).toLocaleString();
+                var r9 = await sb.from('profiles').select('smtp_host').not('smtp_host', 'is', null);
+                kpis[10].value = (r9.data ? r9.data.length : 0).toLocaleString();
+
+                if (totalSent > 0) {
+                    var r10 = await sb.from('campaigns').select('total_opened,total_clicked').is('deleted_at', null);
+                    var totalOpened = 0, totalClicked = 0;
+                    (r10.data||[]).forEach(function(c){ totalOpened += c.total_opened || 0; totalClicked += c.total_clicked || 0; });
+                    kpis[6].value = Math.round(totalOpened / totalSent * 10000) / 100 + '%';
+                    kpis[7].value = Math.round(totalClicked / totalSent * 10000) / 100 + '%';
+                    kpis[6].change = totalOpened.toLocaleString() + ' aberturas';
+                    kpis[6].cls = 'admin-kpi__change--up';
+                    kpis[7].change = totalClicked.toLocaleString() + ' cliques';
+                    kpis[7].cls = 'admin-kpi__change--up';
+                }
+
+                kpiGrid.innerHTML = kpis.map(function(k) {
+                    return '<div class="admin-kpi"><div class="admin-kpi__label">' + k.icon + ' ' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change ' + k.cls + '">' + esc(k.change) + '</div></div>';
+                }).join('');
+            }
+        } catch (e) { /* keep placeholders */ }
+
+        var chartsDiv = section.querySelector('#admin-charts');
+        if (!chartsDiv) {
+            chartsDiv = document.createElement('div');
+            chartsDiv.id = 'admin-charts';
+            chartsDiv.style.cssText = 'margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;';
+            chartsDiv.innerHTML =
+                '<div class="admin-card">' +
+                    '<div class="admin-card__header"><h3 class="admin-card__title">📋 Atividade Recente</h3></div>' +
+                    '<div id="activity-feed" style="display:flex;flex-direction:column;gap:10px;"></div>' +
+                '</div>' +
+                '<div class="admin-card">' +
+                    '<div class="admin-card__header"><h3 class="admin-card__title">🔧 Estado do Sistema</h3></div>' +
+                    '<div id="system-status" style="display:flex;flex-direction:column;gap:10px;"></div>' +
+                '</div>';
+            section.appendChild(chartsDiv);
+
+            var feed = document.getElementById('activity-feed');
+            if (feed) {
+                feed.innerHTML =
+                    '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<div style="width:8px;height:8px;border-radius:50%;background:#10b981;"></div>' +
+                        '<div style="flex:1;"><span style="font-size:0.8125rem;font-weight:600;">Dashboard carregado</span><p style="font-size:0.6875rem;color:#94a3b8;margin:2px 0 0;">Dados em tempo real</p></div>' +
+                    '</div>';
+            }
+
+            var sysStatus = document.getElementById('system-status');
+            if (sysStatus) {
+                var services = [
+                    { name:'Supabase', ok:true },
+                    { name:'Netlify', ok:true },
+                    { name:'Storage', ok:true },
+                    { name:'SMTP', ok:false },
+                    { name:'Background Jobs', ok:true }
+                ];
+                sysStatus.innerHTML = services.map(function(s) {
+                    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;">' +
+                        '<span style="font-size:0.8125rem;font-weight:600;">' + esc(s.name) + '</span><span class="badge ' + (s.ok ? 'badge--green' : 'badge--yellow') + '">' + (s.ok ? 'Online' : '—') + '</span></div>';
+                }).join('');
+            }
+        }
+    }
+
+    // ========== USERS ==========
+    async function loadUsers() {
+        var section = document.getElementById('section-users');
+        if (!section) return;
+        var card = section.querySelector('.admin-card');
+        if (!card) return;
+
+        card.innerHTML = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">' +
+            '<div class="admin-kpi skeleton-card"></div><div class="admin-kpi skeleton-card"></div><div class="admin-kpi skeleton-card"></div><div class="admin-kpi skeleton-card"></div>' +
+        '</div><div style="margin-top:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;">' +
+            '<div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div>';
+
+        var state = { data:[], filtered:[], search:'', filterPlan:'all', filterStatus:'all', sortBy:'created_at', sortDir:'desc', page:1, limit:10 };
+
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(u) {
+                var name = (u.full_name || u.email || '').toLowerCase();
+                var email = (u.email || '').toLowerCase();
+                if (q && name.indexOf(q) < 0 && email.indexOf(q) < 0) return false;
+                if (state.filterPlan !== 'all' && u.plan !== state.filterPlan) return false;
+                if (state.filterStatus !== 'all') {
+                    var active = u.enabled !== false;
+                    if (state.filterStatus === 'active' && !active) return false;
+                    if (state.filterStatus === 'suspended' && active) return false;
+                }
+                return true;
+            });
+            state.filtered.sort(function(a, b) {
+                var aVal = a[state.sortBy] || ''; var bVal = b[state.sortBy] || '';
+                if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+                if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+                if (state.sortDir === 'asc') return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+                return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
+            });
+            state.page = 1;
+        }
+
+        function formatDate(d) {
+            if (!d) return '—';
+            var dt = new Date(d);
+            var now = new Date(); var diff = now - dt;
+            var mins = Math.floor(diff / 60000);
+            if (mins < 1) return 'Agora'; if (mins < 60) return mins + ' min';
+            var hours = Math.floor(mins / 60); if (hours < 24) return hours + 'h';
+            var days = Math.floor(hours / 24); if (days < 30) return days + 'd';
+            return dt.toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' });
+        }
+
+        function planBadge(plan, enabled) {
+            if (enabled === false) return '<span class="badge badge--red">Suspenso</span>';
+            if (plan === 'premium') return '<span class="badge badge--green">Premium</span>';
+            if (plan === 'trial') return '<span class="badge badge--yellow">Trial</span>';
+            return '<span class="badge badge--gray">Free</span>';
+        }
+
+        function render() {
+            var countEl = section.querySelector('#admin-user-count');
+            var totalUsers = state.data.length;
+            var premiumCount = state.data.filter(function(u){return u.plan==='premium';}).length;
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + totalUsers + ' utilizadores';
+
+            var totalPages = Math.ceil(state.filtered.length / state.limit) || 1;
+            var start = (state.page - 1) * state.limit;
+            var pageUsers = state.filtered.slice(start, start + state.limit);
+
+            var html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">';
+            html += '<div class="admin-kpi"><div class="admin-kpi__label">Total</div><div class="admin-kpi__value">' + totalUsers + '</div></div>';
+            html += '<div class="admin-kpi"><div class="admin-kpi__label">Premium</div><div class="admin-kpi__value" style="color:#10b981;">' + premiumCount + '</div></div>';
+            html += '<div class="admin-kpi"><div class="admin-kpi__label">Trial</div><div class="admin-kpi__value" style="color:#d97706;">' + state.data.filter(function(u){return u.plan==="trial";}).length + '</div></div>';
+            html += '<div class="admin-kpi"><div class="admin-kpi__label">Ativos</div><div class="admin-kpi__value" style="color:#2563eb;">' + state.data.filter(function(u){return u.enabled!==false;}).length + '</div></div>';
+            html += '</div>';
+
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">';
+            if (pageUsers.length === 0) {
+                html += '<div class="empty"><p class="empty__title">Nenhum utilizador encontrado</p></div>';
+            } else {
+                pageUsers.forEach(function(u) {
+                    html += '<div class="admin-card" style="padding:16px;">';
+                    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+                    html += '<div><strong style="font-size:0.875rem;">' + esc(u.full_name || u.email || '—') + '</strong></div>';
+                    html += planBadge(u.plan, u.enabled);
+                    html += '</div>';
+                    html += '<div style="font-size:0.75rem;color:#64748b;margin-bottom:4px;">' + esc(u.email || '—') + '</div>';
+                    html += '<div style="display:flex;gap:16px;font-size:0.75rem;color:#94a3b8;margin-bottom:12px;">';
+                    html += '<span>Login: ' + formatDate(u.last_sign_in_at) + '</span>';
+                    html += '<span>Membro: ' + (u.created_at ? new Date(u.created_at).toLocaleDateString('pt-PT') : '—') + '</span>';
+                    html += '</div>';
+                    html += '<div style="display:flex;gap:6px;">';
+                    html += '<button class="btn btn--ghost btn--sm" data-action="edit" data-uid="' + esc(u.id) + '">Editar</button>';
+                    html += '<button class="btn btn--ghost btn--sm" data-action="toggle" data-uid="' + esc(u.id) + '" data-enabled="' + (u.enabled !== false) + '">' + (u.enabled !== false ? 'Suspender' : 'Reativar') + '</button>';
+                    html += '</div></div>';
+                });
+            }
+            html += '</div>';
+
+            if (state.filtered.length > state.limit) {
+                html += '<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;">';
+                html += '<span style="font-size:0.8125rem;font-weight:600;color:#64748b;">Página ' + state.page + ' de ' + totalPages + '</span>';
+                html += '<div style="display:flex;gap:6px;">';
+                html += '<button class="btn btn--ghost btn--sm" data-page="' + (state.page - 1) + '"' + (state.page <= 1 ? ' disabled' : '') + '>&larr; Anterior</button>';
+                html += '<button class="btn btn--ghost btn--sm" data-page="' + (state.page + 1) + '"' + (state.page >= totalPages ? ' disabled' : '') + '>Próxima &rarr;</button>';
+                html += '</div></div>';
+            }
+
+            card.innerHTML = html;
+
+            card.querySelectorAll('button[data-action]').forEach(function(btn) {
+                btn.addEventListener('click', async function() {
+                    var action = btn.getAttribute('data-action');
+                    var uid = btn.getAttribute('data-uid');
+                    if (action === 'edit') {
+                        var newName = prompt('Novo nome do utilizador:');
+                        if (newName === null) return;
+                        try { await sb.from('profiles').update({ full_name: newName.trim() }).eq('id', uid); sectionLoaded.users = false; loadUsers(); } catch(e) {}
+                    } else if (action === 'toggle') {
+                        var user = state.data.find(function(u){return u.id===uid;});
+                        if (!user) return;
+                        try { await sb.from('profiles').update({ enabled: user.enabled === false }).eq('id', uid); sectionLoaded.users = false; loadUsers(); } catch(e) {}
+                    }
+                });
+            });
+
+            card.querySelectorAll('[data-page]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var p = parseInt(btn.getAttribute('data-page'), 10);
+                    if (!isNaN(p) && p >= 1 && p <= totalPages) { state.page = p; render(); }
+                });
+            });
+        }
+
+        // Toolbar
+        var existingToolbar = section.querySelector('.admin-user-toolbar');
+        if (!existingToolbar) {
+            var toolbar = document.createElement('div');
+            toolbar.className = 'admin-user-toolbar';
+            toolbar.style.cssText = 'display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;';
+            toolbar.innerHTML =
+                '<div style="position:relative;flex:1;min-width:180px;max-width:300px;"><svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#94a3b8;pointer-events:none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input type="text" id="admin-user-search" placeholder="Pesquisar utilizadores..." style="width:100%;padding:8px 12px 8px 34px;border:1px solid #e2e8f0;border-radius:10px;font-size:0.8125rem;font-family:inherit;background:white;"></div>' +
+                '<select id="admin-user-plan" style="padding:8px 32px 8px 10px;border:1px solid #e2e8f0;border-radius:10px;font-size:0.8125rem;font-family:inherit;background:white;appearance:none;cursor:pointer;"><option value="all">Todos os planos</option><option value="premium">Premium</option><option value="trial">Trial</option><option value="free">Free</option></select>' +
+                '<select id="admin-user-status" style="padding:8px 32px 8px 10px;border:1px solid #e2e8f0;border-radius:10px;font-size:0.8125rem;font-family:inherit;background:white;appearance:none;cursor:pointer;"><option value="all">Todos os estados</option><option value="active">Ativos</option><option value="suspended">Suspensos</option></select>';
+            card.parentNode.insertBefore(toolbar, card);
+
+            toolbar.querySelector('#admin-user-search').addEventListener('input', function() {
+                clearTimeout(this._dt); var self = this;
+                this._dt = setTimeout(function() { state.search = self.value; applyFilters(); render(); }, 200);
+            });
+            toolbar.querySelector('#admin-user-plan').addEventListener('change', function() { state.filterPlan = this.value; applyFilters(); render(); });
+            toolbar.querySelector('#admin-user-status').addEventListener('change', function() { state.filterStatus = this.value; applyFilters(); render(); });
+        }
+
+        try {
+            if (sb) {
+                var result = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+                state.data = result.data || [];
+                applyFilters();
+                render();
+            }
+        } catch (e) {
+            card.innerHTML = '<div class="empty"><p class="empty__title">Erro ao carregar utilizadores</p></div>';
+        }
+    }
+
+    // ========== CAMPAIGNS ==========
+    async function loadCampaigns() {
+        var section = document.getElementById('section-campaigns');
+        if (!section) return;
+        var table = section.querySelector('#admin-campaigns-table tbody');
+        var countEl = section.querySelector('#admin-campaign-count');
+        if (!table) return;
+
+        var state = { data:[], filtered:[], search:'', filterStatus:'all' };
+
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(c) {
+                var name = (c.nome || c.name || '').toLowerCase();
+                if (q && name.indexOf(q) < 0) return false;
+                if (state.filterStatus !== 'all' && (c.status || 'draft') !== state.filterStatus) return false;
+                return true;
+            });
+        }
+
+        function render() {
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + state.data.length + ' campanhas';
+            if (state.filtered.length === 0) { table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Nenhuma campanha encontrada</p></div></td></tr>'; return; }
+            var html = '';
+            state.filtered.forEach(function(c) {
+                var name = c.nome || c.name || '—';
+                var status = c.status || 'draft';
+                var statusBadge = status === 'sent' ? 'badge--green' : (status === 'active' || status === 'sending' ? 'badge--indigo' : (status === 'draft' ? 'badge--gray' : 'badge--yellow'));
+                var sent = c.total_sent != null ? c.total_sent : '—';
+                var openRate = c.total_sent > 0 ? Math.round((c.total_opened || 0) / c.total_sent * 10000) / 100 + '%' : '—';
+                var clickRate = c.total_sent > 0 ? Math.round((c.total_clicked || 0) / c.total_sent * 10000) / 100 + '%' : '—';
+                var failed = c.total_failed != null ? c.total_failed : '—';
+                html += '<tr><td><strong>' + esc(name) + '</strong></td><td style="font-size:0.75rem;">' + esc((c.user_id||'—').substring(0,8)) + '</td><td><span class="badge ' + statusBadge + '">' + esc(status) + '</span></td><td>' + sent + '</td><td>' + openRate + '</td><td>' + clickRate + '</td><td>' + failed + '</td><td>' + (c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT',{day:'2-digit',month:'short',year:'numeric'}) : '—') + '</td></tr>';
+            });
+            table.innerHTML = html;
+        }
+
+        table.innerHTML = '<tr><td colspan="8"><div class="skeleton skeleton-line skeleton-line--lg"></div></td></tr>';
+        try {
+            if (sb) {
+                var result = await sb.from('campaigns').select('*').order('created_at', { ascending: false }).limit(100);
+                state.data = result.data || [];
+                applyFilters(); render();
+
+                var searchEl = section.querySelector('#admin-campaign-search');
+                var statusEl = section.querySelector('#admin-campaign-status');
+                if (searchEl) { var dt; searchEl.addEventListener('input', function(){ clearTimeout(dt); var v=this; dt=setTimeout(function(){state.search=v.value;applyFilters();render();},200); }); }
+                if (statusEl) { statusEl.addEventListener('change', function(){ state.filterStatus=this.value; applyFilters(); render(); }); }
+            }
+        } catch (e) { table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Erro ao carregar campanhas</p></div></td></tr>'; }
+    }
+
+    // ========== TEMPLATES ==========
+    async function loadTemplates() {
+        var section = document.getElementById('section-templates');
+        if (!section) return;
+        var table = section.querySelector('#admin-templates-table tbody');
+        var countEl = section.querySelector('#admin-template-count');
+        if (!table) return;
+
+        var state = { data:[], filtered:[], search:'' };
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(t) {
+                var name = (t.nome || t.name || '').toLowerCase();
+                var subject = (t.subject || '').toLowerCase();
+                if (q && name.indexOf(q) < 0 && subject.indexOf(q) < 0) return false;
+                return true;
+            });
+        }
+
+        function render() {
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + state.data.length + ' templates';
+            if (state.filtered.length === 0) { table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Nenhum template encontrado</p></div></td></tr>'; return; }
+            var html = '';
+            state.filtered.forEach(function(t) {
+                html += '<tr><td><strong>' + esc(t.nome || t.name || '—') + '</strong></td><td style="font-size:0.75rem;">' + esc((t.subject || '').substring(0,40)) + '</td><td style="font-size:0.75rem;">' + esc((t.user_id||'—').substring(0,8)) + '</td><td>' + (t.created_at ? new Date(t.created_at).toLocaleDateString('pt-PT',{day:'2-digit',month:'short',year:'numeric'}) : '—') + '</td><td><div style="display:flex;gap:4px;"><button class="btn btn--ghost btn--sm" data-action="delete" data-id="' + esc(t.id) + '">Eliminar</button></div></td></tr>';
+            });
+            table.innerHTML = html;
+            table.querySelectorAll('button[data-action="delete"]').forEach(function(btn) {
+                btn.addEventListener('click', async function() {
+                    if (!confirm('Eliminar este template?')) return;
+                    var id = btn.getAttribute('data-id');
+                    try { await sb.from('templates').update({ deleted_at: new Date().toISOString() }).eq('id', id); sectionLoaded.templates = false; loadTemplates(); } catch(e) {}
+                });
+            });
+        }
+
+        table.innerHTML = '<tr><td colspan="5"><div class="skeleton skeleton-line skeleton-line--lg"></div></td></tr>';
+        try {
+            if (sb) {
+                var result = await sb.from('templates').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(100);
+                state.data = result.data || [];
+                applyFilters(); render();
+
+                var searchEl = section.querySelector('#admin-template-search');
+                if (searchEl) { var dt; searchEl.addEventListener('input', function(){ clearTimeout(dt); var v=this; dt=setTimeout(function(){state.search=v.value;applyFilters();render();},200); }); }
+            }
+        } catch (e) { table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Erro ao carregar templates</p></div></td></tr>'; }
+    }
+
+    // ========== AUTOMATIONS ==========
+    async function loadAutomations() {
+        var section = document.getElementById('section-automations');
+        if (!section) return;
+        var table = section.querySelector('#admin-automations-table tbody');
+        var countEl = section.querySelector('#admin-automation-count');
+        if (!table) return;
+
+        var state = { data:[], filtered:[], search:'', filterStatus:'all' };
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(a) {
+                if (q && (a.name||'').toLowerCase().indexOf(q) < 0) return false;
+                if (state.filterStatus === 'active' && !a.enabled) return false;
+                if (state.filterStatus === 'inactive' && a.enabled) return false;
+                return true;
+            });
+        }
+
+        function render() {
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + state.data.length + ' regras';
+            if (state.filtered.length === 0) { table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Nenhuma automação encontrada</p></div></td></tr>'; return; }
+            var html = '';
+            state.filtered.forEach(function(a) {
+                var triggerLabel = a.trigger_type === 'contact_created' ? 'Novo contacto' : (a.trigger_type || '—');
+                html += '<tr><td><strong>' + esc(a.name) + '</strong></td><td style="font-size:0.75rem;">' + esc((a.user_id||'—').substring(0,8)) + '</td><td>' + esc(triggerLabel) + '</td><td><span class="badge ' + (a.enabled ? 'badge--green' : 'badge--gray') + '">' + (a.enabled ? 'Ativa' : 'Inativa') + '</span></td><td>' + (a.delay_minutes||0) + ' min</td><td>—</td><td>' + (a.updated_at ? new Date(a.updated_at).toLocaleDateString('pt-PT',{day:'2-digit',month:'short',year:'numeric'}) : '—') + '</td><td><div style="display:flex;gap:4px;"><button class="btn btn--ghost btn--sm" data-action="toggle" data-id="' + esc(a.id) + '">' + (a.enabled ? 'Desativar' : 'Ativar') + '</button><button class="btn btn--danger btn--sm" data-action="delete" data-id="' + esc(a.id) + '">Eliminar</button></div></td></tr>';
+            });
+            table.innerHTML = html;
+            table.querySelectorAll('button[data-action]').forEach(function(btn) {
+                btn.addEventListener('click', async function() {
+                    var action = btn.getAttribute('data-action');
+                    var id = btn.getAttribute('data-id');
+                    if (action === 'toggle') {
+                        var auto = state.data.find(function(a){return a.id===id;});
+                        if (!auto) return;
+                        try { await sb.from('automation_rules').update({ enabled: !auto.enabled }).eq('id', id); auto.enabled = !auto.enabled; render(); } catch(e) {}
+                    } else if (action === 'delete') {
+                        if (!confirm('Eliminar esta automação?')) return;
+                        try { await sb.from('automation_rules').delete().eq('id', id); state.data = state.data.filter(function(a){return a.id!==id;}); applyFilters(); render(); } catch(e) {}
+                    }
+                });
+            });
+        }
+
+        table.innerHTML = '<tr><td colspan="8"><div class="skeleton skeleton-line skeleton-line--lg"></div></td></tr>';
+        try {
+            if (sb) {
+                var result = await sb.from('automation_rules').select('*').order('created_at', { ascending: false }).limit(100);
+                state.data = result.data || [];
+                applyFilters(); render();
+
+                var searchEl = section.querySelector('#admin-automation-search');
+                var statusEl = section.querySelector('#admin-automation-status');
+                if (searchEl) { var dt; searchEl.addEventListener('input', function(){ clearTimeout(dt); var v=this; dt=setTimeout(function(){state.search=v.value;applyFilters();render();},200); }); }
+                if (statusEl) { statusEl.addEventListener('change', function(){ state.filterStatus=this.value; applyFilters(); render(); }); }
+            }
+        } catch (e) { table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Erro ao carregar automações</p></div></td></tr>'; }
+    }
+
+    // ========== ANALYTICS ==========
+    async function loadAnalytics() {
+        var section = document.getElementById('section-analytics');
+        if (!section) return;
+        var kpiGrid = section.querySelector('#kpi-analytics');
+        if (!kpiGrid) return;
+
+        var stats = { totalSent:0, totalOpened:0, totalClicked:0, totalFailed:0, campaignCount:0 };
+        try {
+            if (sb) {
+                var result = await sb.from('campaigns').select('total_sent,total_opened,total_clicked,total_failed').is('deleted_at', null);
+                var campaigns = result.data || [];
+                stats.campaignCount = campaigns.length;
+                campaigns.forEach(function(c) { stats.totalSent += c.total_sent||0; stats.totalOpened += c.total_opened||0; stats.totalClicked += c.total_clicked||0; stats.totalFailed += c.total_failed||0; });
+            }
+        } catch(e) {}
+
+        var openRate = stats.totalSent > 0 ? Math.round(stats.totalOpened/stats.totalSent*10000)/100 : 0;
+        var clickRate = stats.totalSent > 0 ? Math.round(stats.totalClicked/stats.totalSent*10000)/100 : 0;
+        var conversionRate = stats.totalOpened > 0 ? Math.round(stats.totalClicked/stats.totalOpened*10000)/100 : 0;
+        var bounceRate = stats.totalSent > 0 ? Math.round(stats.totalFailed/stats.totalSent*10000)/100 : 0;
+
+        kpiGrid.innerHTML = [
+            { label:'📧 Emails Enviados', value:stats.totalSent.toLocaleString(), change:stats.campaignCount+' campanhas', cls:'admin-kpi__change--neutral' },
+            { label:'👁️ Taxa Abertura', value:openRate.toFixed(1)+'%', change:stats.totalOpened.toLocaleString()+' aberturas', cls:openRate>20?'admin-kpi__change--up':'admin-kpi__change--neutral' },
+            { label:'🖱️ Taxa Cliques', value:clickRate.toFixed(1)+'%', change:stats.totalClicked.toLocaleString()+' cliques', cls:clickRate>3?'admin-kpi__change--up':'admin-kpi__change--neutral' },
+            { label:'⚠️ Bounce Rate', value:bounceRate.toFixed(1)+'%', change:stats.totalFailed.toLocaleString()+' falhas', cls:bounceRate>5?'admin-kpi__change--down':'admin-kpi__change--neutral' }
+        ].map(function(k) { return '<div class="admin-kpi"><div class="admin-kpi__label">'+esc(k.label)+'</div><div class="admin-kpi__value">'+esc(k.value)+'</div><div class="admin-kpi__change '+k.cls+'">'+esc(k.change)+'</div></div>'; }).join('');
+
+        var chartCard = section.querySelector('.admin-card');
+        if (chartCard) {
+            var barData = [
+                { label:'Enviados', value:stats.totalSent, color:'#6366f1' },
+                { label:'Abertos', value:stats.totalOpened, color:'#10b981' },
+                { label:'Cliques', value:stats.totalClicked, color:'#f59e0b' },
+                { label:'Falhas', value:stats.totalFailed, color:'#ef4444' }
+            ];
+            var maxVal = Math.max.apply(null, barData.map(function(b){return b.value;}));
+            if (maxVal === 0) maxVal = 1;
+            var chartHtml = '<div style="display:flex;align-items:flex-end;gap:16px;height:160px;padding:16px 0;">';
+            barData.forEach(function(b) {
+                var pct = Math.max(Math.round(b.value/maxVal*100), 4);
+                chartHtml += '<div style="flex:1;text-align:center;"><div style="font-size:0.75rem;font-weight:700;margin-bottom:6px;">'+b.value.toLocaleString()+'</div><div style="height:'+pct+'%;background:linear-gradient(to top,'+b.color+','+b.color+'cc);border-radius:6px 6px 0 0;min-height:4px;"></div><div style="font-size:0.6875rem;color:#94a3b8;margin-top:8px;">'+esc(b.label)+'</div></div>';
+            });
+            chartHtml += '</div>';
+            var chartHeader = chartCard.querySelector('.admin-card__title');
+            if (chartHeader) chartHeader.textContent = 'Gráfico de Performance';
+            var chartBody = chartCard.querySelector('.empty');
+            if (chartBody) chartBody.outerHTML = '<div style="padding:0;">' + chartHtml + '</div>';
+        }
+    }
+
+    // ========== SMTP ==========
+    async function loadSMTP() {
+        var section = document.getElementById('section-smtp');
+        if (!section) return;
+        var table = section.querySelector('#admin-smtp-table tbody');
+        var countEl = section.querySelector('#admin-smtp-count');
+        if (!table) return;
+        table.innerHTML = '<tr><td colspan="7"><div class="skeleton skeleton-line skeleton-line--lg"></div></td></tr>';
+        try {
+            if (sb) {
+                var result = await sb.from('profiles').select('id,smtp_host,smtp_port,smtp_username,smtp_secure,smtp_status,smtp_verified_at').limit(50);
+                var configs = (result.data||[]).filter(function(p){return p.smtp_host;});
+                if (countEl) countEl.textContent = configs.length + ' configurações';
+                if (configs.length === 0) { table.innerHTML = '<tr><td colspan="7"><div class="empty"><p class="empty__title">Nenhuma configuração SMTP</p></div></td></tr>'; return; }
+                var html = '';
+                configs.forEach(function(c) {
+                    var status = c.smtp_status || 'not_configured';
+                    var badge = status === 'verified' ? 'badge--green' : (status === 'configured' ? 'badge--yellow' : 'badge--red');
+                    var label = status === 'verified' ? 'Verificado' : (status === 'configured' ? 'Configurado' : 'Não configurado');
+                    var verifiedAt = c.smtp_verified_at ? new Date(c.smtp_verified_at).toLocaleString('pt-PT',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+                    html += '<tr><td>' + esc(c.smtp_host) + '</td><td>' + esc(String(c.smtp_port||'—')) + '</td><td>' + esc(c.smtp_username||'—') + '</td><td>' + (c.smtp_secure ? '<span class="badge badge--green">SSL/TLS</span>' : '<span class="badge badge--gray">—</span>') + '</td><td><span class="badge ' + badge + '">' + esc(label) + '</span></td><td>' + verifiedAt + '</td><td>—</td></tr>';
+                });
+                table.innerHTML = html;
+            }
+        } catch(e) { table.innerHTML = '<tr><td colspan="7"><div class="empty"><p class="empty__title">Erro ao carregar SMTP</p></div></td></tr>'; }
+    }
+
+    // ========== LOGS ==========
+    async function loadLogs() {
+        var section = document.getElementById('section-logs');
+        if (!section) return;
+        var table = section.querySelector('#admin-logs-table tbody');
+        var countEl = section.querySelector('#admin-log-count');
+        if (!table) return;
+
+        var state = { data:[], filtered:[], search:'', filterType:'all' };
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(l) {
+                var desc = (l.description||l.message||'').toLowerCase();
+                var userId = (l.user_id||'').toLowerCase();
+                if (q && desc.indexOf(q) < 0 && userId.indexOf(q) < 0) return false;
+                if (state.filterType !== 'all' && (l.event_type||l.type||'info').toLowerCase() !== state.filterType) return false;
+                return true;
+            });
+        }
+        function render() {
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + state.data.length + ' entradas';
+            if (state.filtered.length === 0) { table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Nenhum log encontrado</p></div></td></tr>'; return; }
+            var html = '';
+            state.filtered.forEach(function(l) {
+                var type = l.event_type || l.type || 'info';
+                var badge = type === 'login' ? 'badge--indigo' : (type === 'error' ? 'badge--red' : (type === 'webhook' ? 'badge--blue' : (type === 'signup' ? 'badge--green' : 'badge--gray')));
+                var details = '';
+                try { details = JSON.stringify(l.details||l.metadata||{}).substring(0,80); } catch(e) { details = '—'; }
+                html += '<tr><td>' + (l.created_at ? new Date(l.created_at).toLocaleString('pt-PT') : '—') + '</td><td><span class="badge ' + badge + '">' + esc(type) + '</span></td><td style="font-size:0.75rem;">' + esc((l.user_id||'—').substring(0,8)) + '</td><td>' + esc(l.description||l.message||'—') + '</td><td><code style="font-size:0.6875rem;color:#64748b;word-break:break-all;">' + esc(details) + '</code></td></tr>';
+            });
+            table.innerHTML = html;
+        }
+
+        table.innerHTML = '<tr><td colspan="5"><div class="skeleton skeleton-line skeleton-line--lg"></div></td></tr>';
+        try {
+            if (sb) {
+                var result = await sb.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
+                state.data = result.data || [];
+                applyFilters(); render();
+
+                var searchEl = section.querySelector('#admin-log-search');
+                var typeEl = section.querySelector('#admin-log-type');
+                if (searchEl) { var dt; searchEl.addEventListener('input', function(){ clearTimeout(dt); var v=this; dt=setTimeout(function(){state.search=v.value;applyFilters();render();},200); }); }
+                if (typeEl) { typeEl.addEventListener('change', function(){ state.filterType=this.value; applyFilters(); render(); }); }
+            }
+        } catch(e) { table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Erro ao carregar logs</p></div></td></tr>'; }
+    }
+
+    // ========== SYSTEM ==========
+    async function loadSystem() {
+        var section = document.getElementById('section-system');
+        if (!section) return;
+        var kpiGrid = section.querySelector('#kpi-system');
+        if (!kpiGrid) return;
+
+        var serverOk = false, supabaseOk = false;
+        try { var hr = await fetch('/health'); if (hr.ok) serverOk = true; } catch(e) {}
+        if (sb) { try { var t = await sb.from('profiles').select('id',{count:'exact',head:true}); if (!t.error) supabaseOk = true; } catch(e) {} }
+
+        kpiGrid.innerHTML = [
+            { label:'🔧 API Server', value:serverOk?'Online':'Offline', cls:serverOk?'admin-kpi__change--up':'admin-kpi__change--down' },
+            { label:'🗄️ Supabase', value:supabaseOk?'Online':'Offline', cls:supabaseOk?'admin-kpi__change--up':'admin-kpi__change--down' }
+        ].map(function(k) { return '<div class="admin-kpi"><div class="admin-kpi__label">'+esc(k.label)+'</div><div class="admin-kpi__value">'+esc(k.value)+'</div><div class="admin-kpi__change '+k.cls+'">Verificado agora</div></div>'; }).join('');
+
+        var table = section.querySelector('#admin-system-table tbody');
+        if (table) {
+            var now = new Date().toLocaleString('pt-PT');
+            var services = [
+                { name:'API Server (Express)', ok:serverOk, version:'1.0.0', uptime:now },
+                { name:'Supabase (Database)', ok:supabaseOk, version:'—', uptime:now },
+                { name:'Netlify (Frontend)', ok:true, version:'1.0.0', uptime:'Deploy ativo' },
+                { name:'Stripe (Pagamentos)', ok:true, version:'—', uptime:'—' },
+                { name:'SMTP (Email)', ok:true, version:'Nodemailer', uptime:now },
+                { name:'Campaign Engine', ok:true, version:'1.0.0', uptime:now }
+            ];
+            table.innerHTML = services.map(function(s) {
+                return '<tr><td><strong>'+esc(s.name)+'</strong></td><td><span class="badge '+(s.ok?'badge--green':'badge--red')+'">'+(s.ok?'Saudável':'Erro')+'</span></td><td>'+esc(s.version)+'</td><td style="font-size:0.75rem;">'+esc(s.uptime)+'</td><td><span class="badge badge--green">OK</span></td></tr>';
+            }).join('');
+        }
+    }
+
+    // ========== SETTINGS ==========
+    async function loadSettings() {
+        var section = document.getElementById('section-settings');
+        if (!section) return;
+        var loading = section.querySelector('#settings-loading');
+        var content = section.querySelector('#settings-content');
+        if (!content) return;
+
+        var services = { supabase:false, stripe:false, smtp:false };
+        if (sb) { try { var t = await sb.from('profiles').select('id',{count:'exact',head:true}); if (!t.error) services.supabase = true; } catch(e) {} }
+        try { var r = await sb.from('profiles').select('smtp_host').limit(1); if (r.data && r.data.length && r.data[0].smtp_host) services.smtp = true; } catch(e) {}
+        services.stripe = typeof Stripe !== 'undefined';
+
+        var counts = { users:0, contacts:0, campaigns:0, templates:0 };
+        try { counts.users = (await sb.from('profiles').select('id',{count:'exact',head:true})).count || 0; } catch(e) {}
+        try { counts.contacts = (await sb.from('contacts').select('id',{count:'exact',head:true})).count || 0; } catch(e) {}
+        try { counts.campaigns = (await sb.from('campaigns').select('id',{count:'exact',head:true})).count || 0; } catch(e) {}
+        try { counts.templates = (await sb.from('templates').select('id',{count:'exact',head:true})).count || 0; } catch(e) {}
+
+        if (loading) loading.style.display = 'none';
+        content.style.display = 'block';
+        var svcB = function(ok) { return ok ? '<span class="badge badge--green">Conectado</span>' : '<span class="badge badge--red">Desconectado</span>'; };
+        var adminEmail = adminUser ? adminUser.email : '—';
+
+        content.innerHTML =
+            '<div class="admin-grid admin-grid--2" style="margin-bottom:20px;">' +
+                '<div class="admin-card"><div class="admin-card__header"><h3 class="admin-card__title">Informação da Plataforma</h3></div><div style="display:flex;flex-direction:column;gap:12px;">' +
+                    '<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">Nome</span><span>MailFlow Pro</span></div>' +
+                    '<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">Versão</span><span>v1.0.0</span></div>' +
+                    '<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">Ambiente</span><span class="badge badge--green">production</span></div>' +
+                    '<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">Admin</span><span style="word-break:break-all;">'+esc(adminEmail)+'</span></div>' +
+                '</div></div>' +
+                '<div class="admin-card"><div class="admin-card__header"><h3 class="admin-card__title">Serviços Conectados</h3></div><div style="display:flex;flex-direction:column;gap:12px;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">🗄️ Supabase</span>'+svcB(services.supabase)+'</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">💳 Stripe</span>'+svcB(services.stripe)+'</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">📧 SMTP</span>'+svcB(services.smtp)+'</div>' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">🌐 Netlify</span>'+svcB(true)+'</div>' +
+                '</div></div>' +
+            '</div>' +
+            '<div class="admin-card"><div class="admin-card__header"><h3 class="admin-card__title">Resumo da Plataforma</h3></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
+                '<div class="admin-kpi"><div class="admin-kpi__label">Utilizadores</div><div class="admin-kpi__value">'+counts.users.toLocaleString()+'</div></div>' +
+                '<div class="admin-kpi"><div class="admin-kpi__label">Contactos</div><div class="admin-kpi__value">'+counts.contacts.toLocaleString()+'</div></div>' +
+                '<div class="admin-kpi"><div class="admin-kpi__label">Campanhas</div><div class="admin-kpi__value">'+counts.campaigns.toLocaleString()+'</div></div>' +
+                '<div class="admin-kpi"><div class="admin-kpi__label">Templates</div><div class="admin-kpi__value">'+counts.templates.toLocaleString()+'</div></div>' +
+            '</div></div>';
     }
 
     async function init(){

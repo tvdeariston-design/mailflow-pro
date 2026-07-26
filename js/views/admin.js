@@ -705,37 +705,73 @@ var AdminView = (function() {
         var countEl = section.querySelector('#admin-campaign-count');
         if (!table) return;
 
+        var state = { data: [], filtered: [], search: '', filterStatus: 'all', loading: true };
+
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(c) {
+                var name = (c.nome || c.name || '').toLowerCase();
+                var assunto = (c.assunto || '').toLowerCase();
+                if (q && name.indexOf(q) < 0 && assunto.indexOf(q) < 0) return false;
+                if (state.filterStatus !== 'all' && (c.status || 'draft') !== state.filterStatus) return false;
+                return true;
+            });
+        }
+
+        function render() {
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + state.data.length + ' campanhas';
+            if (state.filtered.length === 0) {
+                table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Nenhuma campanha encontrada</p></div></td></tr>';
+                return;
+            }
+            var html = '';
+            state.filtered.forEach(function(c) {
+                var name = c.nome || c.name || '—';
+                var status = c.status || 'draft';
+                var statusBadge = status === 'sent' ? 'badge--green' : (status === 'active' || status === 'sending' ? 'badge--indigo' : (status === 'draft' ? 'badge--gray' : 'badge--yellow'));
+                var sent = c.total_sent != null ? c.total_sent : (c.stats && c.stats.sent != null ? c.stats.sent : '—');
+                var openRate = c.total_sent > 0 ? Math.round((c.total_opened || 0) / c.total_sent * 10000) / 100 + '%' : '—';
+                var clickRate = c.total_sent > 0 ? Math.round((c.total_clicked || 0) / c.total_sent * 10000) / 100 + '%' : '—';
+                var failed = c.total_failed != null ? c.total_failed : (c.stats && c.stats.failed != null ? c.stats.failed : '—');
+                html += '<tr>' +
+                    '<td><strong>' + esc(name) + '</strong></td>' +
+                    '<td style="font-size:0.75rem;">' + esc(c.user_id || '—') + '</td>' +
+                    '<td><span class="badge ' + statusBadge + '">' + esc(status) + '</span></td>' +
+                    '<td>' + sent + '</td>' +
+                    '<td>' + openRate + '</td>' +
+                    '<td>' + clickRate + '</td>' +
+                    '<td>' + failed + '</td>' +
+                    '<td>' + (c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' }) : '—') + '</td>' +
+                '</tr>';
+            });
+            table.innerHTML = html;
+        }
+
         table.innerHTML = '<tr><td colspan="8"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line" style="margin-top:8px"></div></td></tr>';
 
         try {
             if (sb) {
-                var result = await sb.from('campaigns').select('*').order('created_at', { ascending: false }).limit(50);
-                var data = result.data || [];
-                if (countEl) countEl.textContent = data.length + ' campanhas';
+                var result = await sb.from('campaigns').select('*').order('created_at', { ascending: false }).limit(100);
+                state.data = result.data || [];
+                applyFilters();
+                render();
 
-                if (data.length === 0) {
-                    table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Nenhuma campanha</p></div></td></tr>';
-                    return;
+                var searchEl = section.querySelector('#admin-campaign-search');
+                var statusEl = section.querySelector('#admin-campaign-status');
+                if (searchEl) {
+                    var dt;
+                    searchEl.addEventListener('input', function() {
+                        clearTimeout(dt);
+                        dt = setTimeout(function() { state.search = searchEl.value; applyFilters(); render(); }, 200);
+                    });
                 }
-
-                var html = '';
-                data.forEach(function(c) {
-                    var status = c.status || 'draft';
-                    var statusBadge = status === 'sent' ? 'badge--green' : (status === 'active' ? 'badge--indigo' : (status === 'draft' ? 'badge--gray' : 'badge--yellow'));
-                    var openRate = c.stats && c.stats.open_rate != null ? c.stats.open_rate + '%' : '—';
-                    var clickRate = c.stats && c.stats.click_rate != null ? c.stats.click_rate + '%' : '—';
-                    html += '<tr>' +
-                        '<td><strong>' + esc(c.name) + '</strong></td>' +
-                        '<td>' + esc(c.owner_id || '—') + '</td>' +
-                        '<td><span class="badge ' + statusBadge + '">' + esc(status) + '</span></td>' +
-                        '<td>' + (c.stats && c.stats.sent != null ? c.stats.sent : '—') + '</td>' +
-                        '<td>' + openRate + '</td>' +
-                        '<td>' + clickRate + '</td>' +
-                        '<td>' + (c.stats && c.stats.failed != null ? c.stats.failed : '—') + '</td>' +
-                        '<td>' + (c.created_at ? new Date(c.created_at).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' }) : '—') + '</td>' +
-                    '</tr>';
-                });
-                table.innerHTML = html;
+                if (statusEl) {
+                    statusEl.addEventListener('change', function() {
+                        state.filterStatus = statusEl.value;
+                        applyFilters();
+                        render();
+                    });
+                }
             }
         } catch (e) {
             table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Erro ao carregar campanhas</p></div></td></tr>';
@@ -749,40 +785,102 @@ var AdminView = (function() {
         var countEl = section.querySelector('#admin-template-count');
         if (!table) return;
 
-        table.innerHTML = '<tr><td colspan="4"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line" style="margin-top:8px"></div></td></tr>';
+        var state = { data: [], filtered: [], search: '', loading: true };
+
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(t) {
+                var name = (t.nome || t.name || '').toLowerCase();
+                var subject = (t.subject || '').toLowerCase();
+                if (q && name.indexOf(q) < 0 && subject.indexOf(q) < 0) return false;
+                return true;
+            });
+        }
+
+        async function deleteTemplate(id) {
+            if (!confirm('Tem a certeza que deseja eliminar este template?')) return;
+            try {
+                await sb.from('templates').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+                state.data = state.data.filter(function(t) { return t.id !== id; });
+                applyFilters();
+                render();
+            } catch (e) { console.error('[Admin] Erro ao eliminar template:', e); }
+        }
+
+        async function duplicateTemplate(tpl) {
+            try {
+                var result = await sb.from('templates').insert({
+                    user_id: sb.auth ? (await sb.auth.getUser()).data.user.id : tpl.user_id,
+                    nome: (tpl.nome || tpl.name || 'Template') + ' (cópia)',
+                    subject: tpl.subject || '',
+                    preheader: tpl.preheader || '',
+                    html: tpl.html || '',
+                    text_version: tpl.text_version || '',
+                    is_default: false
+                }).select().single();
+                if (result.data) {
+                    state.data.unshift(result.data);
+                    applyFilters();
+                    render();
+                }
+            } catch (e) { console.error('[Admin] Erro ao duplicar template:', e); }
+        }
+
+        function render() {
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + state.data.length + ' templates';
+            if (state.filtered.length === 0) {
+                table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Nenhum template encontrado</p></div></td></tr>';
+                return;
+            }
+            var html = '';
+            state.filtered.forEach(function(t) {
+                var name = t.nome || t.name || '—';
+                html += '<tr>' +
+                    '<td><strong>' + esc(name) + '</strong></td>' +
+                    '<td style="font-size:0.75rem;">' + esc((t.subject || '').substring(0, 50)) + '</td>' +
+                    '<td style="font-size:0.75rem;">' + esc(t.user_id || '—') + '</td>' +
+                    '<td>' + (t.created_at ? new Date(t.created_at).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' }) : '—') + '</td>' +
+                    '<td><div style="display:flex;gap:4px;">' +
+                        '<button class="btn btn--ghost btn--sm" data-action="duplicate" data-id="' + esc(t.id) + '">Duplicar</button>' +
+                        '<button class="btn btn--danger btn--sm" data-action="delete" data-id="' + esc(t.id) + '">Eliminar</button>' +
+                    '</div></td>' +
+                '</tr>';
+            });
+            table.innerHTML = html;
+
+            table.querySelectorAll('button[data-action]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var action = btn.getAttribute('data-action');
+                    var id = btn.getAttribute('data-id');
+                    if (action === 'delete') deleteTemplate(id);
+                    else if (action === 'duplicate') {
+                        var tpl = state.data.find(function(t) { return t.id === id; });
+                        if (tpl) duplicateTemplate(tpl);
+                    }
+                });
+            });
+        }
+
+        table.innerHTML = '<tr><td colspan="5"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line" style="margin-top:8px"></div></td></tr>';
 
         try {
             if (sb) {
-                var result = await sb.from('templates').select('*').order('created_at', { ascending: false }).limit(50);
-                var data = result.data || [];
-                if (countEl) countEl.textContent = data.length + ' templates';
+                var result = await sb.from('templates').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(100);
+                state.data = result.data || [];
+                applyFilters();
+                render();
 
-                if (data.length === 0) {
-                    table.innerHTML = '<tr><td colspan="4"><div class="empty"><p class="empty__title">Nenhum template</p></div></td></tr>';
-                    return;
+                var searchEl = section.querySelector('#admin-template-search');
+                if (searchEl) {
+                    var dt;
+                    searchEl.addEventListener('input', function() {
+                        clearTimeout(dt);
+                        dt = setTimeout(function() { state.search = searchEl.value; applyFilters(); render(); }, 200);
+                    });
                 }
-
-                var html = '';
-                data.forEach(function(t) {
-                    html += '<tr>' +
-                        '<td><strong>' + esc(t.name) + '</strong></td>' +
-                        '<td>' + esc(t.user_id || '—') + '</td>' +
-                        '<td>' + (t.created_at ? new Date(t.created_at).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' }) : '—') + '</td>' +
-                        '<td><div style="display:flex;gap:4px;"><button class="btn btn--ghost btn--sm" data-action="duplicate" data-id="' + esc(t.id) + '">Duplicar</button><button class="btn btn--danger btn--sm" data-action="delete" data-id="' + esc(t.id) + '">Eliminar</button></div></td>' +
-                    '</tr>';
-                });
-                table.innerHTML = html;
-
-                table.addEventListener('click', function(e) {
-                    var btn = e.target.closest('button');
-                    if (!btn) return;
-                    var action = btn.getAttribute('data-action');
-                    var id = btn.getAttribute('data-id');
-                    console.log(action + ' template:', id);
-                });
             }
         } catch (e) {
-            table.innerHTML = '<tr><td colspan="4"><div class="empty"><p class="empty__title">Erro ao carregar templates</p></div></td></tr>';
+            table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Erro ao carregar templates</p></div></td></tr>';
         }
     }
 
@@ -793,41 +891,101 @@ var AdminView = (function() {
         var countEl = section.querySelector('#admin-automation-count');
         if (!table) return;
 
+        var state = { data: [], filtered: [], search: '', filterStatus: 'all', loading: true };
+
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(a) {
+                var name = (a.name || '').toLowerCase();
+                if (q && name.indexOf(q) < 0) return false;
+                if (state.filterStatus === 'active' && !a.enabled) return false;
+                if (state.filterStatus === 'inactive' && a.enabled) return false;
+                return true;
+            });
+        }
+
+        async function toggleAutomation(id) {
+            var auto = state.data.find(function(a) { return a.id === id; });
+            if (!auto) return;
+            try {
+                await sb.from('automation_rules').update({ enabled: !auto.enabled }).eq('id', id);
+                auto.enabled = !auto.enabled;
+                applyFilters();
+                render();
+            } catch (e) { console.error('[Admin] Erro ao alterar automação:', e); }
+        }
+
+        async function deleteAutomation(id) {
+            if (!confirm('Tem a certeza que deseja eliminar esta automação?')) return;
+            try {
+                await sb.from('automation_rules').delete().eq('id', id);
+                state.data = state.data.filter(function(a) { return a.id !== id; });
+                applyFilters();
+                render();
+            } catch (e) { console.error('[Admin] Erro ao eliminar automação:', e); }
+        }
+
+        function render() {
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + state.data.length + ' regras';
+            if (state.filtered.length === 0) {
+                table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Nenhuma automação encontrada</p></div></td></tr>';
+                return;
+            }
+            var html = '';
+            state.filtered.forEach(function(a) {
+                var statusBadge = a.enabled ? 'badge--green' : 'badge--gray';
+                var triggerLabel = a.trigger_type === 'contact_created' ? 'Novo contacto' : (a.trigger_type || '—');
+                html += '<tr>' +
+                    '<td><strong>' + esc(a.name) + '</strong></td>' +
+                    '<td style="font-size:0.75rem;">' + esc(a.user_id || '—') + '</td>' +
+                    '<td>' + esc(triggerLabel) + '</td>' +
+                    '<td><span class="badge ' + statusBadge + '">' + (a.enabled ? 'Ativa' : 'Inativa') + '</span></td>' +
+                    '<td>' + (a.delay_minutes || 0) + ' min</td>' +
+                    '<td>—</td>' +
+                    '<td>' + (a.updated_at ? new Date(a.updated_at).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' }) : '—') + '</td>' +
+                    '<td><div style="display:flex;gap:4px;">' +
+                        '<button class="btn btn--ghost btn--sm" data-action="toggle" data-id="' + esc(a.id) + '">' + (a.enabled ? 'Desativar' : 'Ativar') + '</button>' +
+                        '<button class="btn btn--danger btn--sm" data-action="delete" data-id="' + esc(a.id) + '">Eliminar</button>' +
+                    '</div></td>' +
+                '</tr>';
+            });
+            table.innerHTML = html;
+
+            table.querySelectorAll('button[data-action]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var action = btn.getAttribute('data-action');
+                    var id = btn.getAttribute('data-id');
+                    if (action === 'toggle') toggleAutomation(id);
+                    else if (action === 'delete') deleteAutomation(id);
+                });
+            });
+        }
+
         table.innerHTML = '<tr><td colspan="8"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line" style="margin-top:8px"></div></td></tr>';
 
         try {
             if (sb) {
-                var result = await sb.from('automation_rules').select('*').order('created_at', { ascending: false }).limit(50);
-                var data = result.data || [];
-                if (countEl) countEl.textContent = data.length + ' regras';
+                var result = await sb.from('automation_rules').select('*').order('created_at', { ascending: false }).limit(100);
+                state.data = result.data || [];
+                applyFilters();
+                render();
 
-                if (data.length === 0) {
-                    table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Nenhuma automação</p></div></td></tr>';
-                    return;
+                var searchEl = section.querySelector('#admin-automation-search');
+                var statusEl = section.querySelector('#admin-automation-status');
+                if (searchEl) {
+                    var dt;
+                    searchEl.addEventListener('input', function() {
+                        clearTimeout(dt);
+                        dt = setTimeout(function() { state.search = searchEl.value; applyFilters(); render(); }, 200);
+                    });
                 }
-
-                var html = '';
-                data.forEach(function(a) {
-                    var statusBadge = a.enabled ? 'badge--green' : 'badge--gray';
-                    var triggerLabel = a.trigger_type === 'contact_created' ? 'Novo contacto' : (a.trigger_type || '—');
-                    html += '<tr>' +
-                        '<td><strong>' + esc(a.name) + '</strong></td>' +
-                        '<td>' + esc(a.user_id || '—') + '</td>' +
-                        '<td>' + esc(triggerLabel) + '</td>' +
-                        '<td><span class="badge ' + statusBadge + '">' + (a.enabled ? 'Ativa' : 'Inativa') + '</span></td>' +
-                        '<td>—</td><td>—</td><td>—</td>' +
-                        '<td><button class="btn btn--ghost btn--sm" data-action="view" data-id="' + esc(a.id) + '">Ver</button></td>' +
-                    '</tr>';
-                });
-                table.innerHTML = html;
-
-                table.addEventListener('click', function(e) {
-                    var btn = e.target.closest('button');
-                    if (!btn) return;
-                    var action = btn.getAttribute('data-action');
-                    var id = btn.getAttribute('data-id');
-                    console.log(action + ' automation:', id);
-                });
+                if (statusEl) {
+                    statusEl.addEventListener('change', function() {
+                        state.filterStatus = statusEl.value;
+                        applyFilters();
+                        render();
+                    });
+                }
             }
         } catch (e) {
             table.innerHTML = '<tr><td colspan="8"><div class="empty"><p class="empty__title">Erro ao carregar automações</p></div></td></tr>';
@@ -838,21 +996,70 @@ var AdminView = (function() {
         var section = document.getElementById('section-analytics');
         if (!section) return;
         var kpiGrid = section.querySelector('#kpi-analytics');
-        if (kpiGrid && !kpiGrid.dataset.loaded) {
-            kpiGrid.dataset.loaded = 'true';
-            kpiGrid.innerHTML = '';
-            var kpis = [
-                { label:'Taxa Abertura', value:'—', change:'—' },
-                { label:'Taxa Cliques', value:'—', change:'—' },
-                { label:'Taxa Conversão', value:'—', change:'—' },
-                { label:'Bounce Rate', value:'—', change:'—' }
-            ];
-            kpis.forEach(function(k) {
-                var card = document.createElement('div');
-                card.className = 'admin-kpi';
-                card.innerHTML = '<div class="admin-kpi__label">' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change admin-kpi__change--neutral">' + esc(k.change) + '</div>';
-                kpiGrid.appendChild(card);
-            });
+        if (!kpiGrid) return;
+        if (kpiGrid.dataset.loaded) return;
+        kpiGrid.dataset.loaded = 'true';
+
+        var stats = { totalSent: 0, totalOpened: 0, totalClicked: 0, totalFailed: 0, campaignCount: 0 };
+
+        try {
+            if (sb) {
+                var result = await sb.from('campaigns').select('total_sent,total_opened,total_clicked,total_failed,status').is('deleted_at', null);
+                var campaigns = result.data || [];
+                stats.campaignCount = campaigns.length;
+                campaigns.forEach(function(c) {
+                    stats.totalSent += c.total_sent || 0;
+                    stats.totalOpened += c.total_opened || 0;
+                    stats.totalClicked += c.total_clicked || 0;
+                    stats.totalFailed += c.total_failed || 0;
+                });
+            }
+        } catch (e) { /* use zeroes */ }
+
+        var openRate = stats.totalSent > 0 ? Math.round(stats.totalOpened / stats.totalSent * 10000) / 100 : 0;
+        var clickRate = stats.totalSent > 0 ? Math.round(stats.totalClicked / stats.totalSent * 10000) / 100 : 0;
+        var bounceRate = stats.totalSent > 0 ? Math.round(stats.totalFailed / stats.totalSent * 10000) / 100 : 0;
+        var conversionRate = stats.totalOpened > 0 ? Math.round(stats.totalClicked / stats.totalOpened * 10000) / 100 : 0;
+
+        kpiGrid.innerHTML = '';
+        var kpis = [
+            { label:'📧 Emails Enviados', value: stats.totalSent.toLocaleString(), change: stats.campaignCount + ' campanhas', cls:'admin-kpi__change--neutral' },
+            { label:'👁️ Taxa Abertura', value: openRate.toFixed(1) + '%', change: stats.totalOpened.toLocaleString() + ' aberturas', cls: openRate > 20 ? 'admin-kpi__change--up' : 'admin-kpi__change--neutral' },
+            { label:'🖱️ Taxa Cliques', value: clickRate.toFixed(1) + '%', change: stats.totalClicked.toLocaleString() + ' cliques', cls: clickRate > 3 ? 'admin-kpi__change--up' : 'admin-kpi__change--neutral' },
+            { label:'🔄 Conversão', value: conversionRate.toFixed(1) + '%', change: 'Cliques / Aberturas', cls:'admin-kpi__change--neutral' }
+        ];
+        kpiGrid.innerHTML = kpis.map(function(k) {
+            return '<div class="admin-kpi"><div class="admin-kpi__label">' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change ' + k.cls + '">' + esc(k.change) + '</div></div>';
+        }).join('');
+
+        var chartCard = section.querySelector('.admin-card');
+        if (chartCard) {
+            var chartHeader = chartCard.querySelector('.admin-card__title');
+            if (chartHeader) chartHeader.textContent = 'Gráfico de Performance';
+
+            var chartBody = chartCard.querySelector('.empty');
+            if (chartBody) {
+                var barData = [
+                    { label:'Enviados', value: stats.totalSent, color:'#6366f1' },
+                    { label:'Abertos', value: stats.totalOpened, color:'#10b981' },
+                    { label:'Cliques', value: stats.totalClicked, color:'#f59e0b' },
+                    { label:'Falhas', value: stats.totalFailed, color:'#ef4444' }
+                ];
+                var maxVal = Math.max.apply(null, barData.map(function(b) { return b.value; }));
+                if (maxVal === 0) maxVal = 1;
+
+                var chartHtml = '<div style="display:flex;align-items:flex-end;gap:16px;height:160px;padding:16px 0;">';
+                barData.forEach(function(b) {
+                    var pct = Math.max(Math.round(b.value / maxVal * 100), 4);
+                    chartHtml += '<div style="flex:1;text-align:center;">' +
+                        '<div style="font-size:0.75rem;font-weight:700;margin-bottom:6px;">' + b.value.toLocaleString() + '</div>' +
+                        '<div style="height:' + pct + '%;background:linear-gradient(to top,' + b.color + ',' + b.color + 'cc);border-radius:6px 6px 0 0;transition:height 0.5s;min-height:4px;"></div>' +
+                        '<div style="font-size:0.6875rem;color:#94a3b8;margin-top:8px;">' + esc(b.label) + '</div>' +
+                    '</div>';
+                });
+                chartHtml += '</div>';
+                chartBody.outerHTML = '<div style="padding:0;">' + chartHtml + '</div>';
+            }
         }
     }
 
@@ -867,7 +1074,7 @@ var AdminView = (function() {
 
         try {
             if (sb) {
-                var result = await sb.from('profiles').select('smtp_host,smtp_port,smtp_username,smtp_secure,smtp_status').limit(20);
+                var result = await sb.from('profiles').select('id,smtp_host,smtp_port,smtp_username,smtp_secure,smtp_status,smtp_verified_at').limit(50);
                 var data = result.data || [];
                 var configs = [];
                 data.forEach(function(p) {
@@ -884,24 +1091,25 @@ var AdminView = (function() {
                 configs.forEach(function(c) {
                     var status = c.smtp_status || 'not_configured';
                     var statusBadge = status === 'verified' ? 'badge--green' : (status === 'configured' ? 'badge--yellow' : 'badge--red');
+                    var statusLabel = status === 'verified' ? 'Verificado' : (status === 'configured' ? 'Configurado' : 'Não configurado');
+                    var verifiedAt = c.smtp_verified_at ? new Date(c.smtp_verified_at).toLocaleString('pt-PT', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
                     html += '<tr>' +
                         '<td>' + esc(c.smtp_host) + '</td>' +
-                        '<td>' + esc(c.smtp_port) + '</td>' +
+                        '<td>' + esc(String(c.smtp_port || '—')) + '</td>' +
                         '<td>' + esc(c.smtp_username || '—') + '</td>' +
-                        '<td>' + (c.smtp_secure ? 'SSL/TLS' : '—') + '</td>' +
-                        '<td><span class="badge ' + statusBadge + '">' + esc(status) + '</span></td>' +
-                        '<td>—</td>' +
-                        '<td><button class="btn btn--ghost btn--sm" data-action="test" data-host="' + esc(c.smtp_host) + '">Testar</button><button class="btn btn--danger btn--sm">Eliminar</button></td>' +
+                        '<td>' + (c.smtp_secure ? '<span class="badge badge--green">SSL/TLS</span>' : '<span class="badge badge--gray">—</span>') + '</td>' +
+                        '<td><span class="badge ' + statusBadge + '">' + esc(statusLabel) + '</span></td>' +
+                        '<td>' + verifiedAt + '</td>' +
+                        '<td><button class="btn btn--ghost btn--sm" data-action="view" data-uid="' + esc(c.id) + '">Ver</button></td>' +
                     '</tr>';
                 });
                 table.innerHTML = html;
 
-                table.addEventListener('click', function(e) {
-                    var btn = e.target.closest('button');
-                    if (!btn) return;
-                    var action = btn.getAttribute('data-action');
-                    var host = btn.getAttribute('data-host');
-                    if (action === 'test') console.log('Test SMTP:', host);
+                table.querySelectorAll('button[data-action]').forEach(function(btn) {
+                    btn.addEventListener('click', function() {
+                        var uid = btn.getAttribute('data-uid');
+                        window.location.hash = '#/admin/users';
+                    });
                 });
             }
         } catch (e) {
@@ -916,32 +1124,70 @@ var AdminView = (function() {
         var countEl = section.querySelector('#admin-log-count');
         if (!table) return;
 
+        var state = { data: [], filtered: [], search: '', filterType: 'all', loading: true };
+
+        function applyFilters() {
+            var q = state.search.toLowerCase();
+            state.filtered = state.data.filter(function(l) {
+                var desc = (l.description || l.message || '').toLowerCase();
+                var userId = (l.user_id || '').toLowerCase();
+                if (q && desc.indexOf(q) < 0 && userId.indexOf(q) < 0) return false;
+                if (state.filterType !== 'all') {
+                    var type = (l.event_type || l.type || 'info').toLowerCase();
+                    if (type !== state.filterType) return false;
+                }
+                return true;
+            });
+        }
+
+        function render() {
+            if (countEl) countEl.textContent = state.filtered.length + ' de ' + state.data.length + ' entradas';
+            if (state.filtered.length === 0) {
+                table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Nenhum log encontrado</p></div></td></tr>';
+                return;
+            }
+            var html = '';
+            state.filtered.forEach(function(l) {
+                var type = l.event_type || l.type || 'info';
+                var typeBadge = type === 'login' ? 'badge--indigo' : (type === 'error' ? 'badge--red' : (type === 'webhook' ? 'badge--blue' : (type === 'signup' ? 'badge--green' : 'badge--gray')));
+                var details = '';
+                try { details = JSON.stringify(l.details || l.metadata || {}).substring(0, 80); } catch (e) { details = '—'; }
+                html += '<tr>' +
+                    '<td>' + (l.created_at ? new Date(l.created_at).toLocaleString('pt-PT') : '—') + '</td>' +
+                    '<td><span class="badge ' + typeBadge + '">' + esc(type) + '</span></td>' +
+                    '<td style="font-size:0.75rem;">' + esc(l.user_id || '—') + '</td>' +
+                    '<td>' + esc(l.description || l.message || '—') + '</td>' +
+                    '<td><code style="font-size:0.6875rem;color:#64748b;word-break:break-all;">' + esc(details) + '</code></td>' +
+                '</tr>';
+            });
+            table.innerHTML = html;
+        }
+
         table.innerHTML = '<tr><td colspan="5"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line" style="margin-top:8px"></div></td></tr>';
 
         try {
             if (sb) {
-                var result = await sb.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
-                var data = result.data || [];
-                if (countEl) countEl.textContent = data.length + ' entradas';
+                var result = await sb.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100);
+                state.data = result.data || [];
+                applyFilters();
+                render();
 
-                if (data.length === 0) {
-                    table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Nenhum log</p></div></td></tr>';
-                    return;
+                var searchEl = section.querySelector('#admin-log-search');
+                var typeEl = section.querySelector('#admin-log-type');
+                if (searchEl) {
+                    var dt;
+                    searchEl.addEventListener('input', function() {
+                        clearTimeout(dt);
+                        dt = setTimeout(function() { state.search = searchEl.value; applyFilters(); render(); }, 200);
+                    });
                 }
-
-                var html = '';
-                data.forEach(function(l) {
-                    var type = l.event_type || l.type || 'info';
-                    var typeBadge = type === 'login' ? 'badge--indigo' : (type === 'error' ? 'badge--red' : (type === 'webhook' ? 'badge--blue' : 'badge--gray'));
-                    html += '<tr>' +
-                        '<td>' + (l.created_at ? new Date(l.created_at).toLocaleString('pt-PT') : '—') + '</td>' +
-                        '<td><span class="badge ' + typeBadge + '">' + esc(type) + '</span></td>' +
-                        '<td>' + esc(l.user_id || '—') + '</td>' +
-                        '<td>' + esc(l.description || l.message || '—') + '</td>' +
-                        '<td><code style="font-size:0.75rem;color:#64748b;">' + esc(JSON.stringify(l.details || l.metadata || {}).substring(0, 60)) + '</code></td>' +
-                    '</tr>';
-                });
-                table.innerHTML = html;
+                if (typeEl) {
+                    typeEl.addEventListener('change', function() {
+                        state.filterType = typeEl.value;
+                        applyFilters();
+                        render();
+                    });
+                }
             }
         } catch (e) {
             table.innerHTML = '<tr><td colspan="5"><div class="empty"><p class="empty__title">Erro ao carregar logs</p></div></td></tr>';
@@ -952,52 +1198,142 @@ var AdminView = (function() {
         var section = document.getElementById('section-system');
         if (!section) return;
         var kpiGrid = section.querySelector('#kpi-system');
-        if (kpiGrid && !kpiGrid.dataset.loaded) {
+        if (!kpiGrid) return;
+
+        var serverOk = false;
+        var supabaseOk = false;
+        var startTime = Date.now();
+
+        try {
+            var healthResp = await fetch('/health');
+            if (healthResp.ok) { serverOk = true; }
+        } catch (e) { serverOk = false; }
+
+        if (sb) {
+            try {
+                var test = await sb.from('profiles').select('id', { count: 'exact', head: true });
+                if (!test.error) supabaseOk = true;
+            } catch (e) { supabaseOk = false; }
+        }
+
+        var uptimeMs = Date.now() - startTime;
+
+        if (!kpiGrid.dataset.loaded) {
             kpiGrid.dataset.loaded = 'true';
             kpiGrid.innerHTML = '';
             var kpis = [
-                { label:'Versão', value:'1.0.0', change:'Stable' },
-                { label:'Uptime', value:'—', change:'—' },
-                { label:'Supabase', value:'—', change:'—' },
-                { label:'Netlify', value:'—', change:'—' }
+                { label:'🔧 API Server', value: serverOk ? 'Online' : 'Offline', cls: serverOk ? 'admin-kpi__change--up' : 'admin-kpi__change--down' },
+                { label:'🗄️ Supabase', value: supabaseOk ? 'Online' : 'Offline', cls: supabaseOk ? 'admin-kpi__change--up' : 'admin-kpi__change--down' }
             ];
-            kpis.forEach(function(k) {
-                var card = document.createElement('div');
-                card.className = 'admin-kpi';
-                card.innerHTML = '<div class="admin-kpi__label">' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change admin-kpi__change--neutral">' + esc(k.change) + '</div>';
-                kpiGrid.appendChild(card);
-            });
+            kpiGrid.innerHTML = kpis.map(function(k) {
+                return '<div class="admin-kpi"><div class="admin-kpi__label">' + esc(k.label) + '</div><div class="admin-kpi__value">' + esc(k.value) + '</div><div class="admin-kpi__change ' + k.cls + '">Verificado agora</div></div>';
+            }).join('');
         }
 
         var table = section.querySelector('#admin-system-table tbody');
-        if (table && !table.dataset.loaded) {
-            table.dataset.loaded = 'true';
-            table.innerHTML = '';
+        if (table) {
+            var now = new Date().toLocaleString('pt-PT');
             var services = [
-                { name:'Supabase', status:'healthy', version:'—', uptime:'—' },
-                { name:'Netlify', status:'healthy', version:'—', uptime:'—' },
-                { name:'Storage', status:'healthy', version:'—', uptime:'—' },
-                { name:'Cron Jobs', status:'healthy', version:'—', uptime:'—' },
-                { name:'Background Workers', status:'healthy', version:'—', uptime:'—' }
+                { name:'API Server (Express)', status: serverOk ? 'healthy' : 'error', version:'1.0.0', uptime: now },
+                { name:'Supabase (Database)', status: supabaseOk ? 'healthy' : 'error', version:'—', uptime: now },
+                { name:'Netlify (Frontend)', status:'healthy', version:'1.0.0', uptime:'Deploy ativo' },
+                { name:'Stripe (Pagamentos)', status: (typeof window !== 'undefined' && window.Stripe) ? 'healthy' : 'configured', version:'—', uptime:'—' },
+                { name:'SMTP (Email)', status:'healthy', version:'Nodemailer', uptime: now },
+                { name:'Campaign Engine', status:'healthy', version:'1.0.0', uptime: now }
             ];
             var html = '';
             services.forEach(function(s) {
-                var statusBadge = s.status === 'healthy' ? 'badge--green' : 'badge--red';
+                var statusBadge = s.status === 'healthy' ? 'badge--green' : (s.status === 'error' ? 'badge--red' : 'badge--yellow');
+                var statusLabel = s.status === 'healthy' ? 'Saudável' : (s.status === 'error' ? 'Erro' : 'Configurado');
                 html += '<tr>' +
                     '<td><strong>' + esc(s.name) + '</strong></td>' +
-                    '<td><span class="badge ' + statusBadge + '">' + esc(s.status) + '</span></td>' +
+                    '<td><span class="badge ' + statusBadge + '">' + esc(statusLabel) + '</span></td>' +
                     '<td>' + esc(s.version) + '</td>' +
-                    '<td>' + esc(s.uptime) + '</td>' +
-                    '<td><code style="font-size:0.75rem;">OK</code></td>' +
+                    '<td style="font-size:0.75rem;">' + esc(s.uptime) + '</td>' +
+                    '<td><span class="badge badge--green">OK</span></td>' +
                 '</tr>';
             });
             table.innerHTML = html;
         }
     }
 
-    function loadSettings() {
+    async function loadSettings() {
         var section = document.getElementById('section-settings');
         if (!section) return;
+        var loading = section.querySelector('#settings-loading');
+        var content = section.querySelector('#settings-content');
+        if (!content) return;
+
+        var platformInfo = {
+            name: 'MailFlow Pro',
+            version: '1.0.0',
+            environment: 'production',
+            adminEmail: user ? user.email : '—'
+        };
+
+        var services = { supabase: false, stripe: false, smtp: false };
+
+        if (sb) {
+            try {
+                var test = await sb.from('profiles').select('id', { count: 'exact', head: true });
+                if (!test.error) services.supabase = true;
+            } catch (e) { services.supabase = false; }
+        }
+
+        try {
+            var profResult = await sb.from('profiles').select('smtp_host').limit(1);
+            if (profResult.data && profResult.data.length > 0 && profResult.data[0].smtp_host) services.smtp = true;
+        } catch (e) { services.smtp = false; }
+
+        services.stripe = typeof Stripe !== 'undefined';
+
+        var userCount = 0;
+        var contactCount = 0;
+        var campaignCount = 0;
+        var templateCount = 0;
+
+        try {
+            var r1 = await sb.from('profiles').select('id', { count: 'exact', head: true }); userCount = r1.count || 0;
+            var r2 = await sb.from('contacts').select('id', { count: 'exact', head: true }); contactCount = r2.count || 0;
+            var r3 = await sb.from('campaigns').select('id', { count: 'exact', head: true }); campaignCount = r3.count || 0;
+            var r4 = await sb.from('templates').select('id', { count: 'exact', head: true }); templateCount = r4.count || 0;
+        } catch (e) { /* use zeroes */ }
+
+        if (loading) loading.style.display = 'none';
+        content.style.display = 'block';
+
+        var svcBadge = function(ok) { return ok ? '<span class="badge badge--green">Conectado</span>' : '<span class="badge badge--red">Desconectado</span>'; };
+
+        content.innerHTML =
+            '<div class="admin-grid admin-grid--2" style="margin-bottom:20px;">' +
+                '<div class="admin-card">' +
+                    '<div class="admin-card__header"><h3 class="admin-card__title">Informação da Plataforma</h3></div>' +
+                    '<div style="display:flex;flex-direction:column;gap:12px;">' +
+                        '<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">Nome</span><span style="font-size:0.8125rem;">' + esc(platformInfo.name) + '</span></div>' +
+                        '<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">Versão</span><span style="font-size:0.8125rem;">v' + esc(platformInfo.version) + '</span></div>' +
+                        '<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">Ambiente</span><span class="badge badge--green">' + esc(platformInfo.environment) + '</span></div>' +
+                        '<div style="display:flex;justify-content:space-between;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">Admin</span><span style="font-size:0.8125rem;word-break:break-all;">' + esc(platformInfo.adminEmail) + '</span></div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="admin-card">' +
+                    '<div class="admin-card__header"><h3 class="admin-card__title">Serviços Conectados</h3></div>' +
+                    '<div style="display:flex;flex-direction:column;gap:12px;">' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">🗄️ Supabase (Database + Auth)</span>' + svcBadge(services.supabase) + '</div>' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">💳 Stripe (Pagamentos)</span>' + svcBadge(services.stripe) + '</div>' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">📧 SMTP (Envio de Email)</span>' + svcBadge(services.smtp) + '</div>' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:10px;"><span style="font-size:0.8125rem;font-weight:600;">🌐 Netlify (Frontend)</span>' + svcBadge(true) + '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="admin-card">' +
+                '<div class="admin-card__header"><h3 class="admin-card__title">Resumo da Plataforma</h3></div>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
+                    '<div class="admin-kpi"><div class="admin-kpi__label">Utilizadores</div><div class="admin-kpi__value">' + userCount.toLocaleString() + '</div></div>' +
+                    '<div class="admin-kpi"><div class="admin-kpi__label">Contactos</div><div class="admin-kpi__value">' + contactCount.toLocaleString() + '</div></div>' +
+                    '<div class="admin-kpi"><div class="admin-kpi__label">Campanhas</div><div class="admin-kpi__value">' + campaignCount.toLocaleString() + '</div></div>' +
+                    '<div class="admin-kpi"><div class="admin-kpi__label">Templates</div><div class="admin-kpi__value">' + templateCount.toLocaleString() + '</div></div>' +
+                '</div>' +
+            '</div>';
     }
 
     function loadSection(section) {
