@@ -3124,7 +3124,8 @@ a:hover {
     background: linear-gradient(160deg, #0a0614 0%, #12092e 25%, #1a1045 55%, #0f0b20 100%);
     padding: var(--space-6);
     position: relative;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     font-family: var(--font-family);
 }
 
@@ -3370,6 +3371,29 @@ a:hover {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
+}
+
+/* Responsividade auth — Mobile (≤768px) */
+@media (max-width: 768px) {
+    .auth-page {
+        align-items: flex-start;
+    }
+
+    .auth-hero__benefits {
+        display: none;
+    }
+
+    .auth-hero__trust {
+        display: none;
+    }
+
+    .auth-hero__illustration {
+        display: none;
+    }
+
+    .auth-hero__float-card {
+        display: none;
+    }
 }
 
 /* Responsividade auth */
