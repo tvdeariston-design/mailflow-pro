@@ -75,6 +75,53 @@
         });
     }
 
+    function getInitials(name) {
+        if (!name) return 'U';
+        return name
+            .split(' ')
+            .filter(Boolean)
+            .map(function(part) { return part.charAt(0); })
+            .join('')
+            .substring(0, 2)
+            .toUpperCase();
+    }
+
+    async function updateUserSidebar() {
+        if (!user) return;
+
+        var profile = null;
+        var sb = window.supabaseClient;
+        if (sb && user.id) {
+            try {
+                var result = await sb.from('profiles').select('nome').eq('id', user.id).single();
+                profile = result.data;
+            } catch (err) {
+                console.warn('[Dashboard] Erro ao carregar perfil:', err);
+            }
+        }
+
+        var email = user.email || '—';
+        var nome = (profile && profile.nome) ? profile.nome : (user.user_metadata?.nome || email.split('@')[0]);
+        var nameEl = document.getElementById('user-name');
+        var emailEl = document.getElementById('user-email');
+        var avatarEl = document.getElementById('user-avatar');
+
+        if (nameEl) {
+            nameEl.textContent = nome || 'Utilizador';
+            nameEl.style.display = 'block';
+        }
+        if (emailEl) {
+            emailEl.textContent = email;
+            emailEl.style.display = 'block';
+        }
+        if (avatarEl) {
+            avatarEl.textContent = getInitials(nome || email);
+            avatarEl.style.display = 'flex';
+            avatarEl.style.alignItems = 'center';
+            avatarEl.style.justifyContent = 'center';
+        }
+    }
+
     // ========================================
     // Render
     // ========================================
@@ -186,6 +233,9 @@
         }
 
         user = session.user;
+
+        // Atualizar identidade do utilizador no shell global
+        await updateUserSidebar();
 
         // Bind events
         bindEvents();

@@ -467,22 +467,6 @@ var OverviewView = (function() {
         user = await MailFlowAuth.getUser();
         if (!user) return;
 
-        var profile = null;
-        if (sb) {
-            var result = await sb.from('profiles').select('*').eq('id', user.id).single();
-            profile = result.data;
-        }
-
-        var nome = (profile && profile.nome) ? profile.nome : user.email.split('@')[0];
-        var email = user.email;
-
-        var nameEl = document.getElementById('user-name');
-        var emailEl = document.getElementById('user-email');
-        var avatarEl = document.getElementById('user-avatar');
-        if (nameEl) nameEl.textContent = nome;
-        if (emailEl) emailEl.textContent = email;
-        if (avatarEl) avatarEl.textContent = getInitials(nome);
-
         container.innerHTML = renderSkeleton();
 
         var data = await fetchDashboardData(user.id);
@@ -528,11 +512,6 @@ var OverviewView = (function() {
             }, 200);
         };
         window.addEventListener('resize', resizeHandler);
-    }
-
-    function getInitials(n) {
-        if (!n) return '—';
-        return n.split(' ').map(function(w) { return w[0]; }).join('').toUpperCase().slice(0, 2);
     }
 
     return { render: render };
