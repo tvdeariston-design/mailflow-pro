@@ -27,7 +27,7 @@
 
 'use strict';
 
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('./email-provider');
 
 // ============================================
 // Configuração
@@ -35,35 +35,6 @@ const nodemailer = require('nodemailer');
 const BATCH_SIZE = parseInt(process.env.CAMPAIGN_BATCH_SIZE) || 50;
 const BATCH_DELAY_MS = parseInt(process.env.CAMPAIGN_BATCH_DELAY_MS) || 2000;
 const MAX_CONCURRENT = parseInt(process.env.CAMPAIGN_MAX_CONCURRENT) || 5;
-
-// ============================================
-// Transporter (lazy init)
-// ============================================
-let _transporter = null;
-
-function getTransporter() {
-    if (_transporter) return _transporter;
-
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.error('[SMTP] No transporter: EMAIL_USER or EMAIL_PASS env vars missing');
-        return null;
-    }
-
-    _transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: false,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        },
-        connectionTimeout: 10000,
-        socketTimeout: 10000,
-        greetingTimeout: 10000
-    });
-
-    return _transporter;
-}
 
 // ============================================
 // Campanhas ativas (lock por campaign_id)
@@ -197,7 +168,7 @@ function rewriteLinks(html, recipientId) {
 
 // Helpers — batch sender
 // ============================================
-async function sendSingleEmail(transporter, campaign, template, contact, recipientId) {
+async function sendSingleEmail(_transporter, campaign, template, contact, recipientId) {
     const subject = renderMergeTags(template.subject || campaign.assunto, contact);
     const preheader = renderMergeTags(template.preheader || '', contact);
     let html = renderMergeTags(template.html || '', contact);
@@ -213,26 +184,18 @@ async function sendSingleEmail(transporter, campaign, template, contact, recipie
     const fromEmail = campaign.from_email || process.env.EMAIL_USER || 'noreply@mailflowpro.com';
     const replyTo = campaign.reply_to || fromEmail;
 
-    const mailOptions = {
-        from: `"${fromName}" <${fromEmail}>`,
+    const formattedFrom = '"' + fromName + '" <' + fromEmail + '>';
+
+    const messageId = await sendEmail({
+        from: formattedFrom,
         to: contact.email,
         subject: subject,
+        html: html || undefined,
+        text: text || undefined,
         replyTo: replyTo
-    };
+    });
 
-    if (preheader) {
-        const preheaderTag = '<span style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">' + preheader + '</span>';
-        mailOptions.html = preheaderTag + html;
-    } else {
-        mailOptions.html = html || undefined;
-    }
-
-    if (text) {
-        mailOptions.text = text;
-    }
-
-    const info = await transporter.sendMail(mailOptions);
-    return info.messageId || null;
+    return messageId;
 }
 
 // ============================================
@@ -249,9 +212,10 @@ async function startCampaign(supabaseAdmin, campaignId, userId) {
         return { success: false, error: 'Limite de campanhas simultaneas atingido' };
     }
 
-    // Verificar transporter
-    const transporter = getTransporter();
-    if (!transporter) {
+    // Verificar se existe um provider de email configurado
+    const hasResend = !!process.env.RESEND_API_KEY;
+    const hasSmtp = !!process.env.EMAIL_USER && !!process.env.EMAIL_PASS;
+    if (!hasResend && !hasSmtp) {
         return { success: false, error: 'Servico de email nao configurado' };
     }
 
@@ -353,7 +317,6 @@ async function startCampaign(supabaseAdmin, campaignId, userId) {
 
 async function sendInBatches(supabaseAdmin, campaignState, campaign, template, allRecipients) {
     const { campaignId } = campaignState;
-    const transporter = getTransporter();
 
     try {
         let offset = 0;
@@ -396,7 +359,7 @@ async function sendInBatches(supabaseAdmin, campaignState, campaign, template, a
                     await updateRecipientStatus(supabaseAdmin, recipient.id, { status: 'sending' });
 
                     // Enviar
-                    const messageId = await sendSingleEmail(transporter, campaign, template, contact, recipient.id);
+                    const messageId = await sendSingleEmail(null, campaign, template, contact, recipient.id);
 
                     // Marcar como sent
                     await updateRecipientStatus(supabaseAdmin, recipient.id, {
@@ -640,7 +603,6 @@ module.exports = {
     isActive,
     recoverStuckCampaigns,
     sendSingleEmail,
-    getTransporter,
     // Exportados para testes
     BATCH_SIZE,
     BATCH_DELAY_MS,
