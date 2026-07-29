@@ -12,6 +12,7 @@ const stripe = process.env.STRIPE_SECRET_KEY
     ? require('stripe')(process.env.STRIPE_SECRET_KEY)
     : null;
 const nodemailer = require('nodemailer');
+const { sendEmail } = require('./services/email-provider');
 const campaignEngine = require('./services/campaign-engine');
 const contactsParser = require('./services/contacts-parser');
 
@@ -506,7 +507,36 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
 app.post('/api/smtp/test', authMiddleware, async (req, res) => {
     try {
         const body = req.body;
-        
+        const timestamp = new Date().toISOString();
+
+        // Check if Resend provider is configured (env var or body override)
+        const resendApiKey = body.resend_api_key || process.env.RESEND_API_KEY;
+
+        if (resendApiKey) {
+            // Test Resend provider — send a test email
+            console.log('[EMAIL PROVIDER TEST] [' + timestamp + '] provider: resend, action: test');
+            try {
+                const fromEmail = process.env.EMAIL_USER || 'noreply@mailflowpro.com';
+                const messageId = await sendEmail({
+                    from: '"MailFlow Pro" <' + fromEmail + '>',
+                    to: (body.smtp_username || body.test_email || req.user.email || 'test@example.com').trim(),
+                    subject: 'MailFlow Pro — Teste Resend',
+                    html: '<h2>Resend funcional!</h2><p>O provider Resend está configurado corretamente.</p>',
+                    text: 'Resend funcional! O provider Resend está configurado corretamente.'
+                });
+                if (messageId) {
+                    console.log('[EMAIL PROVIDER TEST] [' + timestamp + '] provider: resend, status: success, messageId: ' + messageId);
+                } else {
+                    console.log('[EMAIL PROVIDER TEST] [' + timestamp + '] provider: resend, status: error, reason: no messageId returned');
+                }
+                res.json({ success: true, provider: 'resend', messageId: messageId, message: 'Teste Resend bem-sucedido!' });
+            } catch (resendErr) {
+                console.log('[EMAIL PROVIDER TEST] [' + timestamp + '] provider: resend, status: error, error: ' + resendErr.message);
+                res.status(400).json({ success: false, provider: 'resend', error: resendErr.message || 'Erro no teste Resend' });
+            }
+            return;
+        }
+
         // Validate required fields
         if (!body.smtp_host || !body.smtp_host.trim()) {
             return res.status(400).json({ success: false, error: 'Host SMTP é obrigatório' });
@@ -567,7 +597,7 @@ app.post('/api/smtp/test', authMiddleware, async (req, res) => {
             .eq('id', req.user.id);
 
         logger.info('SMTP test successful - User: ' + req.user.id, 'SMTP');
-        res.json({ success: true, message: 'Ligação SMTP bem-sucedida!' });
+        res.json({ success: true, provider: 'smtp', message: 'Ligação SMTP bem-sucedida!' });
 
     } catch (error) {
         logger.error('SMTP test failed - User: ' + req.user.id + ' - ' + error.message, 'SMTP');
@@ -581,7 +611,43 @@ app.post('/api/smtp/test', authMiddleware, async (req, res) => {
 app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
     try {
         const body = req.body;
-        
+        const timestamp = new Date().toISOString();
+
+        // Check if Resend provider is configured (env var or body override)
+        const resendApiKey = body.resend_api_key || process.env.RESEND_API_KEY;
+
+        if (resendApiKey) {
+            // Test Resend provider — send a test email
+            console.log('[EMAIL PROVIDER TEST] [' + timestamp + '] provider: resend, action: send-test');
+            if (!body.test_email || !body.test_email.trim()) {
+                return res.status(400).json({ success: false, error: 'Email de destino é obrigatório' });
+            }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(body.test_email.trim())) {
+                return res.status(400).json({ success: false, error: 'Email de destino inválido' });
+            }
+            try {
+                const fromEmail = process.env.EMAIL_USER || 'noreply@mailflowpro.com';
+                const messageId = await sendEmail({
+                    from: '"MailFlow Pro" <' + fromEmail + '>',
+                    to: body.test_email.trim(),
+                    subject: 'MailFlow Pro — Teste Resend',
+                    html: '<h2>Resend funcional!</h2><p>O provider Resend está configurado corretamente. Este é um email de teste.</p>',
+                    text: 'Resend funcional! O provider Resend está configurado corretamente. Este é um email de teste.'
+                });
+                if (messageId) {
+                    console.log('[EMAIL PROVIDER TEST] [' + timestamp + '] provider: resend, status: success, messageId: ' + messageId);
+                } else {
+                    console.log('[EMAIL PROVIDER TEST] [' + timestamp + '] provider: resend, status: error, reason: no messageId returned');
+                }
+                res.json({ success: true, provider: 'resend', messageId: messageId, message: 'Email de teste enviado via Resend!' });
+            } catch (resendErr) {
+                console.log('[EMAIL PROVIDER TEST] [' + timestamp + '] provider: resend, status: error, error: ' + resendErr.message);
+                res.status(400).json({ success: false, provider: 'resend', error: resendErr.message || 'Erro no teste Resend' });
+            }
+            return;
+        }
+
         // Validate required fields
         if (!body.smtp_host || !body.smtp_host.trim()) {
             return res.status(400).json({ success: false, error: 'Host SMTP é obrigatório' });
@@ -642,7 +708,7 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
         // Send test email
         const fromEmail = (body.smtp_from_email && body.smtp_from_email.trim()) ? body.smtp_from_email.trim() : body.smtp_username.trim();
         const fromName = (body.smtp_from_name && body.smtp_from_name.trim()) ? body.smtp_from_name.trim() : 'MailFlow Pro';
-        
+
         await testTransporter.sendMail({
             from: '"' + fromName + '" <' + fromEmail + '>',
             to: body.test_email.trim(),
@@ -657,7 +723,7 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
             .eq('id', req.user.id);
 
         logger.info('SMTP test email sent - User: ' + req.user.id + ', To: ' + body.test_email, 'SMTP');
-        res.json({ success: true });
+        res.json({ success: true, provider: 'smtp', message: 'Email de teste enviado!' });
 
     } catch (error) {
         logger.error('SMTP test email failed - User: ' + req.user.id + ' - ' + error.message, 'SMTP');
