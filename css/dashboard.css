@@ -31,6 +31,11 @@
     --transition-fast: 0.15s ease;
     --transition-base: 0.2s ease;
     --transition-smooth: 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --btn-height: 48px;
+    --input-height: 48px;
+    --radius-btn: 10px;
+    --radius-input: 10px;
+    --transition-tap: 0.1s ease;
 }
 
 /* ========================================
@@ -5780,4 +5785,152 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes ct-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* ===== UX Premium — Mobile-First Design System ===== */
+
+/* Entrance animation for cards */
+.kpi-card,
+.quick-card,
+.tl-card,
+.dp-kpi-card,
+.dp-card,
+.dp-section-card {
+    animation: ux-fadeInUp 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.kpi-card:nth-child(1) { animation-delay: 0.05s; }
+.kpi-card:nth-child(2) { animation-delay: 0.1s; }
+.kpi-card:nth-child(3) { animation-delay: 0.15s; }
+.kpi-card:nth-child(4) { animation-delay: 0.2s; }
+
+@keyframes ux-fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Buttons — touch-friendly minimum height */
+@media (max-width: 768px) {
+    .ct-btn,
+    .tl-btn,
+    .header__btn,
+    .empty-state__btn {
+        min-height: var(--btn-height);
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+    .ct-btn--sm,
+    .tl-btn--sm {
+        min-height: 36px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+}
+
+/* Tap feedback scale */
+.ct-btn:active,
+.tl-btn:active,
+.header__btn:active,
+.empty-state__btn:active {
+    transform: scale(0.97) !important;
+    transition: transform var(--transition-tap) !important;
+}
+
+/* Inputs — touch-friendly height */
+@media (max-width: 768px) {
+    .ct-input,
+    .tl-input,
+    .ct-toolbar select,
+    .tl-toolbar select {
+        min-height: var(--input-height);
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+}
+
+/* 320–430px: extra-tight mobile refinement */
+@media (max-width: 430px) {
+    .kpi-card {
+        padding: 14px 16px;
+    }
+    .kpi-card__value {
+        font-size: 1.5rem;
+    }
+    .kpi-card__icon {
+        width: 36px;
+        height: 36px;
+    }
+    .kpi-card__icon svg {
+        width: 18px;
+        height: 18px;
+    }
+    .kpi-card__top {
+        margin-bottom: 10px;
+    }
+    .kpi-card__label {
+        font-size: 0.6875rem;
+    }
+    .kpi-card__change {
+        font-size: 0.6875rem;
+        padding: 1px 6px;
+    }
+    .empty-state {
+        padding: 32px 16px;
+    }
+    .empty-state__icon {
+        width: 56px;
+        height: 56px;
+    }
+    .empty-state__icon svg {
+        width: 26px;
+        height: 26px;
+    }
+    .empty-state__title {
+        font-size: 0.9375rem;
+    }
+    .empty-state__desc {
+        font-size: 0.8125rem;
+        margin-bottom: 20px;
+    }
+    .ct-toolbar,
+    .tl-toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .ct-toolbar .ct-input,
+    .ct-toolbar .tl-input,
+    .tl-toolbar .ct-input,
+    .tl-toolbar .tl-input {
+        width: 100%;
+    }
+    .ct-toolbar .ct-btn,
+    .tl-toolbar .ct-btn,
+    .ct-toolbar .tl-btn,
+    .tl-toolbar .tl-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Enhanced desktop hover — slightly more lift */
+@media (min-width: 769px) {
+    .kpi-card:hover {
+        transform: translateY(-4px);
+    }
+    .quick-card:hover {
+        transform: translateY(-4px);
+    }
+    .tl-card:hover {
+        transform: translateY(-3px);
+    }
+}
+
+/* Sidebar — smoother slide transition */
+.sidebar {
+    transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+}
+
+/* Page headers — consistent spacing */
+.tl-view-header {
+    margin-bottom: 24px;
 }
