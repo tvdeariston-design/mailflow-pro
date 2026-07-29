@@ -284,6 +284,14 @@ a:hover {
 }
 
 @media (max-width: 768px) {
+    .navbar {
+        padding-top: env(safe-area-inset-top, 0);
+    }
+
+    .navbar__inner {
+        height: 64px;
+    }
+
     .navbar__nav {
         position: absolute;
         top: 64px;
@@ -291,6 +299,7 @@ a:hover {
         right: 0;
         flex-direction: column;
         padding: var(--space-6);
+        padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0));
         background-color: rgba(10, 6, 20, 0.98);
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         box-shadow: var(--shadow-lg);
@@ -3377,6 +3386,7 @@ a:hover {
 @media (max-width: 768px) {
     .auth-page {
         align-items: flex-start;
+        padding-top: env(safe-area-inset-top, 0);
     }
 
     .auth-hero__benefits {
