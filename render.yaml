@@ -27,10 +27,12 @@ services:
         sync: false
       - key: STRIPE_PUBLISHABLE_KEY
         sync: false
-      # Email (Gmail App Password)
+      # Email (Resend API key or Gmail App Password)
       - key: EMAIL_USER
         sync: false
       - key: EMAIL_PASS
+        sync: false
+      - key: RESEND_API_KEY
         sync: false
       # URLs
       - key: SUCCESS_URL
