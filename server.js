@@ -455,6 +455,13 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
             updates.smtp_from_name = body.smtp_from_name.trim();
         }
 
+        console.log('[SMTP SAVE] smtp_host:', body.smtp_host, 'smtp_port:', body.smtp_port, 'smtp_secure:', body.smtp_secure);
+
+        // Force secure=false when port=587 (STARTTLS) regardless of checkbox
+        if (updates.smtp_port === 587) {
+            updates.smtp_secure = false;
+        }
+
         // Update smtp_status when SMTP fields are saved
         var smtpFieldsProvided = body.smtp_host !== undefined && body.smtp_port !== undefined &&
                                   body.smtp_username !== undefined;
@@ -515,26 +522,29 @@ app.post('/api/smtp/test', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Password SMTP é obrigatória' });
         }
 
+        // Port 587 always uses STARTTLS → secure=false
+        // Port 465 uses implicit SSL → secure=true
+        var effectiveSecure = port === 587 ? false : Boolean(body.smtp_secure);
+
         // Debug log (do NOT log password)
         console.log('[SMTP TEST] Config:', JSON.stringify({
             host: body.smtp_host.trim(),
             port: port,
-            secure: Boolean(body.smtp_secure),
+            secure: effectiveSecure,
             user: body.smtp_username.trim(),
             hasPassword: !!body.smtp_password,
             tlsRejectUnauthorized: false
         }));
 
-        // Warn if secure=true on port 587 (STARTTLS port should use secure=false)
         if (port === 587 && Boolean(body.smtp_secure)) {
-            console.warn('[SMTP TEST] WARNING: port 587 with secure=true may cause timeout. Gmail STARTTLS requires secure=false.');
+            console.warn('[SMTP TEST] Overriding secure to false for port 587 (STARTTLS required).');
         }
 
         // Create temporary transporter
         const testTransporter = nodemailer.createTransport({
             host: body.smtp_host.trim(),
             port: port,
-            secure: Boolean(body.smtp_secure),
+            secure: effectiveSecure,
             auth: {
                 user: body.smtp_username.trim(),
                 pass: body.smtp_password
@@ -595,26 +605,25 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Email de destino inválido' });
         }
 
+        // Port 587 always uses STARTTLS → secure=false
+        var effectiveSecure = port === 587 ? false : Boolean(body.smtp_secure);
+
         // Debug log (do NOT log password)
         console.log('[SMTP SEND-TEST] Config:', JSON.stringify({
             host: body.smtp_host.trim(),
             port: port,
-            secure: Boolean(body.smtp_secure),
+            secure: effectiveSecure,
             user: body.smtp_username.trim(),
             hasPassword: !!body.smtp_password,
             testEmail: body.test_email.trim(),
             tlsRejectUnauthorized: false
         }));
 
-        if (port === 587 && Boolean(body.smtp_secure)) {
-            console.warn('[SMTP SEND-TEST] WARNING: port 587 with secure=true may cause timeout. Gmail STARTTLS requires secure=false.');
-        }
-
         // Create temporary transporter
         const testTransporter = nodemailer.createTransport({
             host: body.smtp_host.trim(),
             port: port,
-            secure: Boolean(body.smtp_secure),
+            secure: effectiveSecure,
             auth: {
                 user: body.smtp_username.trim(),
                 pass: body.smtp_password
