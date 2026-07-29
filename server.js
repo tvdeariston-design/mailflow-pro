@@ -162,29 +162,34 @@ const logger = {
 // Middleware de autenticação
 // ============================================
 async function authMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization || req.headers.Authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, error: 'Não autenticado' });
+    try {
+        const authHeader = req.headers.authorization || req.headers.Authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, error: 'Não autenticado' });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            return res.status(500).json({ success: false, error: 'Serviço indisponível' });
+        }
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            global: { headers: { Authorization: `Bearer ${token}` } }
+        });
+
+        const { data, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !data || !data.user) {
+            return res.status(401).json({ success: false, error: 'Sessão inválida' });
+        }
+
+        req.user = data.user;
+        req.supabase = supabase;
+        next();
+    } catch (err) {
+        logger.error('Erro no authMiddleware: ' + (err.message || err), 'Auth');
+        return res.status(500).json({ success: false, error: 'Erro interno de autenticação' });
     }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        return res.status(500).json({ success: false, error: 'Serviço indisponível' });
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: `Bearer ${token}` } }
-    });
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-        return res.status(401).json({ success: false, error: 'Sessão inválida' });
-    }
-
-    req.user = user;
-    req.supabase = supabase;
-    next();
 }
 // ============================================
 // Middleware de autorização admin
@@ -367,7 +372,7 @@ app.get('/api/profile', authMiddleware, async (req, res) => {
     try {
         const { data, error } = await req.supabase
             .from('profiles')
-            .select('id, nome, empresa, telefone, timezone, locale, created_at, plan, smtp_host, smtp_port, smtp_username, smtp_password, smtp_secure, smtp_from_email, smtp_from_name, smtp_status, smtp_verified_at, updated_at')
+            .select('id, nome, empresa, telefone, timezone, locale, created_at, subscription_status, smtp_host, smtp_port, smtp_username, smtp_password, smtp_secure, smtp_from_email, smtp_from_name, smtp_status, smtp_verified_at, updated_at')
             .eq('id', req.user.id)
             .single();
 
@@ -1785,16 +1790,21 @@ app.delete('/api/campaigns/:id/recipients/:contactId', authMiddleware, async (re
     }
 });
 
-// DELETE /api/campaigns/:id - Eliminar campanha (soft delete) (AFTER /:id/recipients/:contactId)
+// DELETE /api/campaigns/:id - Eliminar campanha (AFTER /:id/recipients/:contactId)
 app.delete('/api/campaigns/:id', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
-        const { data: existing, error: checkError } = await req.supabase
-            .from('campaigns').select('id').eq('id', id).eq('user_id', req.user.id).is('deleted_at', null).single();
-        if (checkError || !existing) return res.status(404).json({ success: false, error: 'Campanha nao encontrada' });
 
-        const { error } = await req.supabase.from('campaigns').update({ deleted_at: new Date().toISOString() }).eq('id', id).eq('user_id', req.user.id);
-        if (error) { logger.error('Erro ao eliminar campanha: ' + error.message, 'Campaigns'); return res.status(500).json({ success: false, error: 'Erro ao eliminar campanha' }); }
+        const { error } = await req.supabase
+            .from('campaigns')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('user_id', req.user.id);
+
+        if (error) {
+            logger.error('Erro ao eliminar campanha: ' + error.message, 'Campaigns');
+            return res.status(500).json({ success: false, error: 'Erro ao eliminar campanha' });
+        }
 
         res.json({ success: true, message: 'Campanha eliminada com sucesso' });
     } catch (error) {

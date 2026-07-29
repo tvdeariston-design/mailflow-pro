@@ -246,21 +246,6 @@
     }
 
     /**
-     * Verificar se o email atual está em desenvolvimento bypassado.
-     * Útil para logs e depuração.
-     *
-     * @param {Object} user - objeto do utilizador
-     * @returns {boolean}
-     */
-    function isDevBypassEmail(user) {
-        if (typeof window.MailFlowDevPermissions !== 'undefined' &&
-            typeof window.MailFlowDevPermissions.isDevEmail === 'function') {
-            return window.MailFlowDevPermissions.isDevEmail(user);
-        }
-        return false;
-    }
-
-    /**
      * Traduzir mensagens de erro do Supabase para português.
      *
      * @param {string} message - mensagem de erro em inglês
@@ -291,9 +276,7 @@
         getUser: getUser,
         requireAuth: requireAuth,
         onAuthStateChange: onAuthStateChange,
-        // Funções de permissão premium para desenvolvimento
-        isPremiumUser: isPremiumUser,
-        isDevBypassEmail: isDevBypassEmail
+        isPremiumUser: isPremiumUser
     };
 
 })();

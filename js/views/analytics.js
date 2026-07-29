@@ -480,12 +480,14 @@ var AnalyticsView = (function() {
             '</div>';
 
         if (data.length === 0) {
-            html += '<div class="empty-state">' +
-                '<div class="empty-state__icon empty-state__icon--indigo">' + svgIcon('campaign') + '</div>' +
-                '<h3 class="empty-state__title">Nenhuma campanha enviada</h3>' +
-                '<p class="empty-state__desc">Quando enviar campanhas, os dados de desempenho aparecerão aqui.</p>' +
-                '<a href="#/campanhas" class="empty-state__btn">Criar Campanha</a>' +
-            '</div>';
+            html += EmptyStateComponent.render({
+                icon: 'analytics',
+                title: 'Nenhuma campanha enviada',
+                desc: 'Quando enviar campanhas, os dados de desempenho aparecerão aqui.',
+                buttons: [
+                    { href: '#/campanhas', label: 'Criar Campanha', variant: 'primary' }
+                ]
+            });
         } else {
             html += '<div class="ct-table-wrap"><table class="ct-table"><thead><tr>';
             var cols = [
@@ -539,12 +541,14 @@ var AnalyticsView = (function() {
     // Empty State
     // ========================================
     function renderEmptyState() {
-        return '<div class="empty-state">' +
-            '<div class="empty-state__icon empty-state__icon--indigo">' + svgIcon('sent') + '</div>' +
-            '<h3 class="empty-state__title">Sem dados para este período</h3>' +
-            '<p class="empty-state__desc">Tente selecionar um intervalo de tempo diferente ou aguarde até ter campanhas enviadas.</p>' +
-            '<a href="#/campanhas" class="empty-state__btn">Criar Campanha</a>' +
-        '</div>';
+        return EmptyStateComponent.render({
+            icon: 'analytics',
+            title: 'Sem dados para este período',
+            desc: 'Tente selecionar um intervalo de tempo diferente ou aguarde até ter campanhas enviadas.',
+            buttons: [
+                { href: '#/campanhas', label: 'Criar Campanha', variant: 'primary' }
+            ]
+        });
     }
 
     // ========================================

@@ -217,24 +217,15 @@ var ContactosView = (function() {
     }
 
     function renderEmpty() {
-        return '' +
-            '<div class="ct-empty">' +
-                '<div class="ct-empty__icon">' +
-                    '<svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' +
-                '</div>' +
-                '<h3 class="ct-empty__title">Ainda não tem contactos</h3>' +
-                '<p class="ct-empty__desc">Adicione contactos manualmente ou importe uma lista CSV para começar a criar campanhas.</p>' +
-                '<div class="ct-empty__actions">' +
-                    '<button class="ct-btn ct-btn--primary" id="ct-btn-add-empty">' +
-                        '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' +
-                        'Adicionar Contacto' +
-                    '</button>' +
-                    '<button class="ct-btn ct-btn--secondary" id="ct-btn-import-empty">' +
-                        '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>' +
-                        'Importar CSV' +
-                    '</button>' +
-                '</div>' +
-            '</div>';
+        return EmptyStateComponent.render({
+            icon: 'contacts',
+            title: 'Ainda não tem contactos',
+            desc: 'Adicione o seu primeiro contacto ou importe uma lista CSV para começar a criar campanhas.',
+            buttons: [
+                { id: 'ct-btn-add-empty', label: 'Adicionar Contacto', variant: 'primary', icon: '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' },
+                { id: 'ct-btn-import-empty', label: 'Importar CSV', variant: 'secondary', icon: '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>' }
+            ]
+        });
     }
 
     // ========================================
@@ -364,6 +355,7 @@ var ContactosView = (function() {
             }
             if (result.error) throw result.error;
             MailFlowToast.success(existingId ? 'Contacto atualizado.' : 'Contacto adicionado.');
+            if (!existingId) window.dispatchEvent(new CustomEvent('mailflow:checklist-update'));
             return true;
         } catch (err) {
             console.error('[Contactos] Erro ao guardar:', err);

@@ -96,7 +96,8 @@ var OverviewView = (function() {
                 sb.from('automations').select('id, name, trigger_type, trigger_config, status, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
                 sb.from('campaigns')
                     .select('id, nome, status, total_recipients, total_sent, created_at')
-                    .eq('user_id', userId).is('deleted_at', null).in('status', ['sent']).order('created_at', { ascending: false }).limit(5)
+                    .eq('user_id', userId).is('deleted_at', null).in('status', ['sent']).order('created_at', { ascending: false }).limit(5),
+                sb.from('templates').select('id', { count: 'exact', head: true }).eq('user_id', userId).is('deleted_at', null)
             ]);
 
             return {
@@ -104,7 +105,8 @@ var OverviewView = (function() {
                 contactsCount: results[1].count || 0,
                 recentContacts: results[2].data || [],
                 automations: results[3].data || [],
-                recentSends: results[4].data || []
+                recentSends: results[4].data || [],
+                templatesCount: results[5].count || 0
             };
         } catch (err) {
             console.error('[Overview] Erro ao buscar dados:', err);
@@ -123,6 +125,7 @@ var OverviewView = (function() {
         return {
             contacts: data.contactsCount,
             campaigns: data.campaigns.length,
+            templates: data.templatesCount,
             emailsSent: sent,
             openRate: sent > 0 ? Math.round((opened / sent) * 100) : 0,
             clickRate: sent > 0 ? Math.round((clicked / sent) * 100) : 0
@@ -457,8 +460,130 @@ var OverviewView = (function() {
     }
 
     // ========================================
+    // Onboarding Checklist
+    // ========================================
+
+    function computeOnboardingSteps(data, kpis) {
+        return [
+            { label: 'Criar primeiro contacto', done: data.contactsCount > 0, href: '#/contactos' },
+            { label: 'Criar primeira campanha', done: data.campaigns.length > 0, href: '#/campanhas' },
+            { label: 'Enviar primeiro email', done: (kpis.emailsSent || 0) > 0, href: '#/campanhas' },
+            { label: 'Criar primeira automação', done: data.automations.length > 0, href: '#/automacoes' }
+        ];
+    }
+
+    function renderOnboardingChecklist(steps) {
+        var done = steps.filter(function(s) { return s.done; }).length;
+        var pct = (done / steps.length) * 100;
+
+        var itemsHtml = '';
+        steps.forEach(function(s) {
+            var cls = 'onboarding__item' + (s.done ? ' onboarding__item--done' : '');
+            var checkCls = 'onboarding__item-check' + (s.done ? ' onboarding__item-check--done' : '');
+            itemsHtml += '' +
+                '<a href="' + s.href + '" class="' + cls + '">' +
+                    '<span class="' + checkCls + '">' +
+                        '<svg width="12" height="12" fill="none" stroke="white" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' +
+                    '</span>' +
+                    '<span class="onboarding__item-label">' + esc(s.label) + '</span>' +
+                '</a>';
+        });
+
+        return '' +
+            '<div class="onboarding" id="onboarding-checklist">' +
+                '<div class="onboarding__title">Bem-vindo ao MailFlow Pro! 👋</div>' +
+                '<div class="onboarding__desc">Vamos configurar a sua conta em menos de 5 minutos.</div>' +
+                '<div class="onboarding__progress">' +
+                    '<div class="onboarding__progress-bar">' +
+                        '<div class="onboarding__progress-fill" style="width:' + pct + '%;"></div>' +
+                    '</div>' +
+                    '<span class="onboarding__progress-text">' + done + '/' + steps.length + ' concluído' + (done !== 1 ? 's' : '') + '</span>' +
+                '</div>' +
+                '<div class="onboarding__items">' + itemsHtml + '</div>' +
+            '</div>';
+    }
+
+    function renderOnboardingCelebration() {
+        return '' +
+            '<div class="onboarding" id="onboarding-celebration">' +
+                '<div class="onboarding__celebration">' +
+                    '<div class="onboarding__celebration-icon">🎉</div>' +
+                    '<div class="onboarding__celebration-title">Parabéns!</div>' +
+                    '<div class="onboarding__celebration-desc">Já conhece as principais funcionalidades do MailFlow Pro.</div>' +
+                    '<a href="#/" class="onboarding__celebration-btn">Explorar Dashboard</a>' +
+                '</div>' +
+            '</div>';
+    }
+
+    async function checkOnboardingStatus(userId) {
+        if (!sb) return false;
+        try {
+            var { data } = await sb.from('profiles').select('onboarding_done').eq('id', userId).single();
+            return data && data.onboarding_done === true;
+        } catch(e) { return false; }
+    }
+
+    async function saveOnboardingDone(userId) {
+        if (!sb) return;
+        try {
+            await sb.from('profiles').update({ onboarding_done: true }).eq('id', userId);
+        } catch(e) { /* silent */ }
+    }
+
+    // ========================================
     // Render Entry
     // ========================================
+
+    async function refetchOnboardingData(userId) {
+        if (!sb) return null;
+        try {
+            var results = await Promise.all([
+                sb.from('contacts').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+                sb.from('campaigns').select('id, total_sent').eq('user_id', userId).is('deleted_at', null),
+                sb.from('automations').select('id').eq('user_id', userId)
+            ]);
+            var contactsCount = results[0].count || 0;
+            var campaigns = results[1].data || [];
+            var automations = results[2].data || [];
+            var emailsSent = campaigns.reduce(function(sum, c) { return sum + (c.total_sent || 0); }, 0);
+            return { contactsCount: contactsCount, campaignsCount: campaigns.length, emailsSent: emailsSent, automationsCount: automations.length };
+        } catch(e) { return null; }
+    }
+
+    async function handleChecklistUpdate() {
+        if (!user || !document.getElementById('onboarding-checklist')) return;
+        var od = await refetchOnboardingData(user.id);
+        if (!od) return;
+        var steps = [
+            { label: 'Criar primeiro contacto', done: od.contactsCount > 0, href: '#/contactos' },
+            { label: 'Criar primeira campanha', done: od.campaignsCount > 0, href: '#/campanhas' },
+            { label: 'Enviar primeiro email', done: od.emailsSent > 0, href: '#/campanhas' },
+            { label: 'Criar primeira automação', done: od.automationsCount > 0, href: '#/automacoes' }
+        ];
+        var allDone = steps.every(function(s) { return s.done; });
+        if (allDone) {
+            var container = document.getElementById('onboarding-checklist');
+            if (container) {
+                container.outerHTML = renderOnboardingCelebration();
+                saveOnboardingDone(user.id);
+            }
+            return;
+        }
+        var done = steps.filter(function(s) { return s.done; }).length;
+        var pct = (done / steps.length) * 100;
+        var fill = document.querySelector('.onboarding__progress-fill');
+        var text = document.querySelector('.onboarding__progress-text');
+        if (fill) fill.style.width = pct + '%';
+        if (text) text.textContent = done + '/' + steps.length + ' concluído' + (done !== 1 ? 's' : '');
+        steps.forEach(function(s, i) {
+            var items = document.querySelectorAll('.onboarding__item');
+            if (items[i]) {
+                items[i].className = 'onboarding__item' + (s.done ? ' onboarding__item--done' : '');
+                var check = items[i].querySelector('.onboarding__item-check');
+                if (check) check.className = 'onboarding__item-check' + (s.done ? ' onboarding__item-check--done' : '');
+            }
+        });
+    }
 
     async function render(container) {
         currentContainer = container;
@@ -469,6 +594,8 @@ var OverviewView = (function() {
 
         container.innerHTML = renderSkeleton();
 
+        var onboardingDone = await checkOnboardingStatus(user.id);
+
         var data = await fetchDashboardData(user.id);
         if (!data) {
             container.innerHTML = '<div class="empty-state"><div class="empty-state__icon empty-state__icon--indigo">' + svgIcon('activity') + '</div><h3 class="empty-state__title">Erro ao carregar dados</h3><p class="empty-state__desc">Tente recarregar a página.</p></div>';
@@ -478,12 +605,26 @@ var OverviewView = (function() {
         var kpis = computeKPIs(data);
         updateBadge('badge-campanhas', kpis.campaigns);
         updateBadge('badge-contactos', kpis.contacts);
-        updateBadge('badge-templates', 0);
+        updateBadge('badge-templates', kpis.templates);
+
+        var html = '';
+
+        if (!onboardingDone) {
+            var steps = computeOnboardingSteps(data, kpis);
+            var allDone = steps.every(function(s) { return s.done; });
+
+            if (allDone) {
+                html += renderOnboardingCelebration();
+                saveOnboardingDone(user.id);
+            } else {
+                html += renderOnboardingChecklist(steps);
+            }
+        }
+
+        html += renderKPIs(kpis);
 
         var dailyData = generateDailyData(data.campaigns);
         var activeCampaigns = getActiveCampaigns(data.campaigns);
-
-        var html = renderKPIs(kpis);
 
         var chartHtml = renderChart(dailyData);
         if (chartHtml) html += '<div class="dp-chart-section">' + chartHtml + '</div>';
@@ -497,6 +638,9 @@ var OverviewView = (function() {
         html += '</div></div>';
 
         container.innerHTML = html;
+
+        window.removeEventListener('mailflow:checklist-update', handleChecklistUpdate);
+        window.addEventListener('mailflow:checklist-update', handleChecklistUpdate);
 
         requestAnimationFrame(function() {
             var canvas = document.getElementById('dp-chart');

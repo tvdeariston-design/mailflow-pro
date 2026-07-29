@@ -151,7 +151,20 @@
         var viewModule = viewConfig.module ? viewConfig.module() : null;
 
         if (viewModule && typeof viewModule.render === 'function') {
-            await viewModule.render(container);
+            try {
+                await viewModule.render(container);
+            } catch (err) {
+                console.error('[Dashboard] Erro ao renderizar view:', err);
+                container.innerHTML =
+                    '<div class="empty-state">' +
+                        '<div class="empty-state__icon empty-state__icon--indigo">' +
+                            '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' +
+                        '</div>' +
+                        '<h3 class="empty-state__title">Erro ao carregar página</h3>' +
+                        '<p class="empty-state__desc">Ocorreu um erro ao carregar esta página. Tente recarregar.</p>' +
+                        '<button class="empty-state__btn" onclick="window.location.hash=window.location.hash">Recarregar</button>' +
+                    '</div>';
+            }
         } else {
             container.innerHTML =
                 '<div class="empty-state">' +

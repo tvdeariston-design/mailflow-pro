@@ -68,7 +68,7 @@ var CampanhasView = (function() {
 
     async function apiCall(method, path, body) {
         var token = await getAccessToken();
-        if (!token) { MailFlowToast.error('Sessao expirada.'); return null; }
+        if (!token) { MailFlowToast.error('Sessão expirada.'); return null; }
         var opts = {
             method: method,
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
@@ -304,17 +304,18 @@ var CampanhasView = (function() {
             pagination = '<div class="tl-pagination"><span class="tl-pagination__info">Pagina ' + state.page + ' de ' + totalPages + '</span><div class="tl-pagination__btns"><button class="tl-btn tl-btn--ghost tl-btn--sm" id="cp-page-prev"' + (state.page <= 1 ? ' disabled' : '') + '>&larr; Anterior</button><button class="tl-btn tl-btn--ghost tl-btn--sm" id="cp-page-next"' + (state.page >= totalPages ? ' disabled' : '') + '>Proxima &rarr;</button></div></div>';
         }
 
-        return '<div class="ct-table-wrap"><table class="ct-table"><thead><tr><th>Nome / Assunto</th><th>Estado</th><th>Destinatarios</th><th>Criada</th><th style="width:140px">Acoes</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + pagination;
+        return '<div class="ct-table-wrap"><table class="ct-table"><thead><tr><th>Nome / Assunto</th><th>Estado</th><th>Destinatarios</th><th>Criada</th><th style="width:140px">Ações</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + pagination;
     }
 
     function renderEmpty() {
-        return '' +
-            '<div class="tl-empty">' +
-                '<div class="tl-empty__icon"><svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>' +
-                '<h3 class="tl-empty__title">Ainda nao tem campanhas</h3>' +
-                '<p class="tl-empty__desc">Crie a sua primeira campanha de email marketing.</p>' +
-                '<button class="tl-btn tl-btn--primary" id="cp-btn-add-empty"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>Nova Campanha</button>' +
-            '</div>';
+        return EmptyStateComponent.render({
+            icon: 'campaigns',
+            title: 'Crie a sua primeira campanha',
+            desc: 'Construa uma campanha e envie emails para os seus contactos em poucos minutos.',
+            buttons: [
+                { id: 'cp-btn-add-empty', label: 'Criar Campanha', variant: 'primary', icon: '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' }
+            ]
+        });
     }
 
     // ========================================
@@ -323,7 +324,8 @@ var CampanhasView = (function() {
     async function sendCampaign(id) {
         var result = await apiCall('POST', '/api/campaigns/' + id + '/send');
         if (result && result.success) {
-            MailFlowToast.success('Campanha iniciada!');
+                MailFlowToast.success('Campanha iniciada!');
+                window.dispatchEvent(new CustomEvent('mailflow:checklist-update'));
             startPolling(id);
             refresh();
         } else {
@@ -354,7 +356,7 @@ var CampanhasView = (function() {
     }
 
     async function cancelCampaign(id) {
-        if (!confirm('Cancelar esta campanha? Os emails pendentes nao serao enviados.')) return;
+        if (!confirm('Cancelar esta campanha? Os emails pendentes não serão enviados.')) return;
         var result = await apiCall('POST', '/api/campaigns/' + id + '/cancel');
         if (result && result.success) {
             MailFlowToast.success('Campanha cancelada.');
@@ -409,7 +411,7 @@ var CampanhasView = (function() {
                 else if (action === 'duplicate') duplicateCampaign(campaignId);
                 else if (action === 'delete') {
                     var c = state.campaigns.find(function(x) { return x.id === campaignId; });
-                    if (c && confirm('Eliminar campanha "' + c.nome + '"?\nEsta acao nao pode ser desfeita.')) {
+                    if (c && confirm('Eliminar campanha "' + c.nome + '"?\nEsta ação não pode ser desfeita.')) {
                         deleteCampaign(campaignId);
                     }
                 } else if (action === 'edit') {
@@ -427,7 +429,7 @@ var CampanhasView = (function() {
         if (!sb || !user) return;
         try {
             var { data: orig } = await sb.from('campaigns').select('*').eq('id', id).eq('user_id', user.id).single();
-            if (!orig) throw new Error('Campanha nao encontrada');
+            if (!orig) throw new Error('Campanha não encontrada');
 
             var { data: newCamp, error } = await sb.from('campaigns').insert({
                 user_id: user.id, created_by: user.id,
@@ -492,6 +494,7 @@ var CampanhasView = (function() {
                 payload.status = 'draft';
                 result = await sb.from('campaigns').insert(payload).select('id').single();
                 if (result.error) throw result.error;
+                window.dispatchEvent(new CustomEvent('mailflow:checklist-update'));
                 MailFlowToast.success('Campanha criada.');
                 return result.data.id;
             }

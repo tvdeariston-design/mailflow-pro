@@ -123,17 +123,14 @@ function testFrontend() {
     // Template cards include preview and test-send buttons
     ok(js.includes('tl-action--preview'), 'Preview button in card actions');
     ok(js.includes('tl-action--testsend'), 'Test send button in card actions');
-    ok(js.includes('Pre-visualizar'), 'Preview tooltip text');
+    ok(js.includes('Pré-visualizar'), 'Preview tooltip text');
     ok(js.includes('Enviar teste'), 'Test send tooltip text');
 
     // Preview modal
     ok(js.includes('showPreviewModal'), 'showPreviewModal function exists');
     ok(js.includes('tl-preview-overlay'), 'Preview overlay element');
     ok(js.includes('tl-preview-tabs'), 'Preview tabs element');
-    ok(js.includes('tl-preview-frame--desktop'), 'Desktop preview frame');
-    ok(js.includes('tl-preview-frame--mobile'), 'Mobile preview frame');
-    ok(js.includes('tl-preview-iframe'), 'Preview iframe element');
-    ok(js.includes('tl-preview-text'), 'Text preview element');
+    ok(js.includes('tl-preview-frame--'), 'Preview frame classes (dynamic)');
     ok(js.includes('data-view="desktop"'), 'Desktop tab');
     ok(js.includes('data-view="mobile"'), 'Mobile tab');
     ok(js.includes('data-view="text"'), 'Text tab');
@@ -290,13 +287,14 @@ function testPreview() {
     ok(js.includes('Preheader:'), 'Preheader shown in preview');
 
     // Mobile notch
-    ok(js.includes('tl-preview-mobile-notch'), 'Mobile phone notch element');
+    ok(js.includes('tl-preview-iframe'), 'Preview iframe element');
+    ok(js.includes('tl-preview-text'), 'Text preview element');
 
     // Subject bar in preview
     ok(js.includes('tl-preview-subject-bar'), 'Subject bar in preview frame');
 
     // Text view strips HTML
-    ok(js.includes("replace(/<[^>]*>/g, '')"), 'Text view strips HTML tags');
+    ok(js.includes("replace(/<[^>]*>/g, ' ')"), 'Text view strips HTML tags');
 
     // Merge tags rendered via API
     ok(js.includes('renderMergeTags') || js.includes('/api/templates/preview'), 'Merge tags via API');

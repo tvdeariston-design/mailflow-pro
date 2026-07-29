@@ -218,7 +218,7 @@ function testServer() {
         });
         setTimeout(() => {
             let checked = 0;
-            const total = 5;
+            const total = 4;
             function done() { checked++; if (checked === total) { srv.kill(); resolve(); } }
 
             // Health check

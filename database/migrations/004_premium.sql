@@ -33,17 +33,6 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT '
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_permanent_premium BOOLEAN DEFAULT false;
 
 -- ============================================
--- 2. Premium vitalício para o administrador
--- ============================================
--- Afeta APENAS linhas com email = 'tvdeariston@gmail.com'
--- Se o email não existir na tabela, 0 linhas são afetadas
-
-UPDATE profiles
-SET
-    is_permanent_premium = true,
-    subscription_status = 'permanent'
-WHERE email = 'tvdeariston@gmail.com';
--- ============================================
 -- 3. Índices para queries frequentes
 -- ============================================
 -- CREATE INDEX IF NOT EXISTS é idempotente
@@ -53,7 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_subscription_status ON profiles(subscrip
 CREATE INDEX IF NOT EXISTS idx_profiles_is_permanent ON profiles(is_permanent_premium);
 
 -- ============================================
--- 4. Trigger: proteger colunas premium
+-- 3. Trigger: proteger colunas premium
 -- ============================================
 -- Impede que utilizadores normais alterem colunas premium.
 -- Apenas service_role (bypass RLS) pode alterar.
@@ -179,8 +168,8 @@ BEGIN
         RETURN NEW;
     END IF;
 
-    -- Admin permanente: não precisa de trial
-    IF NEW.email = 'tvdeariston@gmail.com' THEN
+    -- Admin: não precisa de trial, premium permanente
+    IF NEW.is_admin = true THEN
         NEW.is_permanent_premium := true;
         NEW.subscription_status := 'permanent';
         RETURN NEW;

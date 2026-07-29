@@ -250,7 +250,7 @@ var TemplatesView = (function() {
     // ========================================
     function renderGrid(templates, total) {
         var cards = templates.map(function(t) {
-            var defaultBadge = t.is_default ? '<span class="tl-badge tl-badge--indigo">Padrao</span>' : '';
+            var defaultBadge = t.is_default ? '<span class="tl-badge tl-badge--indigo">Padrão</span>' : '';
             var usageBadge = t.usage_count > 0 ? '<span class="tl-badge tl-badge--gray">' + t.usage_count + ' uso' + (t.usage_count !== 1 ? 's' : '') + '</span>' : '';
 
             var categoryLabel = getCategoryLabel(t);
@@ -271,7 +271,7 @@ var TemplatesView = (function() {
                             (t.last_used_at ? '<span class="tl-card__used">Usado: ' + formatShortDate(t.last_used_at) + '</span>' : '') +
                         '</div>' +
                         '<div class="tl-card__actions">' +
-                            '<button class="tl-action tl-action--preview" data-id="' + t.id + '" title="Pre-visualizar">' +
+                            '<button class="tl-action tl-action--preview" data-id="' + t.id + '" title="Pré-visualizar">' +
                                 '<svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>' +
                             '</button>' +
                             '<button class="tl-action tl-action--testsend" data-id="' + t.id + '" title="Enviar teste">' +
@@ -349,22 +349,14 @@ var TemplatesView = (function() {
     // Empty State Premium
     // ========================================
     function renderEmpty() {
-        return '' +
-            '<div class="tl-empty">' +
-                '<div class="tl-empty__illustration">' +
-                    '<svg width="80" height="80" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="tl-empty__icon">' +
-                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>' +
-                    '</svg>' +
-                    '<div class="tl-empty__orb tl-empty__orb--1"></div>' +
-                    '<div class="tl-empty__orb tl-empty__orb--2"></div>' +
-                '</div>' +
-                '<h3 class="tl-empty__title">Ainda não tem templates</h3>' +
-                '<p class="tl-empty__desc">Crie o seu primeiro template e comece a enviar campanhas profissionais em segundos.</p>' +
-                '<button class="tl-btn tl-btn--primary tl-empty__cta" id="tl-btn-add-empty">' +
-                    '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' +
-                    'Criar Primeiro Template' +
-                '</button>' +
-            '</div>';
+        return EmptyStateComponent.render({
+            icon: 'templates',
+            title: 'Crie o seu primeiro template',
+            desc: 'Os templates permitem reutilizar emails e manter uma identidade visual consistente.',
+            buttons: [
+                { id: 'tl-btn-add-empty', label: 'Criar Template', variant: 'primary', icon: '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' }
+            ]
+        });
     }
 
     // ========================================
@@ -457,7 +449,7 @@ var TemplatesView = (function() {
             btn.addEventListener('click', function() {
                 var id = this.getAttribute('data-id');
                 var template = state.templates.find(function(t) { return t.id === id; });
-                if (template && confirm('Eliminar template "' + (template.nome) + '"?\nEsta acao nao pode ser desfeita.')) {
+                if (template && confirm('Eliminar template "' + (template.nome) + '"?\nEsta ação não pode ser desfeita.')) {
                     deleteTemplate(id);
                 }
             });
@@ -486,7 +478,7 @@ var TemplatesView = (function() {
         if (!sb || !user) return;
         try {
             var { data: original, error: fetchErr } = await sb.from('templates').select('*').eq('id', id).eq('user_id', user.id).single();
-            if (fetchErr || !original) throw fetchErr || new Error('Template nao encontrado');
+            if (fetchErr || !original) throw fetchErr || new Error('Template não encontrado');
 
             var { error } = await sb.from('templates').insert({
                 user_id: user.id,
@@ -587,7 +579,7 @@ var TemplatesView = (function() {
                             '<div class="tl-editor-main">' +
                                 '<div class="tl-field">' +
                                     '<label class="tl-label">Corpo HTML *</label>' +
-                                    '<textarea class="tl-textarea tl-textarea--code" id="tl-f-html" rows="14" placeholder="<h1>Ola {{nome}}</h1>...">' + esc(template ? template.html : '') + '</textarea>' +
+                                    '<textarea class="tl-textarea tl-textarea--code" id="tl-f-html" rows="14" placeholder="<h1>Olá {{nome}}</h1>...">' + esc(template ? template.html : '') + '</textarea>' +
                                 '</div>' +
                             '</div>' +
                             '<div class="tl-editor-sidebar">' +
@@ -610,7 +602,7 @@ var TemplatesView = (function() {
                                 '</div>' +
                                 '<div class="tl-field">' +
                                     '<label class="tl-label">Corpo Texto</label>' +
-                                    '<textarea class="tl-textarea" id="tl-f-text" rows="3" placeholder="Versao em texto plano (fallback)">' + esc(template ? template.text_version : '') + '</textarea>' +
+                                    '<textarea class="tl-textarea" id="tl-f-text" rows="3" placeholder="Versão em texto plano (fallback)">' + esc(template ? template.text_version : '') + '</textarea>' +
                                 '</div>' +
                             '</div>' +
                         '</div>' +
@@ -698,7 +690,7 @@ var TemplatesView = (function() {
             '<div class="tl-modal-overlay" id="tl-preview-overlay">' +
                 '<div class="tl-modal tl-modal--xl">' +
                     '<div class="tl-modal__header">' +
-                        '<h3 class="tl-modal__title">Pre-visualizar: ' + esc(template.nome) + '</h3>' +
+                        '<h3 class="tl-modal__title">Pré-visualizar: ' + esc(template.nome) + '</h3>' +
                         '<button class="tl-modal__close" id="tl-preview-close">' +
                             '<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>' +
                         '</button>' +
@@ -776,7 +768,7 @@ var TemplatesView = (function() {
 
             var token = await getAccessToken();
             if (!token) {
-                container.innerHTML = '<div class="tl-preview-error">Sessao expirada. Faca login novamente.</div>';
+                container.innerHTML = '<div class="tl-preview-error">Sessão expirada. Faça login novamente.</div>';
                 return;
             }
 
@@ -882,7 +874,7 @@ var TemplatesView = (function() {
                 statusEl.style.display = 'block';
                 statusEl.style.background = '#fef2f2';
                 statusEl.style.color = '#991b1b';
-                statusEl.textContent = 'Sessao expirada. Faca login novamente.';
+                statusEl.textContent = 'Sessão expirada. Faça login novamente.';
                 this.disabled = false;
                 this.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Enviar Teste';
                 return;

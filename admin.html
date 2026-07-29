@@ -453,8 +453,7 @@
             adminUser = user;
             var el=document.getElementById('admin-email'); if(el) el.textContent=user.email||'admin';
             var av=document.getElementById('admin-avatar'); if(av) av.textContent=(user.email||'A').charAt(0).toUpperCase();
-            if(user.email==='tvdeariston@gmail.com'){ isAdminAccess=true; return true; }
-            var r=await fetch('/api/admin/check',{headers:{'Authorization':'Bearer '+(await MailFlowAuth.getSession()).data.session?.access_token}});
+        var r=await fetch('/api/admin/check',{headers:{'Authorization':'Bearer '+(await MailFlowAuth.getSession()).data.session?.access_token}});
             if(r.ok){ var d=await r.json(); if(d.admin){ isAdminAccess=true; return true; } }
             window.location.href='/dashboard.html'; return false;
         }catch(e){ window.location.href='/dashboard.html'; return false; }

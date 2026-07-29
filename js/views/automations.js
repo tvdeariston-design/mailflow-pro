@@ -367,32 +367,25 @@ var AutomationsView = (function() {
             '</div>';
 
         if (jobs.length === 0) {
-            return '' +
-                '<div class="tl-empty">' +
-                    '<div class="tl-empty__icon"><svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>' +
-                    '<h3 class="tl-empty__title">Nenhuma execução</h3>' +
-                    '<p class="tl-empty__desc">As execuções de automações aparecerão aqui quando contactos forem adicionados.</p>' +
-                '</div>' + pagination;
+            return EmptyStateComponent.render({
+                icon: 'automations',
+                title: 'Nenhuma execução',
+                desc: 'As execuções de automações aparecerão aqui quando contactos forem adicionados.'
+            }) + pagination;
         }
 
         return '<div class="tl-cards">' + rows + '</div>' + pagination;
     }
 
     function renderEmpty() {
-        return '' +
-            '<div class="tl-empty">' +
-                '<div class="tl-empty__orbs">' +
-                    '<div class="tl-empty__orb tl-empty__orb--1"></div>' +
-                    '<div class="tl-empty__orb tl-empty__orb--2"></div>' +
-                '</div>' +
-                '<span class="tl-badge tl-badge--indigo">Sem automações</span>' +
-                '<h3 class="tl-empty__title">Ainda não tem automações</h3>' +
-                '<p class="tl-empty__desc">Crie regras para enviar campanhas automaticamente quando um contacto é adicionado.</p>' +
-                '<button class="tl-btn tl-btn--primary" id="at-btn-add-empty">' +
-                    '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' +
-                    'Criar Automação' +
-                '</button>' +
-            '</div>';
+        return EmptyStateComponent.render({
+            icon: 'automations',
+            title: 'Automatize tarefas repetitivas',
+            desc: 'Poupe tempo criando automações que trabalham por si.',
+            buttons: [
+                { id: 'at-btn-add-empty', label: 'Nova Automação', variant: 'primary', icon: '<svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>' }
+            ]
+        });
     }
 
     function renderSkeleton() {
@@ -495,6 +488,7 @@ var AutomationsView = (function() {
         var result = await apiCall('POST', '/api/automations', data);
         if (result && result.success) {
             MailFlowToast.success('Automação criada com sucesso.');
+            window.dispatchEvent(new CustomEvent('mailflow:checklist-update'));
             closeModal();
             refresh();
         } else {

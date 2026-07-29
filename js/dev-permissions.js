@@ -1,19 +1,8 @@
 /**
  * MailFlow Pro — Sistema de Acesso Premium
  *
- * Objetivo:
- *   Verificar acesso premium do utilizador via API server-side.
- *   Validação dupla: frontend (cache) + backend (authoritative).
- *
- * Regras:
- *   1. tvdeariston@gmail.com → Premium vitalício (hardcoded no servidor)
- *   2. Trial de 7 dias a partir do registo
- *   3. Após trial → Premium apenas se subscrição Stripe ativa
- *
- * Segurança:
- *   - A verificação principal é feita no servidor (verificar-premium.js /server.js)
- *   - O frontend cacheia o resultado para performance
- *   - O email do administrador está hardcoded no servidor, não no frontend
+ * Verifica acesso premium do utilizador via API server-side.
+ * A fonte authoritative é o servidor (profiles.subscription_status).
  *
  * Dependências:
  *   - supabase-client.js (para obter token)
@@ -132,18 +121,6 @@
     }
 
     /**
-     * Verificar se o email é do administrador (premium vitalício).
-     * Apenas para referência — a verificação real é no servidor.
-     *
-     * @param {Object} user - objeto do utilizador
-     * @returns {boolean}
-     */
-    function isDevEmail(user) {
-        if (!user || !user.email) return false;
-        return user.email.toLowerCase() === 'tvdeariston@gmail.com';
-    }
-
-    /**
      * Limpar cache (útil após mudanças de estado).
      */
     function clearCache() {
@@ -165,7 +142,6 @@
     window.MailFlowDevPermissions = {
         checkPremium: checkPremium,
         hasPremiumAccess: hasPremiumAccess,
-        isDevEmail: isDevEmail,
         clearCache: clearCache,
         refreshPremium: refreshPremium
     };

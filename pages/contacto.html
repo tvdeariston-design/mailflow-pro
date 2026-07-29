@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contacto — MailFlow Pro</title>
+    <meta name="description" content="Entre em contacto com a equipa MailFlow Pro. Suporte, vendas e parcerias.">
+    <meta name="robots" content="index, follow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📧</text></svg>">
+    <style>
+        .contact-page { max-width: 800px; margin: 0 auto; padding: 80px 24px 120px; }
+        .contact-page h1 { font-size: 2rem; margin-bottom: 8px; }
+        .contact-page .subtitle { color: #64748b; font-size: 1rem; margin-bottom: 48px; line-height: 1.6; }
+        .contact-page .back-link { display: inline-flex; align-items: center; gap: 6px; color: #6366f1; text-decoration: none; font-weight: 500; margin-bottom: 32px; }
+        .contact-page .back-link:hover { color: #4f46e5; }
+        .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 48px; }
+        .contact-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .contact-card__icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(99,102,241,0.1); color: #6366f1; margin-bottom: 16px; }
+        .contact-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; color: #0f172a; }
+        .contact-card p { font-size: 0.875rem; color: #64748b; line-height: 1.6; margin: 0; }
+        .contact-card a { color: #6366f1; text-decoration: none; font-weight: 500; }
+        .contact-card a:hover { color: #4f46e5; }
+        .contact-form { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .contact-form h2 { font-size: 1.25rem; margin-bottom: 24px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 0.8125rem; font-weight: 600; color: #334155; margin-bottom: 6px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.875rem; font-family: inherit; color: #0f172a; background: #f8fafc; transition: all 0.2s ease; box-sizing: border-box; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); background: white; }
+        .form-group textarea { resize: vertical; min-height: 120px; }
+        .btn-submit { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; font-size: 0.875rem; font-weight: 600; color: white; background: linear-gradient(135deg,#6366f1,#818cf8); border: none; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(99,102,241,0.25); }
+        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(99,102,241,0.35); }
+        .btn-submit:active { transform: scale(0.97); }
+        @media (max-width: 640px) { .contact-grid { grid-template-columns: 1fr; } .contact-page { padding: 60px 16px 80px; } }
+    </style>
+</head>
+<body>
+    <main class="contact-page">
+        <a href="../" class="back-link">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4m-4 4h18"/></svg>
+            Voltar ao site
+        </a>
+        <h1>Contacto</h1>
+        <p class="subtitle">Tem dúvidas, sugestões ou precisa de ajuda? Estamos aqui para si.</p>
+
+        <div class="contact-grid">
+            <div class="contact-card">
+                <div class="contact-card__icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+                <h3>Suporte Técnico</h3>
+                <p>Precisa de ajuda com a plataforma? Envie-nos um email e responderemos em até 24 horas.<br><a href="mailto:suporte@mailflowpro.com">suporte@mailflowpro.com</a></p>
+            </div>
+            <div class="contact-card">
+                <div class="contact-card__icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </div>
+                <h3>Vendas e Comercial</h3>
+                <p>Interessado no plano Pro ou em parcerias? Fale connosco.<br><a href="mailto:vendas@mailflowpro.com">vendas@mailflowpro.com</a></p>
+            </div>
+            <div class="contact-card">
+                <div class="contact-card__icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </div>
+                <h3>Privacidade e Dados</h3>
+                <p>Questões sobre privacidade ou pedidos de dados.<br><a href="mailto:privacidade@mailflowpro.com">privacidade@mailflowpro.com</a></p>
+            </div>
+            <div class="contact-card">
+                <div class="contact-card__icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                </div>
+                <h3>Redes Sociais</h3>
+                <p>Siga-nos para novidades e dicas de email marketing.</p>
+            </div>
+        </div>
+
+        <div class="contact-form" id="contact-form">
+            <h2>Envie-nos uma mensagem</h2>
+            <div class="form-group">
+                <label for="contact-nome">Nome</label>
+                <input type="text" id="contact-nome" placeholder="O seu nome" required>
+            </div>
+            <div class="form-group">
+                <label for="contact-email">Email</label>
+                <input type="email" id="contact-email" placeholder="O seu email" required>
+            </div>
+            <div class="form-group">
+                <label for="contact-assunto">Assunto</label>
+                <select id="contact-assunto">
+                    <option value="">Selecione um assunto</option>
+                    <option value="suporte">Suporte Técnico</option>
+                    <option value="vendas">Vendas / Pro</option>
+                    <option value="parceria">Parceria</option>
+                    <option value="privacidade">Privacidade / Dados</option>
+                    <option value="outro">Outro</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="contact-mensagem">Mensagem</label>
+                <textarea id="contact-mensagem" placeholder="Descreva o seu pedido..." required></textarea>
+            </div>
+            <button class="btn-submit" id="btn-contact-submit" type="button">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                Enviar Mensagem
+            </button>
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('btn-contact-submit').addEventListener('click', function() {
+            var nome = document.getElementById('contact-nome').value.trim();
+            var email = document.getElementById('contact-email').value.trim();
+            var assunto = document.getElementById('contact-assunto').value;
+            var mensagem = document.getElementById('contact-mensagem').value.trim();
+            if (!nome || !email || !mensagem) { alert('Por favor, preencha todos os campos obrigatórios.'); return; }
+            this.innerHTML = '<svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-opacity="0.3"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg> A enviar...';
+            this.disabled = true;
+            fetch('../api/email/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: 'suporte@mailflowpro.com', subject: 'Contacto: ' + assunto, text: 'De: ' + nome + ' (' + email + ')\n\n' + mensagem }) })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (d.success) { document.getElementById('contact-form').innerHTML = '<div style="text-align:center;padding:40px;"><svg width="48" height="48" fill="none" stroke="#10b981" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg><h3 style="margin-top:16px;">Mensagem enviada com sucesso!</h3><p style="color:#64748b;">Responderemos em até 24 horas úteis.</p></div>'; }
+                    else { alert('Erro ao enviar. Tente novamente.'); this.innerHTML = 'Enviar Mensagem'; this.disabled = false; }
+                }.bind(this))
+                .catch(function() { alert('Erro de conexão. Tente novamente.'); this.innerHTML = 'Enviar Mensagem'; this.disabled = false; }.bind(this));
+        });
+    </script>
+</body>
+</html>
