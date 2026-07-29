@@ -45,6 +45,7 @@ function getTransporter() {
     if (_transporter) return _transporter;
 
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        console.error('[SMTP] No transporter: EMAIL_USER or EMAIL_PASS env vars missing');
         return null;
     }
 
@@ -55,7 +56,10 @@ function getTransporter() {
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
-        }
+        },
+        connectionTimeout: 10000,
+        socketTimeout: 10000,
+        greetingTimeout: 10000
     });
 
     return _transporter;

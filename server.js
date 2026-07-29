@@ -515,6 +515,21 @@ app.post('/api/smtp/test', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Password SMTP é obrigatória' });
         }
 
+        // Debug log (do NOT log password)
+        console.log('[SMTP TEST] Config:', JSON.stringify({
+            host: body.smtp_host.trim(),
+            port: port,
+            secure: Boolean(body.smtp_secure),
+            user: body.smtp_username.trim(),
+            hasPassword: !!body.smtp_password,
+            tlsRejectUnauthorized: false
+        }));
+
+        // Warn if secure=true on port 587 (STARTTLS port should use secure=false)
+        if (port === 587 && Boolean(body.smtp_secure)) {
+            console.warn('[SMTP TEST] WARNING: port 587 with secure=true may cause timeout. Gmail STARTTLS requires secure=false.');
+        }
+
         // Create temporary transporter
         const testTransporter = nodemailer.createTransport({
             host: body.smtp_host.trim(),
@@ -525,9 +540,11 @@ app.post('/api/smtp/test', authMiddleware, async (req, res) => {
                 pass: body.smtp_password
             },
             tls: {
-                // Allow self-signed certificates for testing
                 rejectUnauthorized: false
-            }
+            },
+            connectionTimeout: 10000,
+            socketTimeout: 10000,
+            greetingTimeout: 10000
         });
 
         // Verify connection only - do NOT send email
@@ -578,6 +595,21 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Email de destino inválido' });
         }
 
+        // Debug log (do NOT log password)
+        console.log('[SMTP SEND-TEST] Config:', JSON.stringify({
+            host: body.smtp_host.trim(),
+            port: port,
+            secure: Boolean(body.smtp_secure),
+            user: body.smtp_username.trim(),
+            hasPassword: !!body.smtp_password,
+            testEmail: body.test_email.trim(),
+            tlsRejectUnauthorized: false
+        }));
+
+        if (port === 587 && Boolean(body.smtp_secure)) {
+            console.warn('[SMTP SEND-TEST] WARNING: port 587 with secure=true may cause timeout. Gmail STARTTLS requires secure=false.');
+        }
+
         // Create temporary transporter
         const testTransporter = nodemailer.createTransport({
             host: body.smtp_host.trim(),
@@ -589,7 +621,10 @@ app.post('/api/smtp/send-test', authMiddleware, async (req, res) => {
             },
             tls: {
                 rejectUnauthorized: false
-            }
+            },
+            connectionTimeout: 10000,
+            socketTimeout: 10000,
+            greetingTimeout: 10000
         });
 
         // Verify connection first
