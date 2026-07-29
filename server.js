@@ -7,7 +7,6 @@
 
 const express = require('express');
 const crypto = require('crypto');
-const net = require('net');
 const { createClient } = require('@supabase/supabase-js');
 const stripe = process.env.STRIPE_SECRET_KEY
     ? require('stripe')(process.env.STRIPE_SECRET_KEY)
@@ -227,49 +226,6 @@ async function adminMiddleware(req, res, next) {
 // Health check
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// ============================================
-// TEMPORARY SMTP NETWORK CONNECTIVITY TEST
-// ============================================
-app.get('/api/smtp-network-test', async (req, res) => {
-    const results = {
-        smtp_host: 'smtp.gmail.com',
-        smtp_port: 587,
-        timestamp: new Date().toISOString()
-    };
-
-    await new Promise((resolve) => {
-        const socket = net.createConnection({
-            host: 'smtp.gmail.com',
-            port: 587,
-            timeout: 10000
-        });
-
-        socket.on('connect', () => {
-            results.status = 'connected';
-            results.message = 'TCP connection to smtp.gmail.com:587 successful';
-            socket.destroy();
-            resolve();
-        });
-
-        socket.on('timeout', () => {
-            results.status = 'timeout';
-            results.message = 'TCP connection to smtp.gmail.com:587 timed out after 10s';
-            socket.destroy();
-            resolve();
-        });
-
-        socket.on('error', (err) => {
-            results.status = 'error';
-            results.message = 'TCP connection error: ' + err.message;
-            results.errorCode = err.code;
-            socket.destroy();
-            resolve();
-        });
-    });
-
-    res.json(results);
 });
 
 // ============================================
