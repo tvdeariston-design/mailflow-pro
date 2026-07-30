@@ -2724,17 +2724,16 @@ textarea:focus-visible,
 .tl-search__icon { position: absolute; left: 12px; color: var(--color-slate-500); pointer-events: none; }
 .tl-search__input {
     padding: 9px 14px 9px 38px;
-    border: 1px solid var(--glass-border);
+    border: 1px solid #e2e8f0;
     border-radius: 10px;
     font-size: 0.8125rem;
     width: 240px;
     transition: all var(--transition-base, 0.2s) ease;
-    background: rgba(15, 18, 35, 0.4);
-    backdrop-filter: blur(8px);
-    color: var(--color-slate-300);
+    background: #f8fafc;
+    color: #0f172a;
 }
-.tl-search__input::placeholder { color: var(--color-slate-500); }
-.tl-search__input:focus { outline: none; border-color: rgba(99, 102, 241, 0.4); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); background: rgba(15, 18, 35, 0.6); color: var(--color-slate-300); }
+.tl-search__input::placeholder { color: #94a3b8; }
+.tl-search__input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12); background: white; }
 
 /* Buttons */
 .tl-btn {
