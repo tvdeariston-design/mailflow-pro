@@ -90,12 +90,18 @@ var TemplatesView = (function() {
         if (!sb || !user) return { data: [], count: 0 };
         state.loading = true;
         try {
-            var query = sb
-                .from('templates')
-                .select('*', { count: 'exact' })
-                .eq('user_id', user.id)
-                .is('deleted_at', null)
-                .order('created_at', { ascending: false });
+            var query;
+            if (state.sort === 'oldest') {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: true });
+            } else if (state.sort === 'name-asc') {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('nome', { ascending: true });
+            } else if (state.sort === 'name-desc') {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('nome', { ascending: false });
+            } else if (state.sort === 'most-used') {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('usage_count', { ascending: false });
+            } else {
+                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: false });
+            }
 
             if (state.search) {
                 var safe = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
@@ -104,44 +110,6 @@ var TemplatesView = (function() {
 
             if (state.category !== 'all') {
                 query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
-            }
-
-            if (state.sort === 'oldest') {
-                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('created_at', { ascending: true });
-                if (state.search) {
-                    var safe2 = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
-                    query = query.or('nome.ilike.%' + safe2 + '%,subject.ilike.%' + safe2 + '%');
-                }
-                if (state.category !== 'all') {
-                    query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
-                }
-            } else if (state.sort === 'name-asc') {
-                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('nome', { ascending: true });
-                if (state.search) {
-                    var safe3 = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
-                    query = query.or('nome.ilike.%' + safe3 + '%,subject.ilike.%' + safe3 + '%');
-                }
-                if (state.category !== 'all') {
-                    query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
-                }
-            } else if (state.sort === 'name-desc') {
-                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('nome', { ascending: false });
-                if (state.search) {
-                    var safe4 = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
-                    query = query.or('nome.ilike.%' + safe4 + '%,subject.ilike.%' + safe4 + '%');
-                }
-                if (state.category !== 'all') {
-                    query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
-                }
-            } else if (state.sort === 'most-used') {
-                query = sb.from('templates').select('*', { count: 'exact' }).eq('user_id', user.id).is('deleted_at', null).order('usage_count', { ascending: false });
-                if (state.search) {
-                    var safe5 = state.search.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
-                    query = query.or('nome.ilike.%' + safe5 + '%,subject.ilike.%' + safe5 + '%');
-                }
-                if (state.category !== 'all') {
-                    query = query.or('nome.ilike.%' + state.category + '%,subject.ilike.%' + state.category + '%');
-                }
             }
 
             var from = (state.page - 1) * state.limit;
