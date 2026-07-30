@@ -24,6 +24,8 @@ var AnalyticsView = (function() {
     var tableSearch = '';
     var tablePage = 1;
     var tableLimit = 10;
+    var _resizeHandler = null;
+    var _totalContacts = 0;
 
     function init() { sb = window.supabaseClient; }
 
@@ -666,7 +668,7 @@ var AnalyticsView = (function() {
 
         var html = renderFilterBar();
         html += renderKPICards(totals, bw);
-        html += renderAdvancedStats(bw, 0);
+        html += renderAdvancedStats(bw, _totalContacts);
         html += renderChartSection(dailyData);
         html += renderTableSection();
 
@@ -680,14 +682,18 @@ var AnalyticsView = (function() {
         });
 
         // Redraw chart on resize
+        if (_resizeHandler) {
+            window.removeEventListener('resize', _resizeHandler);
+        }
         var resizeTimer;
-        window.addEventListener('resize', function() {
+        _resizeHandler = function() {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function() {
                 var canvas = document.getElementById('an-chart');
                 if (canvas) drawChart(canvas, dailyData);
             }, 200);
-        });
+        };
+        window.addEventListener('resize', _resizeHandler);
     }
 
     // ========================================
@@ -708,6 +714,7 @@ var AnalyticsView = (function() {
             var results = await Promise.all([fetchAll(user.id), fetchContactsCount(user.id)]);
             allCampaigns = results[0];
             var totalContacts = results[1];
+            _totalContacts = totalContacts;
         } catch (err) {
             console.error('[Analytics] Erro ao buscar dados:', err);
             container.innerHTML = '<div class="es-card" role="alert"><div class="es-icon">' + svgIcon('activity') + '</div><h3 class="es-title">Erro ao carregar dados</h3><p class="es-desc">Não foi possível carregar os dados analíticos. Tente novamente.</p><div class="es-actions"><button class="es-btn es-btn--primary" onclick="location.reload()">Reiniciar</button></div></div>';
