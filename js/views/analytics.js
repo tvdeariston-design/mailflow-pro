@@ -703,10 +703,16 @@ var AnalyticsView = (function() {
         // Show skeleton
         container.innerHTML = renderSkeleton();
 
-        // Fetch data in parallel
-        var results = await Promise.all([fetchAll(user.id), fetchContactsCount(user.id)]);
-        allCampaigns = results[0];
-        var totalContacts = results[1];
+        try {
+            // Fetch data in parallel
+            var results = await Promise.all([fetchAll(user.id), fetchContactsCount(user.id)]);
+            allCampaigns = results[0];
+            var totalContacts = results[1];
+        } catch (err) {
+            console.error('[Analytics] Erro ao buscar dados:', err);
+            container.innerHTML = '<div class="es-card" role="alert"><div class="es-icon">' + svgIcon('activity') + '</div><h3 class="es-title">Erro ao carregar dados</h3><p class="es-desc">Não foi possível carregar os dados analíticos. Tente novamente.</p><div class="es-actions"><button class="es-btn es-btn--primary" onclick="location.reload()">Reiniciar</button></div></div>';
+            return;
+        }
 
         applyFilter();
         var totals = computeTotals(filteredCampaigns);

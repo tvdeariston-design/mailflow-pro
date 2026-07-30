@@ -330,10 +330,11 @@ var OverviewView = (function() {
 
         var totalItems = (data.recentContacts.length || 0) + (data.recentSends.length || 0);
         if (totalItems === 0) {
-            html += '<div class="dp-card dp-card--empty">' +
-                '<div class="dp-empty-icon">' + svgIcon('activity') + '</div>' +
-                '<p class="dp-empty-text">Ainda não existe atividade. Comece por criar uma campanha.</p>' +
-                '<a href="#/campanhas" class="dp-empty-btn">Criar Campanha</a>' +
+            html += '<div class="es-card">' +
+                '<div class="es-icon">' + svgIcon('activity') + '</div>' +
+                '<h3 class="es-title">Ainda não existe atividade</h3>' +
+                '<p class="es-desc">Comece por criar uma campanha para ver o histórico aqui.</p>' +
+                '<div class="es-actions"><a href="#/campanhas" class="es-btn es-btn--primary">Criar Campanha</a></div>' +
             '</div>';
             return html;
         }
@@ -598,7 +599,7 @@ var OverviewView = (function() {
 
         var data = await fetchDashboardData(user.id);
         if (!data) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state__icon empty-state__icon--indigo">' + svgIcon('activity') + '</div><h3 class="empty-state__title">Erro ao carregar dados</h3><p class="empty-state__desc">Tente recarregar a página.</p></div>';
+            container.innerHTML = '<div class="es-card" role="alert"><div class="es-icon">' + svgIcon('activity') + '</div><h3 class="es-title">Erro ao carregar dados</h3><p class="es-desc">Tente recarregar a página.</p></div>';
             return;
         }
 

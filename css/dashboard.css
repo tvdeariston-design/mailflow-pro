@@ -170,6 +170,7 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%;
     text-align: left;
     position: relative;
+    min-height: 44px;
 }
 
 .sidebar__link:hover {
@@ -419,6 +420,7 @@ h1, h2, h3, h4, h5, h6 {
     background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.4), transparent);
     opacity: 0;
     transition: opacity var(--transition-base, 0.2s) ease;
+    will-change: opacity;
 }
 
 .kpi-card::after {
@@ -432,6 +434,7 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 0;
     transition: opacity var(--transition-smooth);
     pointer-events: none;
+    will-change: opacity;
 }
 
 .kpi-card:hover {
@@ -802,6 +805,7 @@ h1, h2, h3, h4, h5, h6 {
     position: relative;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
+    min-height: 44px;
 }
 
 .quick-card::before {
@@ -1260,6 +1264,54 @@ h1, h2, h3, h4, h5, h6 {
     height: 16px;
 }
 
+/* Analytics button variant — consistent with es-btn */
+.an-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 24px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-family: inherit;
+    letter-spacing: 0.005em;
+    position: relative;
+    min-height: 44px;
+}
+
+.an-btn:active {
+    transform: scale(0.97);
+}
+
+.an-btn--primary {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+}
+
+.an-btn--primary:hover {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    transform: translateY(-1px);
+}
+
+.an-btn--secondary {
+    background: white;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.an-btn--secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
 /* Empty State — responsive */
 @media (max-width: 768px) {
     .es-card { padding: 48px 24px; }
@@ -1289,10 +1341,55 @@ h1, h2, h3, h4, h5, h6 {
     .es-btn { width: 100%; max-width: 240px; justify-content: center; font-size: 0.8125rem; }
 }
 
+@media (max-width: 320px) {
+    .main { padding: 16px 12px; }
+    .kpi-grid { gap: 10px; margin-bottom: 20px; }
+    .kpi-card { padding: 16px; }
+    .kpi-card__value { font-size: 1.5rem; }
+    .quick-grid { gap: 12px; margin-bottom: 20px; }
+    .quick-card { padding: 20px; }
+    .section-header { margin-bottom: 12px; padding-bottom: 8px; }
+    .section-header__title { font-size: 0.9375rem; }
+    .es-card { padding: 24px 12px; }
+    .es-icon { width: 48px; height: 48px; margin-bottom: 12px; }
+    .es-icon svg { width: 40px; height: 40px; }
+    .es-title { font-size: 0.8125rem; }
+    .es-desc { font-size: 0.75rem; max-width: 200px; }
+    .es-btn { font-size: 0.75rem; padding: 9px 16px; }
+    .es-actions { flex-direction: column; align-items: center; gap: 6px; }
+    .onboarding { padding: 16px; }
+    .onboarding__item { padding: 8px 10px; font-size: 0.6875rem; }
+    .header { padding: 0 12px; }
+    .header__title { font-size: 1rem; }
+    .toast { max-width: calc(100vw - 24px); font-size: 0.75rem; padding: 10px 14px; }
+    .ct-table td, .ct-table th { padding: 6px 8px; font-size: 0.75rem; }
+}
+
 /* Accessibility */
 .es-card:focus-within {
     outline: 2px solid #6366f1;
     outline-offset: 2px;
+}
+
+/* Focus visible for all interactive elements */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+.ct-row:focus-visible,
+.dp-activity-item:focus-visible,
+.an-row:focus-visible,
+.at-row:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.tab-btn:focus-visible,
+.filter-btn:focus-visible,
+.an-filter-btn:focus-visible,
+.es-btn:focus-visible,
+.an-btn:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 /* ========================================
@@ -1598,6 +1695,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .dashboard-hero__btn svg {
     width: 18px;
+    height: 18px;
+}
 
 /* ========================================
    Help Video Card
@@ -1688,11 +1787,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .video-placeholder svg {
     flex-shrink: 0;
-}
-
-.dashboard-hero__btn svg {
-    width: 18px;
-    height: 18px;
 }
 
 /* ========================================
@@ -4136,6 +4230,12 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 14px;
     padding: 24px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: all var(--transition-smooth, 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94));
+}
+
+.dp-card:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
 }
 
 .dp-card--empty {
