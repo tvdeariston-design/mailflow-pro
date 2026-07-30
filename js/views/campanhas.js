@@ -22,6 +22,7 @@ var CampanhasView = (function() {
         loading: false
     };
     var pollingTimers = {};
+    var pollingFailures = {};
 
     function init() { sb = window.supabaseClient; }
 
@@ -74,8 +75,13 @@ var CampanhasView = (function() {
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
         };
         if (body) opts.body = JSON.stringify(body);
-        var resp = await fetch(getAPIBase() + path, opts);
-        return resp.json();
+        try {
+            var resp = await fetch(getAPIBase() + path, opts);
+            return await resp.json();
+        } catch (err) {
+            console.error('[Campanhas] apiCall error:', err);
+            return null;
+        }
     }
 
     // ========================================
@@ -133,34 +139,39 @@ var CampanhasView = (function() {
     // ========================================
     function startPolling(campaignId) {
         if (pollingTimers[campaignId]) return;
+        pollingFailures[campaignId] = 0;
         pollingTimers[campaignId] = setInterval(async function() {
             var result = await apiCall('GET', '/api/campaigns/' + campaignId + '/progress');
-            if (result && result.success) {
-                var c = result.campaign;
-                // Update progress bar in DOM
-                var bar = document.getElementById('cp-progress-' + campaignId);
-                if (bar) {
-                    bar.style.width = (c.progress_percent || 0) + '%';
-                    bar.textContent = (c.progress_percent || 0) + '%';
-                }
-                var info = document.getElementById('cp-progress-info-' + campaignId);
-                if (info) {
-                    info.textContent = (c.total_sent || 0) + ' / ' + (c.total_recipients || 0) + ' enviados';
-                }
-                // Update status badge if changed
-                var badge = document.getElementById('cp-status-' + campaignId);
-                if (badge) {
-                    badge.outerHTML = statusBadge(c.status);
-                    badge.id = 'cp-status-' + campaignId;
-                }
-                // Stop polling if finished
-                if (c.status !== 'sending') {
+            if (!result || !result.success) {
+                pollingFailures[campaignId] = (pollingFailures[campaignId] || 0) + 1;
+                if (pollingFailures[campaignId] >= 5) {
+                    console.warn('[Campanhas] Polling stopped: 5 consecutive failures for campaign ' + campaignId);
                     stopPolling(campaignId);
-                    // Update action buttons
-                    updateActionButtons(campaignId, c.status);
-                    // Refresh list
-                    refresh();
                 }
+                return;
+            }
+            pollingFailures[campaignId] = 0;
+            var c = result.campaign;
+            // Update progress bar in DOM
+            var bar = document.getElementById('cp-progress-' + campaignId);
+            if (bar) {
+                bar.style.width = (c.progress_percent || 0) + '%';
+                bar.textContent = (c.progress_percent || 0) + '%';
+            }
+            var info = document.getElementById('cp-progress-info-' + campaignId);
+            if (info) {
+                info.textContent = (c.total_sent || 0) + ' / ' + (c.total_recipients || 0) + ' enviados';
+            }
+            // Update status badge
+            var statusEl = document.getElementById('cp-status-' + campaignId);
+            if (statusEl) {
+                statusEl.outerHTML = '<span id="cp-status-' + campaignId + '">' + statusBadge(c.status) + '</span>';
+            }
+            // Stop polling if finished
+            if (c.status !== 'sending') {
+                stopPolling(campaignId);
+                updateActionButtons(campaignId, c.status);
+                refresh();
             }
         }, 2000);
     }
@@ -169,6 +180,7 @@ var CampanhasView = (function() {
         if (pollingTimers[campaignId]) {
             clearInterval(pollingTimers[campaignId]);
             delete pollingTimers[campaignId];
+            delete pollingFailures[campaignId];
         }
     }
 
