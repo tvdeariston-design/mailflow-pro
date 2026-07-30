@@ -741,15 +741,7 @@ var AnalyticsView = (function() {
             if (canvas) drawChart(canvas, dailyData);
         });
 
-        // Resize handler
-        var resizeTimer;
-        window.addEventListener('resize', function() {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function() {
-                var canvas = document.getElementById('an-chart');
-                if (canvas) drawChart(canvas, getDailyData(filteredCampaigns));
-            }, 200);
-        });
+        // Resize: handled by render() only
     }
 
     return { render: render };

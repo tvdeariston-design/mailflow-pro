@@ -469,7 +469,7 @@ var OverviewView = (function() {
             { label: 'Criar primeiro contacto', done: data.contactsCount > 0, href: '#/contactos' },
             { label: 'Criar primeira campanha', done: data.campaigns.length > 0, href: '#/campanhas' },
             { label: 'Enviar primeiro email', done: (kpis.emailsSent || 0) > 0, href: '#/campanhas' },
-            { label: 'Criar primeira automação', done: data.automations.length > 0, href: '#/automacoes' }
+            { label: 'Criar primeira automação', done: data.automations.length > 0, href: '#/automations' }
         ];
     }
 
@@ -559,7 +559,7 @@ var OverviewView = (function() {
             { label: 'Criar primeiro contacto', done: od.contactsCount > 0, href: '#/contactos' },
             { label: 'Criar primeira campanha', done: od.campaignsCount > 0, href: '#/campanhas' },
             { label: 'Enviar primeiro email', done: od.emailsSent > 0, href: '#/campanhas' },
-            { label: 'Criar primeira automação', done: od.automationsCount > 0, href: '#/automacoes' }
+            { label: 'Criar primeira automação', done: od.automationsCount > 0, href: '#/automations' }
         ];
         var allDone = steps.every(function(s) { return s.done; });
         if (allDone) {

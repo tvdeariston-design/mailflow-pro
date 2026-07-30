@@ -249,14 +249,24 @@ var ContactosView = (function() {
         var exportXlsxBtn = document.getElementById('ct-btn-export-xlsx');
         if (exportCsvBtn) exportCsvBtn.addEventListener('click', function() { exportContacts('csv'); });
         if (exportXlsxBtn) exportXlsxBtn.addEventListener('click', function() { exportContacts('xlsx'); });
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
+        // Close dropdown when clicking outside (remove previous to avoid duplicates)
+        var _ctExportClickHandler = document.getElementById('ct-export-click-handler');
+        if (_ctExportClickHandler) _ctExportClickHandler.remove();
+        var _ctExportHandler = function(e) {
             var dropdown = document.getElementById('ct-export-dropdown');
             var menu = document.getElementById('ct-export-menu');
             if (dropdown && menu && !dropdown.contains(e.target)) {
                 menu.style.display = 'none';
             }
-        });
+        };
+        _ctExportHandler._id = 'ct-export-click-handler';
+        document.addEventListener('click', _ctExportHandler);
+        var _existing = document.getElementById('ct-export-click-handler');
+        if (_existing) _existing.remove();
+        var _marker = document.createElement('span');
+        _marker.id = 'ct-export-click-handler';
+        _marker.style.display = 'none';
+        document.body.appendChild(_marker);
         // Toggle dropdown on trigger click
         if (exportBtn) {
             exportBtn.addEventListener('click', function(e) {
