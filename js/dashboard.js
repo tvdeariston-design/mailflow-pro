@@ -162,7 +162,7 @@
                         '</div>' +
                         '<h3 class="empty-state__title">Erro ao carregar página</h3>' +
                         '<p class="empty-state__desc">Ocorreu um erro ao carregar esta página. Tente recarregar.</p>' +
-                        '<button class="empty-state__btn" onclick="window.location.hash=window.location.hash">Recarregar</button>' +
+                        '<button class="empty-state__btn" onclick="document.location.reload()">Recarregar</button>' +
                     '</div>';
             }
         } else {
