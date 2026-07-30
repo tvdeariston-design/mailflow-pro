@@ -24,6 +24,7 @@ var ContactosView = (function() {
     var sb = null;
     var user = null;
     var currentContainer = null;
+    var _ctExportClickOutsideHandler = null;
     var state = {
         contacts: [],
         total: 0,
@@ -250,23 +251,17 @@ var ContactosView = (function() {
         if (exportCsvBtn) exportCsvBtn.addEventListener('click', function() { exportContacts('csv'); });
         if (exportXlsxBtn) exportXlsxBtn.addEventListener('click', function() { exportContacts('xlsx'); });
         // Close dropdown when clicking outside (remove previous to avoid duplicates)
-        var _ctExportClickHandler = document.getElementById('ct-export-click-handler');
-        if (_ctExportClickHandler) _ctExportClickHandler.remove();
-        var _ctExportHandler = function(e) {
+        if (_ctExportClickOutsideHandler) {
+            document.removeEventListener('click', _ctExportClickOutsideHandler);
+        }
+        _ctExportClickOutsideHandler = function(e) {
             var dropdown = document.getElementById('ct-export-dropdown');
             var menu = document.getElementById('ct-export-menu');
             if (dropdown && menu && !dropdown.contains(e.target)) {
                 menu.style.display = 'none';
             }
         };
-        _ctExportHandler._id = 'ct-export-click-handler';
-        document.addEventListener('click', _ctExportHandler);
-        var _existing = document.getElementById('ct-export-click-handler');
-        if (_existing) _existing.remove();
-        var _marker = document.createElement('span');
-        _marker.id = 'ct-export-click-handler';
-        _marker.style.display = 'none';
-        document.body.appendChild(_marker);
+        document.addEventListener('click', _ctExportClickOutsideHandler);
         // Toggle dropdown on trigger click
         if (exportBtn) {
             exportBtn.addEventListener('click', function(e) {
@@ -660,13 +655,17 @@ var ContactosView = (function() {
             } catch (err) {
                 console.error('[Contactos] Erro preview:', err);
                 MailFlowToast.error('Erro ao comunicar com o servidor.');
+                this.disabled = false;
+                this.textContent = 'Pré-visualizar';
             }
-            this.disabled = false;
-            this.textContent = 'Pré-visualizar';
         });
 
         function renderPreview(data) {
             previewBody.innerHTML = '';
+            if (!data.preview || !data.preview.length) {
+                previewStats.style.display = 'none';
+                return;
+            }
             data.preview.forEach(function(row) {
                 var statusClass = 'ct-badge';
                 var statusText = row.statusLabel;
