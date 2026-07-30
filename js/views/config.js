@@ -542,7 +542,7 @@ var ConfigView = (function() {
                         if (MailFlowToast && MailFlowToast.success) MailFlowToast.success('Ligação SMTP bem-sucedida!');
                         var badgeEl = document.getElementById('cfg-smtp-status-badge');
                         if (badgeEl) {
-                            badgeEl.outerHTML = '<span class="tl-badge tl-badge--green" style="margin-left:8px;font-size:0.75rem;">Ligação verificada</span>';
+                            badgeEl.outerHTML = '<span class="tl-badge tl-badge--green" id="cfg-smtp-status-badge" style="margin-left:8px;font-size:0.75rem;">Ligação verificada</span>';
                         }
                     } else {
                         statusEl.innerHTML = '<div style="padding:10px 14px;background:#fee2e2;color:#dc2626;border-radius:8px;font-size:0.8125rem;font-weight:500;">' + esc(data.error || 'Erro ao testar ligação SMTP') + '</div>';
