@@ -164,11 +164,11 @@ var ConfigView = (function() {
 
         var statusBadge = '';
         if (smtpStatus === 'verified') {
-            statusBadge = '<span class="tl-badge tl-badge--green" style="margin-left:8px;font-size:0.75rem;">Ligação verificada</span>';
+            statusBadge = '<span class="tl-badge tl-badge--green" id="cfg-smtp-status-badge" style="margin-left:8px;font-size:0.75rem;">Ligação verificada</span>';
         } else if (smtpStatus === 'configured') {
-            statusBadge = '<span class="tl-badge tl-badge--orange" style="margin-left:8px;font-size:0.75rem;">Configurado</span>';
+            statusBadge = '<span class="tl-badge tl-badge--orange" id="cfg-smtp-status-badge" style="margin-left:8px;font-size:0.75rem;">Configurado</span>';
         } else {
-            statusBadge = '<span class="tl-badge tl-badge--red" style="margin-left:8px;font-size:0.75rem;">Não configurado</span>';
+            statusBadge = '<span class="tl-badge tl-badge--red" id="cfg-smtp-status-badge" style="margin-left:8px;font-size:0.75rem;">Não configurado</span>';
         }
 
         return '' +
@@ -540,7 +540,7 @@ var ConfigView = (function() {
                     if (resp.ok && data.success) {
                         statusEl.innerHTML = '<div style="padding:10px 14px;background:#dcfce7;color:#166534;border-radius:8px;font-size:0.8125rem;font-weight:500;">Ligação SMTP bem-sucedida!</div>';
                         if (MailFlowToast && MailFlowToast.success) MailFlowToast.success('Ligação SMTP bem-sucedida!');
-                        var badgeEl = document.querySelector('.tl-card__title .tl-badge');
+                        var badgeEl = document.getElementById('cfg-smtp-status-badge');
                         if (badgeEl) {
                             badgeEl.outerHTML = '<span class="tl-badge tl-badge--green" style="margin-left:8px;font-size:0.75rem;">Ligação verificada</span>';
                         }
@@ -637,6 +637,26 @@ var ConfigView = (function() {
                 } finally {
                     sendBtn.disabled = false;
                     sendBtn.innerHTML = '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Enviar email de teste';
+                }
+            });
+        }
+
+        var changePwdBtn = document.getElementById('cfg-change-password');
+        if (changePwdBtn) {
+            changePwdBtn.disabled = false;
+            changePwdBtn.addEventListener('click', async function() {
+                var newPwd = prompt('Nova palavra-passe:');
+                if (!newPwd || newPwd.length < 6) {
+                    if (newPwd !== null) MailFlowToast.error('A palavra-passe deve ter pelo menos 6 caracteres.');
+                    return;
+                }
+                try {
+                    var { error } = await sb.auth.updateUser({ password: newPwd });
+                    if (error) throw error;
+                    MailFlowToast.success('Palavra-passe atualizada com sucesso.');
+                } catch (err) {
+                    console.error('[Config] Erro ao alterar password:', err);
+                    MailFlowToast.error('Erro ao alterar palavra-passe.');
                 }
             });
         }
