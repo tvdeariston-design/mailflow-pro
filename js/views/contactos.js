@@ -851,7 +851,9 @@ var ContactosView = (function() {
             exportBtn.innerHTML = '<svg class="tl-spinner" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m9.24-2.83l2.83 2.83M2 12h4m16 0h4"/></svg> A exportar...';
         }
         try {
-            var token = (await sb.auth.getSession()).data.session.access_token;
+            var sessionResult = await sb.auth.getSession();
+            var token = sessionResult.data.session && sessionResult.data.session.access_token;
+            if (!token) { MailFlowToast.error('Sessão expirada.'); return; }
             var resp = await fetch('/api/contacts/export?format=' + format, {
                 headers: { 'Authorization': 'Bearer ' + token }
             });

@@ -59,13 +59,23 @@ const activeCampaigns = new Map();
 // ============================================
 // Helpers — merge tags
 // ============================================
+function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function renderMergeTags(templateStr, contact) {
     if (!templateStr) return '';
     return templateStr
-        .replace(/\{\{nome\}\}/g, contact.nome || '')
-        .replace(/\{\{email\}\}/g, contact.email || '')
-        .replace(/\{\{empresa\}\}/g, contact.empresa || '')
-        .replace(/\{\{telefone\}\}/g, contact.telefone || '')
+        .replace(/\{\{nome\}\}/g, escapeHtml(contact.nome || ''))
+        .replace(/\{\{email\}\}/g, escapeHtml(contact.email || ''))
+        .replace(/\{\{empresa\}\}/g, escapeHtml(contact.empresa || ''))
+        .replace(/\{\{telefone\}\}/g, escapeHtml(contact.telefone || ''))
         .replace(/\{\{data\}\}/g, new Date().toLocaleDateString('pt-PT'));
 }
 

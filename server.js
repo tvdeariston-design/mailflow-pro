@@ -26,8 +26,16 @@ app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 
 // CORS - Whitelist based on ALLOWED_ORIGINS env variable
-// Servir ficheiros estáticos da raiz do projeto
-app.use(express.static(path.join(__dirname)));
+// Servir ficheiros estáticos da raiz do projeto (ignorar ficheiros sensíveis)
+app.use(express.static(path.join(__dirname), {
+    dotfiles: 'ignore',
+    index: ['index.html'],
+    setHeaders: function(res, filePath) {
+        if (filePath.endsWith('.sql') || filePath.endsWith('.env') || filePath.endsWith('.env.example')) {
+            res.status(403).end();
+        }
+    }
+}));
 app.use((req, res, next) => {
     const origin = req.headers.origin;
     const allowedOrigins = config.cors.allowedOrigins;
@@ -150,6 +158,11 @@ function sanitizeHtml(text) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;')
         .replace(/\//g, '&#47;');
+}
+
+function escapeIlike(str) {
+    if (!str) return '';
+    return str.replace(/%/g, '\\%').replace(/_/g, '\\_').replace(/,/g, ' ');
 }
 
 // Logger simples
@@ -494,6 +507,10 @@ app.put('/api/profile', authMiddleware, async (req, res) => {
         }
 
         logger.info('Profile atualizado - User: ' + req.user.id, 'Profile');
+        if (data && data.smtp_password) {
+            data.smtp_has_password = true;
+            delete data.smtp_password;
+        }
         res.json({ profile: data });
 
     } catch (error) {
@@ -762,17 +779,18 @@ app.get('/api/contacts', authMiddleware, async (req, res) => {
 
         // Pesquisa por nome ou email
         if (search) {
-            query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%`);
+            var safeSearch = escapeIlike(search);
+            query = query.or(`nome.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`);
         }
 
         // Filtro por empresa
         if (empresa) {
-            query = query.ilike('empresa', `%${empresa}%`);
+            query = query.ilike('empresa', `%${escapeIlike(empresa)}%`);
         }
 
         // Filtro por telefone
         if (telefone) {
-            query = query.ilike('telefone', `%${telefone}%`);
+            query = query.ilike('telefone', `%${escapeIlike(telefone)}%`);
         }
 
         query = query.range(offset, offset + limitNum - 1);
@@ -816,13 +834,14 @@ app.get('/api/contacts/export', authMiddleware, async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (search) {
-            query = query.or(`nome.ilike.%${search}%,email.ilike.%${search}%`);
+            var safeSearch = escapeIlike(search);
+            query = query.or(`nome.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`);
         }
         if (empresa) {
-            query = query.ilike('empresa', `%${empresa}%`);
+            query = query.ilike('empresa', `%${escapeIlike(empresa)}%`);
         }
         if (telefone) {
-            query = query.ilike('telefone', `%${telefone}%`);
+            query = query.ilike('telefone', `%${escapeIlike(telefone)}%`);
         }
 
         const { data, error } = await query;
@@ -1730,7 +1749,7 @@ app.get('/api/campaigns', authMiddleware, async (req, res) => {
             .is('deleted_at', null)
             .order('created_at', { ascending: false });
 
-        if (search) query = query.or('nome.ilike.%' + search + '%,assunto.ilike.%' + search + '%');
+        if (search) { var safeSearch = escapeIlike(search); query = query.or('nome.ilike.%' + safeSearch + '%,assunto.ilike.%' + safeSearch + '%'); }
         if (status) query = query.eq('status', status);
         query = query.range(offset, offset + limitNum - 1);
 
@@ -2585,7 +2604,7 @@ app.get('/api/automations', authMiddleware, async (req, res) => {
             .order('created_at', { ascending: false });
 
         if (search) {
-            query = query.ilike('name', `%${search}%`);
+            query = query.ilike('name', `%${escapeIlike(search)}%`);
         }
 
         query = query.range(offset, offset + limitNum - 1);
@@ -2793,7 +2812,8 @@ app.get('/api/automations/jobs', authMiddleware, async (req, res) => {
             query = query.eq('status', status);
         }
         if (search) {
-            query = query.or('contact.nome.ilike.%' + search + '%,contact.email.ilike.%' + search + '%,automation.name.ilike.%' + search + '%,campaign.nome.ilike.%' + search + '%');
+            var safeSearch = escapeIlike(search);
+            query = query.or('contact.nome.ilike.%' + safeSearch + '%,contact.email.ilike.%' + safeSearch + '%,automation.name.ilike.%' + safeSearch + '%,campaign.nome.ilike.%' + safeSearch + '%');
         }
 
         query = query.range(offset, offset + limitNum - 1);

@@ -681,18 +681,25 @@ var CampanhasView = (function() {
                 this.disabled = true; this.textContent = 'A guardar...';
                 var campId = await saveCampaign(campaign, isEdit ? campaign.id : null);
                 if (campId) {
-                    if (campId && selectedContacts.length > 0) {
-                        if (isEdit) {
-                            await sb.from('campaign_recipients').delete().eq('campaign_id', campId);
+                    try {
+                        if (selectedContacts.length > 0) {
+                            if (isEdit) {
+                                await sb.from('campaign_recipients').delete().eq('campaign_id', campId);
+                            }
+                            var inserts = selectedContacts.map(function(cid) { return { campaign_id: campId, contact_id: cid }; });
+                            await sb.from('campaign_recipients').insert(inserts);
+                            await sb.from('campaigns').update({ total_recipients: selectedContacts.length }).eq('id', campId);
                         }
-                        var inserts = selectedContacts.map(function(cid) { return { campaign_id: campId, contact_id: cid }; });
-                        await sb.from('campaign_recipients').insert(inserts);
-                        await sb.from('campaigns').update({ total_recipients: selectedContacts.length }).eq('id', campId);
+                        closeModal();
+                        refresh();
+                    } catch (err) {
+                        console.error('[Campanhas] Erro ao guardar destinatários:', err);
+                        MailFlowToast.error('Campanha criada, mas erro ao guardar destinatários.');
+                        closeModal();
+                        refresh();
                     }
-                    closeModal();
-                    refresh();
                 } else {
-                    this.disabled = false; this.textContent = 'Criar Campanha';
+                    this.disabled = false; this.textContent = isEdit ? 'Guardar Alterações' : 'Criar Campanha';
                 }
                 return;
             }
