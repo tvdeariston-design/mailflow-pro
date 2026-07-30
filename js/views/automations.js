@@ -92,8 +92,13 @@ var AutomationsView = (function() {
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
         };
         if (body) opts.body = JSON.stringify(body);
-        var resp = await fetch(getAPIBase() + path, opts);
-        return resp.json();
+        try {
+            var resp = await fetch(getAPIBase() + path, opts);
+            return await resp.json();
+        } catch (err) {
+            console.error('[Automations] apiCall error:', err);
+            return null;
+        }
     }
 
     // ========================================
@@ -106,7 +111,7 @@ var AutomationsView = (function() {
             var query = sb.from('automation_rules')
                 .select('*, campaign:campaigns(id,name)', { count: 'exact' })
                 .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
+                .order(state.sortBy, { ascending: state.sortDir === 'asc' });
 
             if (state.search) {
                 query = query.ilike('name', '%' + state.search + '%');
@@ -153,10 +158,18 @@ var AutomationsView = (function() {
         if (!sb || !user) return { data: [], count: 0 };
         state.loading = true;
         try {
+            var { data: autoIds } = await sb.from('automation_rules').select('id').eq('user_id', user.id);
+            var ids = (autoIds || []).map(function(a) { return a.id; });
+            if (ids.length === 0) {
+                state.jobs = [];
+                state.jobsTotal = 0;
+                state.loading = false;
+                return { data: [], count: 0 };
+            }
             var from = (state.jobsPage - 1) * state.jobsLimit;
             var query = sb.from('automation_jobs')
                 .select('*, automation:automation_rules(id,name), contact:contacts(id,nome,email), campaign:campaigns(id,nome)', { count: 'exact' })
-                .eq('automation.user_id', user.id)
+                .in('automation_id', ids)
                 .order('created_at', { ascending: false })
                 .range(from, from + state.jobsLimit - 1);
             var result = await query;
